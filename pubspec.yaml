@@ -1,0 +1,50 @@
+name: sales_box
+description: "ژیروفاکتور — مدیریت فروش و فاکتور"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # State Management
+  flutter_bloc: ^9.1.0
+  equatable: ^2.0.7
+
+  # Database
+  sqflite_common_ffi: ^2.4.2
+  sqflite_common: ^2.5.11
+  path_provider: ^2.1.5
+  path: ^1.9.1
+
+  # Persian / Jalali Date
+  shamsi_date: ^1.1.1
+  persian_datetime_picker: ^3.2.0
+
+  # Formatting & Localization
+  intl: ^0.20.2
+
+  # PDF & Printing
+  pdf: ^3.13.0
+  printing: ^5.15.0
+
+  # Export
+  excel_plus: ^2.16.0
+  file_picker: ^8.1.7
+
+  # Utilities
+  uuid: ^4.5.1
+  google_fonts: ^6.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
