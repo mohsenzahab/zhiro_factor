@@ -7,6 +7,7 @@ import '../../../shared/widgets/search_field.dart';
 import '../../../shared/widgets/confirm_dialog.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../services/import_service.dart';
+import '../../../data/models/product_model.dart';
 import '../../../data/repositories/product_repository.dart';
 import '../cubit/product_cubit.dart';
 import '../cubit/product_state.dart';
@@ -35,6 +36,7 @@ class _ProductsView extends StatefulWidget {
 
 class _ProductsViewState extends State<_ProductsView> {
   final _searchCtrl = TextEditingController();
+  String? _selectedCategory;
 
   @override
   void dispose() {
@@ -110,7 +112,31 @@ class _ProductsViewState extends State<_ProductsView> {
                       title: AppStrings.noData,
                     );
                   }
-                  return _buildTable(context, state);
+
+                  final displayedProducts = state.products.where((p) {
+                    if (_selectedCategory == null) return true;
+                    if (_selectedCategory == '__uncategorized__') {
+                      return p.category == null || p.category!.trim().isEmpty;
+                    }
+                    return p.category?.trim() == _selectedCategory;
+                  }).toList();
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildCategoryFilterBar(state.products),
+                      const SizedBox(height: 16),
+                      Expanded(
+                        child: displayedProducts.isEmpty
+                            ? const EmptyState(
+                                icon: Icons.category_outlined,
+                                title: 'کالایی در این دسته‌بندی یافت نشد',
+                                subtitle: 'برای مشاهده همه کالاها، دسته‌بندی «همه» را انتخاب کنید',
+                              )
+                            : _buildTable(context, displayedProducts),
+                      ),
+                    ],
+                  );
                 }
                 return const SizedBox.shrink();
               },
@@ -121,7 +147,154 @@ class _ProductsViewState extends State<_ProductsView> {
     );
   }
 
-  Widget _buildTable(BuildContext context, ProductLoaded state) {
+  Widget _buildCategoryFilterBar(List<ProductModel> allProducts) {
+    final Map<String, int> categoryCounts = {};
+    int uncategorizedCount = 0;
+    for (final p in allProducts) {
+      final cat = p.category?.trim();
+      if (cat != null && cat.isNotEmpty) {
+        categoryCounts[cat] = (categoryCounts[cat] ?? 0) + 1;
+      } else {
+        uncategorizedCount++;
+      }
+    }
+    final sortedCategories = categoryCounts.keys.toList()..sort();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.cardDark,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.dividerDark),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.category_outlined, size: 18, color: AppColors.accent),
+          const SizedBox(width: 8),
+          Text(
+            '${AppStrings.productCategory}:',
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildCategoryChip(
+                    label: AppStrings.all,
+                    count: allProducts.length,
+                    isSelected: _selectedCategory == null,
+                    onTap: () => setState(() => _selectedCategory = null),
+                  ),
+                  ...sortedCategories.map((cat) {
+                    final isSelected = _selectedCategory == cat;
+                    return Padding(
+                      padding: const EdgeInsetsDirectional.only(start: 8),
+                      child: _buildCategoryChip(
+                        label: cat,
+                        count: categoryCounts[cat]!,
+                        isSelected: isSelected,
+                        onTap: () {
+                          setState(() {
+                            _selectedCategory = isSelected ? null : cat;
+                          });
+                        },
+                      ),
+                    );
+                  }),
+                  if (uncategorizedCount > 0)
+                    Padding(
+                      padding: const EdgeInsetsDirectional.only(start: 8),
+                      child: _buildCategoryChip(
+                        label: AppStrings.uncategorized,
+                        count: uncategorizedCount,
+                        isSelected: _selectedCategory == '__uncategorized__',
+                        onTap: () {
+                          setState(() {
+                            _selectedCategory =
+                                _selectedCategory == '__uncategorized__' ? null : '__uncategorized__';
+                          });
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryChip({
+    required String label,
+    required int count,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.primary.withValues(alpha: 0.18)
+              : AppColors.surfaceDark,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected
+                ? AppColors.primary
+                : AppColors.dividerDark,
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isSelected) ...[
+              const Icon(Icons.check, size: 14, color: AppColors.primary),
+              const SizedBox(width: 5),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppColors.primary.withValues(alpha: 0.35)
+                    : AppColors.cardDark,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                count.formattedInt,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  color: isSelected ? AppColors.primary : AppColors.textMuted,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTable(BuildContext context, List<ProductModel> products) {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
@@ -150,8 +323,8 @@ class _ProductsViewState extends State<_ProductsView> {
                 DataColumn(label: Text(AppStrings.productStock)),
                 DataColumn(label: Text('')), // Actions
               ],
-              rows: List.generate(state.products.length, (index) {
-                final p = state.products[index];
+              rows: List.generate(products.length, (index) {
+                final p = products[index];
                 return DataRow(
                   color: WidgetStateProperty.all(
                     index.isEven ? AppColors.tableRowEven : AppColors.tableRowOdd,
@@ -159,7 +332,35 @@ class _ProductsViewState extends State<_ProductsView> {
                   cells: [
                     DataCell(Text(p.code ?? '')),
                     DataCell(Text(p.name, style: const TextStyle(fontWeight: FontWeight.w500))),
-                    DataCell(Text(p.category ?? '')),
+                    DataCell(
+                      InkWell(
+                        onTap: () {
+                          final cat = p.category?.trim();
+                          if (cat != null && cat.isNotEmpty) {
+                            setState(() {
+                              _selectedCategory = (_selectedCategory == cat) ? null : cat;
+                            });
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(4),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                          child: Text(
+                            p.category ?? '',
+                            style: TextStyle(
+                              color: (p.category != null && p.category!.trim().isNotEmpty)
+                                  ? (_selectedCategory == p.category?.trim()
+                                      ? AppColors.primary
+                                      : AppColors.textSecondary)
+                                  : AppColors.textMuted,
+                              fontWeight: _selectedCategory == p.category?.trim()
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                     DataCell(Text(p.buyPrice.toman)),
                     DataCell(Text(p.sellPrice != null ? p.sellPrice!.toman : '-')),
                     DataCell(Text(p.unit)),

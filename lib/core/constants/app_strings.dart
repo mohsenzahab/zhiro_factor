@@ -18,6 +18,9 @@ class AppStrings {
   static const String productCode = 'کد کالا';
   static const String productName = 'نام کالا';
   static const String productCategory = 'دسته‌بندی';
+  static const String all = 'همه';
+  static const String allCategories = 'همه دسته‌ها';
+  static const String uncategorized = 'بدون دسته‌بندی';
   static const String productBuyPrice = 'قیمت خرید اولیه';
   static const String productCurrentBuyPrice = 'قیمت خرید روز';
   static const String productSellPrice = 'قیمت فروش';
