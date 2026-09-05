@@ -83,7 +83,11 @@ class _ProductsViewState extends State<_ProductsView> {
               OutlinedButton.icon(
                 onPressed: () => _applyProfitMargin(context),
                 icon: const Icon(Icons.percent, size: 18),
-                label: const Text(AppStrings.applyProfitMargin),
+                label: Text(
+                  _selectedCategory == null
+                      ? AppStrings.applyProfitMargin
+                      : '${AppStrings.applyProfitMargin} ($_currentCategoryDisplayName)',
+                ),
               ),
               const SizedBox(width: 8),
               ElevatedButton.icon(
@@ -318,6 +322,7 @@ class _ProductsViewState extends State<_ProductsView> {
                 DataColumn(label: Text(AppStrings.productName)),
                 DataColumn(label: Text(AppStrings.productCategory)),
                 DataColumn(label: Text(AppStrings.productBuyPrice)),
+                DataColumn(label: Text(AppStrings.productCurrentBuyPrice)),
                 DataColumn(label: Text(AppStrings.productSellPrice)),
                 DataColumn(label: Text(AppStrings.productUnit)),
                 DataColumn(label: Text(AppStrings.productStock)),
@@ -362,6 +367,7 @@ class _ProductsViewState extends State<_ProductsView> {
                       ),
                     ),
                     DataCell(Text(p.buyPrice.toman)),
+                    DataCell(Text(p.currentBuyPrice != null ? p.currentBuyPrice!.toman : p.buyPrice.toman)),
                     DataCell(Text(p.sellPrice != null ? p.sellPrice!.toman : '-')),
                     DataCell(Text(p.unit)),
                     DataCell(Text(p.stock.formattedInt)),
@@ -467,23 +473,67 @@ class _ProductsViewState extends State<_ProductsView> {
     }
   }
 
+  String get _currentCategoryDisplayName {
+    if (_selectedCategory == null) return AppStrings.all;
+    if (_selectedCategory == '__uncategorized__') return AppStrings.uncategorized;
+    return _selectedCategory!;
+  }
+
   Future<void> _applyProfitMargin(BuildContext context) async {
     final controller = TextEditingController();
+    final targetCategory = _selectedCategory;
+    final categoryName = _currentCategoryDisplayName;
+
     final result = await showDialog<double>(
       context: context,
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          title: const Text(AppStrings.applyProfitMargin),
+          title: Row(
+            children: [
+              const Icon(Icons.percent, color: AppColors.primary, size: 22),
+              const SizedBox(width: 8),
+              const Text(AppStrings.applyProfitMargin),
+            ],
+          ),
           content: SizedBox(
-            width: 380,
+            width: 400,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'درصد سود مورد نظر را برای محاسبه قیمت فروش بر اساس قیمت خرید وارد کنید:',
-                  style: TextStyle(fontSize: 13),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.category_outlined, size: 16, color: AppColors.primary),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'دسته‌بندی هدف: ',
+                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      ),
+                      Text(
+                        categoryName,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  targetCategory == null
+                      ? 'درصد سود مورد نظر را برای همه کالاها وارد کنید:'
+                      : 'درصد سود مورد نظر را برای کالاهای دسته‌بندی «$categoryName» وارد کنید:',
+                  style: const TextStyle(fontSize: 13),
                 ),
                 const SizedBox(height: 16),
                 TextField(
@@ -519,10 +569,16 @@ class _ProductsViewState extends State<_ProductsView> {
     );
 
     if (result != null && context.mounted) {
-      await context.read<ProductCubit>().applyProfitMargin(result);
+      final updatedCount = await context.read<ProductCubit>().applyProfitMargin(
+        result,
+        category: targetCategory,
+      );
       if (context.mounted) {
+        final msg = targetCategory == null
+            ? 'درصد سود روی همه کالاها ($updatedCount مورد) اعمال شد'
+            : 'درصد سود روی کالاهای «$categoryName» ($updatedCount مورد) اعمال شد';
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(AppStrings.profitMarginApplied)),
+          SnackBar(content: Text(msg)),
         );
       }
     }

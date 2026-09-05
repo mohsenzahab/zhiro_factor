@@ -41,12 +41,26 @@ class ProductRepository {
   /// Update an existing product. Returns rows affected.
   Future<int> update(ProductModel product) async {
     final db = await _dbHelper.database;
+    final map = product.toMap();
+    map.remove('id'); // Do not update primary key
     return await db.update(
       'products',
-      product.toMap(),
+      map,
       where: 'id = ?',
       whereArgs: [product.id],
     );
+  }
+
+  /// Check if a product code is already in use by another product.
+  Future<bool> isCodeTaken(String code, {int? excludeId}) async {
+    final trimmed = code.trim();
+    if (trimmed.isEmpty) return false;
+    final db = await _dbHelper.database;
+    final result = await db.rawQuery(
+      'SELECT id FROM products WHERE code = ? AND (? IS NULL OR id != ?)',
+      [trimmed, excludeId, excludeId],
+    );
+    return result.isNotEmpty;
   }
 
   /// Delete a product by ID. Returns rows affected.
@@ -98,14 +112,28 @@ class ProductRepository {
     return count;
   }
 
-  /// Apply a profit percentage to all products.
-  /// Sets sell_price = current_buy_price (or buy_price) * (1 + percentage / 100) for all products.
-  Future<void> bulkApplyProfitMargin(double percentage) async {
+  /// Apply a profit percentage to products, optionally filtered by category.
+  /// Calculation is strictly based on current_buy_price (falling back to buy_price if null or 0).
+  /// The sell_price is always rounded to the nearest integer.
+  Future<int> bulkApplyProfitMargin(double percentage, {String? category}) async {
     final db = await _dbHelper.database;
-    await db.rawUpdate(
-      'UPDATE products SET sell_price = COALESCE(current_buy_price, buy_price) * (1 + ? / 100.0)',
-      [percentage],
-    );
+    const basePriceExpr = '(CASE WHEN current_buy_price IS NOT NULL AND current_buy_price > 0 THEN current_buy_price ELSE buy_price END)';
+    if (category == null) {
+      return await db.rawUpdate(
+        'UPDATE products SET sell_price = ROUND($basePriceExpr * (1 + ? / 100.0))',
+        [percentage],
+      );
+    } else if (category == '__uncategorized__') {
+      return await db.rawUpdate(
+        "UPDATE products SET sell_price = ROUND($basePriceExpr * (1 + ? / 100.0)) WHERE category IS NULL OR category = ''",
+        [percentage],
+      );
+    } else {
+      return await db.rawUpdate(
+        'UPDATE products SET sell_price = ROUND($basePriceExpr * (1 + ? / 100.0)) WHERE category = ?',
+        [percentage, category],
+      );
+    }
   }
 }
 

@@ -54,6 +54,7 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
   late final TextEditingController _categoryCtrl;
   late final TextEditingController _buyPriceCtrl;
   late final TextEditingController _currentBuyPriceCtrl;
+  late final TextEditingController _profitMarginCtrl;
   late final TextEditingController _sellPriceCtrl;
   late final TextEditingController _stockCtrl;
   late final TextEditingController _supplierCtrl;
@@ -61,6 +62,7 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
   String? _buyDate;
   bool _isTemporary = false;
   List<String> _categories = [];
+  bool _isAutoCalculating = false;
 
   bool get _isEditing => widget.product != null;
 
@@ -71,15 +73,37 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
     _codeCtrl = TextEditingController(text: p?.code ?? widget.nextCode ?? '');
     _nameCtrl = TextEditingController(text: p?.name ?? widget.initialName ?? '');
     _categoryCtrl = TextEditingController(text: p?.category ?? '');
-    _buyPriceCtrl = TextEditingController(text: p != null ? p.buyPrice.toStringAsFixed(0) : '');
-    _currentBuyPriceCtrl = TextEditingController(text: p?.currentBuyPrice != null ? p!.currentBuyPrice!.toStringAsFixed(0) : '');
-    _sellPriceCtrl = TextEditingController(text: p?.sellPrice != null ? p!.sellPrice!.toStringAsFixed(0) : '');
+    _buyPriceCtrl = TextEditingController(text: p != null ? p.buyPrice.round().toString() : '');
+    _currentBuyPriceCtrl = TextEditingController(
+      text: p?.currentBuyPrice != null ? p!.currentBuyPrice!.round().toString() : '',
+    );
+
+    // Initial profit margin percentage based on current buy price (or buy price)
+    String initialProfitMargin = '';
+    if (p != null && p.sellPrice != null) {
+      final basePrice = (p.currentBuyPrice != null && p.currentBuyPrice! > 0)
+          ? p.currentBuyPrice!
+          : p.buyPrice;
+      if (basePrice > 0) {
+        final pct = ((p.sellPrice! - basePrice) / basePrice) * 100.0;
+        initialProfitMargin = pct % 1 == 0 ? pct.toStringAsFixed(0) : pct.toStringAsFixed(1);
+      }
+    }
+    _profitMarginCtrl = TextEditingController(text: initialProfitMargin);
+    _sellPriceCtrl = TextEditingController(
+      text: p?.sellPrice != null ? p!.sellPrice!.round().toString() : '',
+    );
     _stockCtrl = TextEditingController(text: p != null ? p.stock.toStringAsFixed(0) : '0');
     _supplierCtrl = TextEditingController(text: p?.supplier ?? '');
     _selectedUnit = p?.unit ?? AppUnits.defaultUnit;
     _buyDate = p?.buyDate;
     _isTemporary = p?.isTemporary ?? false;
     _loadCategories();
+
+    _currentBuyPriceCtrl.addListener(_onBuyPriceOrCurrentBuyPriceChanged);
+    _buyPriceCtrl.addListener(_onBuyPriceOrCurrentBuyPriceChanged);
+    _profitMarginCtrl.addListener(_onProfitMarginChanged);
+    _sellPriceCtrl.addListener(_onSellPriceChanged);
   }
 
   Future<void> _loadCategories() async {
@@ -87,34 +111,110 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
     if (mounted) setState(() => _categories = cats);
   }
 
+  double _getBaseBuyPrice() {
+    final curText = _currentBuyPriceCtrl.text.replaceAll(',', '').trim();
+    final curVal = double.tryParse(curText);
+    if (curVal != null && curVal > 0) return curVal;
+    final buyText = _buyPriceCtrl.text.replaceAll(',', '').trim();
+    return double.tryParse(buyText) ?? 0;
+  }
+
+  void _onBuyPriceOrCurrentBuyPriceChanged() {
+    if (_isAutoCalculating) return;
+    final pctText = _profitMarginCtrl.text.replaceAll(',', '').trim();
+    final pct = double.tryParse(pctText);
+    final basePrice = _getBaseBuyPrice();
+    if (pct != null && basePrice > 0) {
+      _isAutoCalculating = true;
+      final roundedSell = (basePrice * (1 + pct / 100.0)).roundToDouble();
+      _sellPriceCtrl.text = roundedSell.round().toString();
+      _isAutoCalculating = false;
+    }
+  }
+
+  void _onProfitMarginChanged() {
+    if (_isAutoCalculating) return;
+    final pctText = _profitMarginCtrl.text.replaceAll(',', '').trim();
+    final pct = double.tryParse(pctText);
+    final basePrice = _getBaseBuyPrice();
+    if (pct != null && basePrice > 0) {
+      _isAutoCalculating = true;
+      final roundedSell = (basePrice * (1 + pct / 100.0)).roundToDouble();
+      _sellPriceCtrl.text = roundedSell.round().toString();
+      _isAutoCalculating = false;
+    }
+  }
+
+  void _onSellPriceChanged() {
+    if (_isAutoCalculating) return;
+    final sellText = _sellPriceCtrl.text.replaceAll(',', '').trim();
+    final sell = double.tryParse(sellText);
+    final basePrice = _getBaseBuyPrice();
+    if (sell != null && basePrice > 0) {
+      _isAutoCalculating = true;
+      final pct = ((sell - basePrice) / basePrice) * 100.0;
+      _profitMarginCtrl.text = pct % 1 == 0 ? pct.toStringAsFixed(0) : pct.toStringAsFixed(1);
+      _isAutoCalculating = false;
+    }
+  }
+
   @override
   void dispose() {
+    _currentBuyPriceCtrl.removeListener(_onBuyPriceOrCurrentBuyPriceChanged);
+    _buyPriceCtrl.removeListener(_onBuyPriceOrCurrentBuyPriceChanged);
+    _profitMarginCtrl.removeListener(_onProfitMarginChanged);
+    _sellPriceCtrl.removeListener(_onSellPriceChanged);
     _codeCtrl.dispose();
     _nameCtrl.dispose();
     _categoryCtrl.dispose();
     _buyPriceCtrl.dispose();
     _currentBuyPriceCtrl.dispose();
+    _profitMarginCtrl.dispose();
     _sellPriceCtrl.dispose();
     _stockCtrl.dispose();
     _supplierCtrl.dispose();
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+
+    final codeText = _codeCtrl.text.trim();
+    final cleanCode = codeText.isEmpty ? null : codeText;
+
+    // Check unique product code
+    if (cleanCode != null) {
+      final isTaken = await _repo.isCodeTaken(cleanCode, excludeId: widget.product?.id);
+      if (isTaken) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('کد کالا تکراری است. لطفاً کد دیگری انتخاب کنید.'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+        return;
+      }
+    }
 
     final sellPriceText = _sellPriceCtrl.text.replaceAll(',', '').trim();
     final currentBuyPriceText = _currentBuyPriceCtrl.text.replaceAll(',', '').trim();
     final buyPrice = double.parse(_buyPriceCtrl.text.replaceAll(',', ''));
 
+    final currentBuyPrice = currentBuyPriceText.isNotEmpty ? double.tryParse(currentBuyPriceText) : buyPrice;
+    final sellPriceRaw = sellPriceText.isNotEmpty ? double.tryParse(sellPriceText) : null;
+    // Always round sell price
+    final sellPrice = sellPriceRaw?.roundToDouble();
+
     final product = ProductModel(
       id: widget.product?.id,
-      code: _codeCtrl.text.trim(),
+      code: cleanCode,
       name: _nameCtrl.text.trim(),
       category: _categoryCtrl.text.trim().isEmpty ? null : _categoryCtrl.text.trim(),
       buyPrice: buyPrice,
-      currentBuyPrice: currentBuyPriceText.isNotEmpty ? double.tryParse(currentBuyPriceText) : buyPrice,
-      sellPrice: sellPriceText.isNotEmpty ? double.tryParse(sellPriceText) : null,
+      currentBuyPrice: currentBuyPrice,
+      sellPrice: sellPrice,
       unit: _selectedUnit,
       stock: double.tryParse(_stockCtrl.text.replaceAll(',', '')) ?? 0,
       createdAt: widget.product?.createdAt,
@@ -123,7 +223,9 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
       isTemporary: _isTemporary,
     );
 
-    Navigator.of(context).pop(product);
+    if (mounted) {
+      Navigator.of(context).pop(product);
+    }
   }
 
   @override
@@ -245,13 +347,14 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                           },
                         ),
                       ),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: TextFormField(
                           controller: _currentBuyPriceCtrl,
                           decoration: const InputDecoration(
                             labelText: AppStrings.productCurrentBuyPrice,
                             suffixText: AppStrings.toman,
-                            hintText: 'در صورت خالی بودن برابر قیمت اولیه است',
+                            hintText: 'مبنای محاسبه سود فروش',
                           ),
                           keyboardType: TextInputType.number,
                           validator: (v) {
@@ -269,11 +372,23 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                     children: [
                       Expanded(
                         child: TextFormField(
+                          controller: _profitMarginCtrl,
+                          decoration: const InputDecoration(
+                            labelText: AppStrings.profitMargin,
+                            suffixText: '٪',
+                            hintText: 'مثلاً ۲۰',
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
                           controller: _sellPriceCtrl,
                           decoration: const InputDecoration(
                             labelText: AppStrings.productSellPrice,
                             suffixText: AppStrings.toman,
-                            hintText: 'اختیاری',
+                            hintText: 'گرد به عدد صحیح',
                           ),
                           keyboardType: TextInputType.number,
                           validator: (v) {
@@ -284,7 +399,11 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                           },
                         ),
                       ),
-                      const SizedBox(width: 12),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
                       Expanded(
                         child: TextFormField(
                           controller: _stockCtrl,
@@ -292,18 +411,18 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                           keyboardType: TextInputType.number,
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
+                      const SizedBox(width: 12),
                       Expanded(
                         child: TextFormField(
                           controller: _supplierCtrl,
                           decoration: const InputDecoration(labelText: AppStrings.productSupplier),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
                       Expanded(
                         child: InkWell(
                           onTap: () async {

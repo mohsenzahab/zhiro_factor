@@ -16,34 +16,34 @@ class ProductModel extends Equatable {
   final String? supplier;
   final bool isTemporary;
 
-  const ProductModel({
+  ProductModel({
     this.id,
     this.code,
     required this.name,
     this.category,
     required this.buyPrice,
     this.currentBuyPrice,
-    this.sellPrice,
+    double? sellPrice,
     required this.unit,
     this.stock = 0,
     this.createdAt,
     this.buyDate,
     this.supplier,
     this.isTemporary = false,
-  });
+  }) : sellPrice = sellPrice?.roundToDouble();
 
   /// The price used in invoices: sell price if set, otherwise buy price.
-  double get effectivePrice => sellPrice ?? buyPrice;
+  double get effectivePrice => (sellPrice ?? buyPrice).roundToDouble();
 
   factory ProductModel.fromMap(Map<String, dynamic> map) {
     return ProductModel(
       id: map['id'] as int?,
-      code: map['code'] as String?,
+      code: (map['code'] as String?)?.trim().isNotEmpty == true ? (map['code'] as String).trim() : null,
       name: map['name'] as String,
       category: map['category'] as String?,
       buyPrice: (map['buy_price'] as num).toDouble(),
       currentBuyPrice: map['current_buy_price'] != null ? (map['current_buy_price'] as num).toDouble() : null,
-      sellPrice: map['sell_price'] != null ? (map['sell_price'] as num).toDouble() : null,
+      sellPrice: map['sell_price'] != null ? (map['sell_price'] as num).toDouble().roundToDouble() : null,
       unit: map['unit'] as String,
       stock: (map['stock'] as num?)?.toDouble() ?? 0,
       createdAt: map['created_at'] as String?,
@@ -54,19 +54,22 @@ class ProductModel extends Equatable {
   }
 
   Map<String, dynamic> toMap() {
+    final cleanCode = (code != null && code!.trim().isNotEmpty) ? code!.trim() : null;
+    final cleanCategory = (category != null && category!.trim().isNotEmpty) ? category!.trim() : null;
+    final cleanSupplier = (supplier != null && supplier!.trim().isNotEmpty) ? supplier!.trim() : null;
     return {
       if (id != null) 'id': id,
-      'code': code,
-      'name': name,
-      'category': category,
+      'code': cleanCode,
+      'name': name.trim(),
+      'category': cleanCategory,
       'buy_price': buyPrice,
       'current_buy_price': currentBuyPrice,
-      'sell_price': sellPrice,
+      'sell_price': sellPrice?.roundToDouble(),
       'unit': unit,
       'stock': stock,
       'created_at': createdAt ?? DateTime.now().toIso8601String(),
       'buy_date': buyDate,
-      'supplier': supplier,
+      'supplier': cleanSupplier,
       'is_temporary': isTemporary ? 1 : 0,
     };
   }
@@ -94,7 +97,7 @@ class ProductModel extends Equatable {
       category: category ?? this.category,
       buyPrice: buyPrice ?? this.buyPrice,
       currentBuyPrice: currentBuyPrice ?? this.currentBuyPrice,
-      sellPrice: clearSellPrice ? null : (sellPrice ?? this.sellPrice),
+      sellPrice: clearSellPrice ? null : (sellPrice != null ? sellPrice.roundToDouble() : this.sellPrice?.roundToDouble()),
       unit: unit ?? this.unit,
       stock: stock ?? this.stock,
       createdAt: createdAt ?? this.createdAt,

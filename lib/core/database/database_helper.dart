@@ -43,6 +43,7 @@ class DatabaseHelper {
         onCreate: _onCreate,
         onUpgrade: _onUpgrade,
         onConfigure: _onConfigure,
+        onOpen: _onOpen,
       ),
     );
   }
@@ -83,6 +84,13 @@ class DatabaseHelper {
   Future<void> _onConfigure(Database db) async {
     // Enable foreign key support
     await db.execute('PRAGMA foreign_keys = ON');
+  }
+
+  Future<void> _onOpen(Database db) async {
+    // Sanitize any existing empty string codes to null so they don't violate UNIQUE constraint
+    await db.rawUpdate("UPDATE products SET code = NULL WHERE code = ''");
+    // Ensure all existing sell prices are rounded to integers
+    await db.rawUpdate("UPDATE products SET sell_price = ROUND(sell_price) WHERE sell_price IS NOT NULL");
   }
 
   Future<void> _onCreate(Database db, int version) async {
