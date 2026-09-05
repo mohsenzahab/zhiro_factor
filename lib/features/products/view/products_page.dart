@@ -85,9 +85,11 @@ class _ProductsViewState extends State<_ProductsView> {
                 onPressed: () => _applyProfitMargin(context),
                 icon: const Icon(Icons.percent, size: 18),
                 label: Text(
-                  _selectedCategory == null
-                      ? AppStrings.applyProfitMargin
-                      : '${AppStrings.applyProfitMargin} ($_currentCategoryDisplayName)',
+                  _selectedIds.isNotEmpty
+                      ? '${AppStrings.applyProfitMargin} (${_selectedIds.length.formattedInt} انتخاب‌شده)'
+                      : (_selectedCategory == null
+                          ? AppStrings.applyProfitMargin
+                          : '${AppStrings.applyProfitMargin} ($_currentCategoryDisplayName)'),
                 ),
               ),
               const SizedBox(width: 8),
@@ -491,6 +493,13 @@ class _ProductsViewState extends State<_ProductsView> {
             style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
           ),
           const Spacer(),
+          // Apply profit margin to selected
+          FilledButton.tonalIcon(
+            onPressed: () => _applyProfitMargin(context),
+            icon: const Icon(Icons.percent, size: 18),
+            label: const Text(AppStrings.applyProfitMargin),
+          ),
+          const SizedBox(width: 8),
           // Move to Category
           FilledButton.tonalIcon(
             onPressed: () => _batchMoveCategory(context, allProducts),
@@ -775,6 +784,8 @@ class _ProductsViewState extends State<_ProductsView> {
     final controller = TextEditingController();
     final targetCategory = _selectedCategory;
     final categoryName = _currentCategoryDisplayName;
+    final hasSelection = _selectedIds.isNotEmpty;
+    final selectedCount = _selectedIds.length;
 
     final result = await showDialog<double>(
       context: context,
@@ -789,7 +800,7 @@ class _ProductsViewState extends State<_ProductsView> {
             ],
           ),
           content: SizedBox(
-            width: 400,
+            width: 420,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -803,18 +814,27 @@ class _ProductsViewState extends State<_ProductsView> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.category_outlined, size: 16, color: AppColors.primary),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'دسته‌بندی هدف: ',
-                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      Icon(
+                        hasSelection ? Icons.checklist_rtl_outlined : Icons.category_outlined,
+                        size: 16,
+                        color: AppColors.primary,
                       ),
+                      const SizedBox(width: 8),
                       Text(
-                        categoryName,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
+                        hasSelection ? 'هدف اعمال سود: ' : 'دسته‌بندی هدف: ',
+                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      ),
+                      Expanded(
+                        child: Text(
+                          hasSelection
+                              ? '$selectedCount کالای انتخاب‌شده (${targetCategory != null ? categoryName : 'از کل کالاها'})'
+                              : categoryName,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -822,9 +842,11 @@ class _ProductsViewState extends State<_ProductsView> {
                 ),
                 const SizedBox(height: 14),
                 Text(
-                  targetCategory == null
-                      ? 'درصد سود مورد نظر را برای همه کالاها وارد کنید:'
-                      : 'درصد سود مورد نظر را برای کالاهای دسته‌بندی «$categoryName» وارد کنید:',
+                  hasSelection
+                      ? 'درصد سود مورد نظر را برای $selectedCount کالای انتخاب‌شده وارد کنید:'
+                      : (targetCategory == null
+                          ? 'درصد سود مورد نظر را برای همه کالاها وارد کنید:'
+                          : 'درصد سود مورد نظر را برای کالاهای دسته‌بندی «$categoryName» وارد کنید:'),
                   style: const TextStyle(fontSize: 13),
                 ),
                 const SizedBox(height: 16),
@@ -861,14 +883,21 @@ class _ProductsViewState extends State<_ProductsView> {
     );
 
     if (result != null && context.mounted) {
+      final selectedList = hasSelection ? _selectedIds.toList() : null;
       final updatedCount = await context.read<ProductCubit>().applyProfitMargin(
         result,
         category: targetCategory,
+        productIds: selectedList,
       );
       if (context.mounted) {
-        final msg = targetCategory == null
-            ? 'درصد سود روی همه کالاها ($updatedCount مورد) اعمال شد'
-            : 'درصد سود روی کالاهای «$categoryName» ($updatedCount مورد) اعمال شد';
+        if (hasSelection) {
+          setState(() => _selectedIds.clear());
+        }
+        final msg = hasSelection
+            ? 'درصد سود روی $selectedCount کالای انتخاب‌شده ($updatedCount مورد) اعمال شد'
+            : (targetCategory == null
+                ? 'درصد سود روی همه کالاها ($updatedCount مورد) اعمال شد'
+                : 'درصد سود روی کالاهای «$categoryName» ($updatedCount مورد) اعمال شد');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(msg)),
         );

@@ -82,6 +82,7 @@ class InvoiceRepository {
   }
 
   /// Save a new invoice with items in a single transaction.
+  /// Automatically deducts purchased quantities from product stock (unless stock is infinite/null).
   /// Returns the new invoice ID.
   Future<int> insert(InvoiceModel invoice) async {
     final db = await _dbHelper.database;
@@ -92,7 +93,16 @@ class InvoiceRepository {
 
       for (final item in invoice.items) {
         final itemMap = item.copyWith(invoiceId: invoiceId).toMap();
+        itemMap.remove('id');
         await txn.insert('invoice_items', itemMap);
+
+        // Deduct purchased quantity from product stock
+        if (item.productId != null && item.quantity > 0) {
+          await txn.rawUpdate(
+            'UPDATE products SET stock = stock - ? WHERE id = ? AND stock IS NOT NULL',
+            [item.quantity, item.productId],
+          );
+        }
       }
     });
 
@@ -100,6 +110,7 @@ class InvoiceRepository {
   }
 
   /// Update an existing invoice and its items in a single transaction.
+  /// Restores previous items' stock and deducts new items' stock.
   Future<void> update(InvoiceModel invoice) async {
     final db = await _dbHelper.database;
 
@@ -110,6 +121,23 @@ class InvoiceRepository {
         where: 'id = ?',
         whereArgs: [invoice.id],
       );
+
+      // Restore stock for previously saved items
+      final oldItems = await txn.query(
+        'invoice_items',
+        where: 'invoice_id = ?',
+        whereArgs: [invoice.id],
+      );
+      for (final oldItem in oldItems) {
+        final pid = oldItem['product_id'] as int?;
+        final qty = (oldItem['quantity'] as num?)?.toDouble() ?? 0.0;
+        if (pid != null && qty > 0) {
+          await txn.rawUpdate(
+            'UPDATE products SET stock = stock + ? WHERE id = ? AND stock IS NOT NULL',
+            [qty, pid],
+          );
+        }
+      }
 
       // Delete old items and re-insert
       await txn.delete(
@@ -123,16 +151,43 @@ class InvoiceRepository {
         // Remove the item id so it gets auto-incremented
         itemMap.remove('id');
         await txn.insert('invoice_items', itemMap);
+
+        // Deduct new items' stock
+        if (item.productId != null && item.quantity > 0) {
+          await txn.rawUpdate(
+            'UPDATE products SET stock = stock - ? WHERE id = ? AND stock IS NOT NULL',
+            [item.quantity, item.productId],
+          );
+        }
       }
     });
   }
 
-  /// Delete an invoice by ID (cascade deletes items via FK).
+  /// Delete an invoice by ID, restoring items' stock before deleting.
   Future<int> delete(int id) async {
     final db = await _dbHelper.database;
-    // First delete items (in case PRAGMA foreign_keys is off)
-    await db.delete('invoice_items', where: 'invoice_id = ?', whereArgs: [id]);
-    return await db.delete('invoices', where: 'id = ?', whereArgs: [id]);
+    return await db.transaction((txn) async {
+      // Restore stock for items of the deleted invoice
+      final oldItems = await txn.query(
+        'invoice_items',
+        where: 'invoice_id = ?',
+        whereArgs: [id],
+      );
+      for (final oldItem in oldItems) {
+        final pid = oldItem['product_id'] as int?;
+        final qty = (oldItem['quantity'] as num?)?.toDouble() ?? 0.0;
+        if (pid != null && qty > 0) {
+          await txn.rawUpdate(
+            'UPDATE products SET stock = stock + ? WHERE id = ? AND stock IS NOT NULL',
+            [qty, pid],
+          );
+        }
+      }
+
+      // Delete items and invoice
+      await txn.delete('invoice_items', where: 'invoice_id = ?', whereArgs: [id]);
+      return await txn.delete('invoices', where: 'id = ?', whereArgs: [id]);
+    });
   }
 
   /// Get the next invoice counter for generating invoice numbers.

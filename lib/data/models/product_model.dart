@@ -31,14 +31,14 @@ class ProductModel extends Equatable {
     this.buyDate,
     this.supplier,
     this.isTemporary = false,
-  }) : sellPrice = sellPrice?.roundToDouble();
+  }) : sellPrice = sellPrice?.roundTo5000;
 
   /// The price used in invoices: sell price if set, otherwise buy price.
-  double get effectivePrice => (sellPrice ?? buyPrice).roundToDouble();
+  double get effectivePrice => (sellPrice ?? buyPrice).roundTo5000;
 
   /// Whether the stock is infinite/unlimited.
-  /// Recognizes null, negative numbers, 9999 (used previously by user), and infinity.
-  bool get isInfiniteStock => stock == null || stock! < 0 || stock == 9999 || stock!.isInfinite;
+  /// Recognizes null, infinity, or legacy 9999 placeholder.
+  bool get isInfiniteStock => stock == null || stock!.isInfinite || stock == 9999;
 
   /// User-facing string representation of stock.
   String get stockDisplay => isInfiniteStock ? 'نامحدود' : stock!.formattedInt;
@@ -51,7 +51,7 @@ class ProductModel extends Equatable {
       category: map['category'] as String?,
       buyPrice: (map['buy_price'] as num).toDouble(),
       currentBuyPrice: map['current_buy_price'] != null ? (map['current_buy_price'] as num).toDouble() : null,
-      sellPrice: map['sell_price'] != null ? (map['sell_price'] as num).toDouble().roundToDouble() : null,
+      sellPrice: map['sell_price'] != null ? (map['sell_price'] as num).toDouble().roundTo5000 : null,
       unit: map['unit'] as String,
       stock: (map['stock'] as num?)?.toDouble(),
       createdAt: map['created_at'] as String?,
@@ -72,7 +72,7 @@ class ProductModel extends Equatable {
       'category': cleanCategory,
       'buy_price': buyPrice,
       'current_buy_price': currentBuyPrice,
-      'sell_price': sellPrice?.roundToDouble(),
+      'sell_price': sellPrice?.roundTo5000,
       'unit': unit,
       'stock': isInfiniteStock ? null : stock,
       'created_at': createdAt ?? DateTime.now().toIso8601String(),
@@ -106,7 +106,7 @@ class ProductModel extends Equatable {
       category: category ?? this.category,
       buyPrice: buyPrice ?? this.buyPrice,
       currentBuyPrice: currentBuyPrice ?? this.currentBuyPrice,
-      sellPrice: clearSellPrice ? null : (sellPrice != null ? sellPrice.roundToDouble() : this.sellPrice?.roundToDouble()),
+      sellPrice: clearSellPrice ? null : (sellPrice != null ? sellPrice.roundTo5000 : this.sellPrice?.roundTo5000),
       unit: unit ?? this.unit,
       stock: clearStock ? null : (stock ?? this.stock),
       createdAt: createdAt ?? this.createdAt,

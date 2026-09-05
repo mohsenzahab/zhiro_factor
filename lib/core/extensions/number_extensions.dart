@@ -35,3 +35,16 @@ extension NumberParsing on String {
     return result;
   }
 }
+
+/// Extension on [num] for price rounding in retail.
+extension PriceRounding on num {
+  /// Rounds a price to the nearest multiple of 5,000 (standard Iranian retail rounding).
+  /// E.g. 77000 or 77400 → 75000, 77500 or 78000 → 80000, 72000 → 70000, 72600 or 73000 → 75000.
+  double get roundTo5000 {
+    if (this <= 0) return 0.0;
+    final rounded = (this / 5000.0).round() * 5000.0;
+    if (rounded > 0) return rounded;
+    return this >= 2500 ? 5000.0 : ((this / 1000.0).round() * 1000.0);
+  }
+}
+

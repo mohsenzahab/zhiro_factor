@@ -89,8 +89,10 @@ class DatabaseHelper {
   Future<void> _onOpen(Database db) async {
     // Sanitize any existing empty string codes to null so they don't violate UNIQUE constraint
     await db.rawUpdate("UPDATE products SET code = NULL WHERE code = ''");
-    // Ensure all existing sell prices are rounded to integers
-    await db.rawUpdate("UPDATE products SET sell_price = ROUND(sell_price) WHERE sell_price IS NOT NULL");
+    // Ensure all existing sell prices are rounded to multiples of 5,000
+    await db.rawUpdate(
+      "UPDATE products SET sell_price = CASE WHEN sell_price <= 0 THEN 0 ELSE MAX(5000, ROUND(sell_price / 5000.0) * 5000) END WHERE sell_price IS NOT NULL",
+    );
   }
 
   Future<void> _onCreate(Database db, int version) async {

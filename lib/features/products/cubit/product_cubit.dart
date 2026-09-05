@@ -76,10 +76,20 @@ class ProductCubit extends Cubit<ProductState> {
     return await _repository.nextCode();
   }
 
-  /// Apply profit margin percentage to products' sell prices, optionally for a specific category.
-  Future<int> applyProfitMargin(double percentage, {String? category}) async {
+  /// Apply profit margin percentage to products' sell prices.
+  /// If [productIds] is provided, only updates those specific products.
+  /// Otherwise filters by [category] if provided, or all products if null.
+  Future<int> applyProfitMargin(
+    double percentage, {
+    String? category,
+    List<int>? productIds,
+  }) async {
     try {
-      final updatedCount = await _repository.bulkApplyProfitMargin(percentage, category: category);
+      final updatedCount = await _repository.bulkApplyProfitMargin(
+        percentage,
+        category: category,
+        productIds: productIds,
+      );
       final currentQuery = state is ProductLoaded ? (state as ProductLoaded).searchQuery : null;
       await loadProducts(query: currentQuery);
       return updatedCount;

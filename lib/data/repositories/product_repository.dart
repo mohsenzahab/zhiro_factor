@@ -148,25 +148,42 @@ class ProductRepository {
     return count;
   }
 
-  /// Apply a profit percentage to products, optionally filtered by category.
-  /// Calculation is strictly based on current_buy_price (falling back to buy_price if null or 0).
-  /// The sell_price is always rounded to the nearest integer.
-  Future<int> bulkApplyProfitMargin(double percentage, {String? category}) async {
+  /// Apply a profit percentage to products' sell prices.
+  /// If [productIds] is provided and not empty, applies only to those specific products.
+  /// Otherwise, if [category] is provided, applies only to that category (or uncategorized).
+  /// If both are null/empty, applies to all products.
+  /// Calculation is strictly based on current_buy_price (falling back to buy_price).
+  /// The sell_price is always rounded to the nearest multiple of 5,000.
+  Future<int> bulkApplyProfitMargin(
+    double percentage, {
+    String? category,
+    List<int>? productIds,
+  }) async {
     final db = await _dbHelper.database;
     const basePriceExpr = '(CASE WHEN current_buy_price IS NOT NULL AND current_buy_price > 0 THEN current_buy_price ELSE buy_price END)';
+    const roundedExpr = '(CASE WHEN $basePriceExpr <= 0 THEN 0 ELSE MAX(5000, ROUND(($basePriceExpr * (1 + ? / 100.0)) / 5000.0) * 5000) END)';
+
+    if (productIds != null && productIds.isNotEmpty) {
+      final placeholders = List.filled(productIds.length, '?').join(',');
+      return await db.rawUpdate(
+        'UPDATE products SET sell_price = $roundedExpr WHERE id IN ($placeholders)',
+        [percentage, ...productIds],
+      );
+    }
+
     if (category == null) {
       return await db.rawUpdate(
-        'UPDATE products SET sell_price = ROUND($basePriceExpr * (1 + ? / 100.0))',
+        'UPDATE products SET sell_price = $roundedExpr',
         [percentage],
       );
     } else if (category == '__uncategorized__') {
       return await db.rawUpdate(
-        "UPDATE products SET sell_price = ROUND($basePriceExpr * (1 + ? / 100.0)) WHERE category IS NULL OR category = ''",
+        "UPDATE products SET sell_price = $roundedExpr WHERE category IS NULL OR category = ''",
         [percentage],
       );
     } else {
       return await db.rawUpdate(
-        'UPDATE products SET sell_price = ROUND($basePriceExpr * (1 + ? / 100.0)) WHERE category = ?',
+        'UPDATE products SET sell_price = $roundedExpr WHERE category = ?',
         [percentage, category],
       );
     }

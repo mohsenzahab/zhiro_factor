@@ -4,6 +4,7 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/app_units.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/jalali_utils.dart';
+import '../../../../core/extensions/number_extensions.dart';
 import '../../../../data/models/product_model.dart';
 import '../../../../data/repositories/product_repository.dart';
 
@@ -132,7 +133,7 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
     final basePrice = _getBaseBuyPrice();
     if (pct != null && basePrice > 0) {
       _isAutoCalculating = true;
-      final roundedSell = (basePrice * (1 + pct / 100.0)).roundToDouble();
+      final roundedSell = (basePrice * (1 + pct / 100.0)).roundTo5000;
       _sellPriceCtrl.text = roundedSell.round().toString();
       _isAutoCalculating = false;
     }
@@ -145,7 +146,7 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
     final basePrice = _getBaseBuyPrice();
     if (pct != null && basePrice > 0) {
       _isAutoCalculating = true;
-      final roundedSell = (basePrice * (1 + pct / 100.0)).roundToDouble();
+      final roundedSell = (basePrice * (1 + pct / 100.0)).roundTo5000;
       _sellPriceCtrl.text = roundedSell.round().toString();
       _isAutoCalculating = false;
     }
@@ -210,8 +211,8 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
 
     final currentBuyPrice = currentBuyPriceText.isNotEmpty ? double.tryParse(currentBuyPriceText) : buyPrice;
     final sellPriceRaw = sellPriceText.isNotEmpty ? double.tryParse(sellPriceText) : null;
-    // Always round sell price
-    final sellPrice = sellPriceRaw?.roundToDouble();
+    // Always round sell price to nearest 5000
+    final sellPrice = sellPriceRaw?.roundTo5000;
 
     final product = ProductModel(
       id: widget.product?.id,
