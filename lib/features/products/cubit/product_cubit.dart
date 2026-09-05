@@ -39,9 +39,36 @@ class ProductCubit extends Cubit<ProductState> {
   Future<void> deleteProduct(int id) async {
     try {
       await _repository.delete(id);
-      await loadProducts();
+      final currentQuery = state is ProductLoaded ? (state as ProductLoaded).searchQuery : null;
+      await loadProducts(query: currentQuery);
     } catch (e) {
       emit(ProductError(e.toString()));
+    }
+  }
+
+  /// Batch delete multiple products by IDs.
+  Future<int> deleteProducts(List<int> ids) async {
+    try {
+      final count = await _repository.deleteMany(ids);
+      final currentQuery = state is ProductLoaded ? (state as ProductLoaded).searchQuery : null;
+      await loadProducts(query: currentQuery);
+      return count;
+    } catch (e) {
+      emit(ProductError(e.toString()));
+      return 0;
+    }
+  }
+
+  /// Move multiple products to a target category.
+  Future<int> moveProductsCategory(List<int> ids, String? newCategory) async {
+    try {
+      final count = await _repository.updateCategoryForIds(ids, newCategory);
+      final currentQuery = state is ProductLoaded ? (state as ProductLoaded).searchQuery : null;
+      await loadProducts(query: currentQuery);
+      return count;
+    } catch (e) {
+      emit(ProductError(e.toString()));
+      return 0;
     }
   }
 

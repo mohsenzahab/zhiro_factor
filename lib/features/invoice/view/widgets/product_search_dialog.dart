@@ -288,7 +288,7 @@ class _ProductSearchDialogState extends State<ProductSearchDialog> {
             style: const TextStyle(fontWeight: FontWeight.w500),
           ),
           subtitle: Text(
-            '${p.effectivePrice.toman} • ${p.unit} • موجودی: ${p.stock.formattedInt}',
+            '${p.effectivePrice.toman} • ${p.unit} • موجودی: ${p.stockDisplay}',
             style: const TextStyle(fontSize: 11),
           ),
           trailing: const Icon(

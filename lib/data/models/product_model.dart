@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../core/extensions/number_extensions.dart';
 
 /// Product data model.
 class ProductModel extends Equatable {
@@ -10,7 +11,7 @@ class ProductModel extends Equatable {
   final double? currentBuyPrice;
   final double? sellPrice;
   final String unit;
-  final double stock;
+  final double? stock;
   final String? createdAt;
   final String? buyDate;
   final String? supplier;
@@ -25,7 +26,7 @@ class ProductModel extends Equatable {
     this.currentBuyPrice,
     double? sellPrice,
     required this.unit,
-    this.stock = 0,
+    this.stock,
     this.createdAt,
     this.buyDate,
     this.supplier,
@@ -34,6 +35,13 @@ class ProductModel extends Equatable {
 
   /// The price used in invoices: sell price if set, otherwise buy price.
   double get effectivePrice => (sellPrice ?? buyPrice).roundToDouble();
+
+  /// Whether the stock is infinite/unlimited.
+  /// Recognizes null, negative numbers, 9999 (used previously by user), and infinity.
+  bool get isInfiniteStock => stock == null || stock! < 0 || stock == 9999 || stock!.isInfinite;
+
+  /// User-facing string representation of stock.
+  String get stockDisplay => isInfiniteStock ? 'نامحدود' : stock!.formattedInt;
 
   factory ProductModel.fromMap(Map<String, dynamic> map) {
     return ProductModel(
@@ -45,7 +53,7 @@ class ProductModel extends Equatable {
       currentBuyPrice: map['current_buy_price'] != null ? (map['current_buy_price'] as num).toDouble() : null,
       sellPrice: map['sell_price'] != null ? (map['sell_price'] as num).toDouble().roundToDouble() : null,
       unit: map['unit'] as String,
-      stock: (map['stock'] as num?)?.toDouble() ?? 0,
+      stock: (map['stock'] as num?)?.toDouble(),
       createdAt: map['created_at'] as String?,
       buyDate: map['buy_date'] as String?,
       supplier: map['supplier'] as String?,
@@ -66,7 +74,7 @@ class ProductModel extends Equatable {
       'current_buy_price': currentBuyPrice,
       'sell_price': sellPrice?.roundToDouble(),
       'unit': unit,
-      'stock': stock,
+      'stock': isInfiniteStock ? null : stock,
       'created_at': createdAt ?? DateTime.now().toIso8601String(),
       'buy_date': buyDate,
       'supplier': cleanSupplier,
@@ -85,6 +93,7 @@ class ProductModel extends Equatable {
     bool clearSellPrice = false,
     String? unit,
     double? stock,
+    bool clearStock = false,
     String? createdAt,
     String? buyDate,
     String? supplier,
@@ -99,7 +108,7 @@ class ProductModel extends Equatable {
       currentBuyPrice: currentBuyPrice ?? this.currentBuyPrice,
       sellPrice: clearSellPrice ? null : (sellPrice != null ? sellPrice.roundToDouble() : this.sellPrice?.roundToDouble()),
       unit: unit ?? this.unit,
-      stock: stock ?? this.stock,
+      stock: clearStock ? null : (stock ?? this.stock),
       createdAt: createdAt ?? this.createdAt,
       buyDate: buyDate ?? this.buyDate,
       supplier: supplier ?? this.supplier,

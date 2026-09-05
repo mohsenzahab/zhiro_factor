@@ -26,6 +26,8 @@ class AppStrings {
   static const String productSellPrice = 'قیمت فروش';
   static const String productUnit = 'واحد';
   static const String productStock = 'موجودی';
+  static const String infinite = 'نامحدود';
+  static const String infiniteStock = 'موجودی نامحدود';
   static const String productBuyDate = 'تاریخ خرید';
   static const String productSupplier = 'تامین‌کننده';
   static const String addProduct = 'افزودن کالا';
@@ -36,6 +38,18 @@ class AppStrings {
   static const String applyProfitMargin = 'اعمال درصد سود';
   static const String profitMarginHint = 'درصد سود نسبت به قیمت خرید';
   static const String profitMarginApplied = 'درصد سود روی همه کالاها اعمال شد';
+  static const String batchActions = 'عملیات گروهی';
+  static const String selectedCount = 'کالا انتخاب شده';
+  static const String deleteSelected = 'حذف انتخاب‌شده‌ها';
+  static const String moveToCategory = 'انتقال به دسته‌بندی';
+  static const String clearSelection = 'لغو انتخاب';
+  static const String selectAll = 'انتخاب همه';
+  static const String deselectAll = 'لغو انتخاب همه';
+  static const String selectDestinationCategory = 'انتخاب دسته‌بندی مقصد';
+  static const String enterNewCategory = 'یا نام دسته‌بندی جدید را وارد کنید...';
+  static const String categoryMovedSuccess = 'دسته‌بندی کالاهای انتخاب‌شده تغییر کرد';
+  static const String batchDeleteSuccess = 'کالاهای انتخاب‌شده حذف شدند';
+  static const String confirmBatchDelete = 'آیا از حذف {count} کالای انتخاب‌شده اطمینان دارید؟';
 
   // ─── Customer ───────────────────────────────────────────────────────
   static const String customers = 'مشتریان';

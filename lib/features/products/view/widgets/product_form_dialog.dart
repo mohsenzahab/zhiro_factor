@@ -61,6 +61,7 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
   late String _selectedUnit;
   String? _buyDate;
   bool _isTemporary = false;
+  bool _isInfiniteStock = false;
   List<String> _categories = [];
   bool _isAutoCalculating = false;
 
@@ -93,7 +94,12 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
     _sellPriceCtrl = TextEditingController(
       text: p?.sellPrice != null ? p!.sellPrice!.round().toString() : '',
     );
-    _stockCtrl = TextEditingController(text: p != null ? p.stock.toStringAsFixed(0) : '0');
+    _isInfiniteStock = p?.isInfiniteStock ?? false;
+    _stockCtrl = TextEditingController(
+      text: (p != null && !p.isInfiniteStock && p.stock != null)
+          ? p.stock!.round().toString()
+          : (_isInfiniteStock ? '' : '0'),
+    );
     _supplierCtrl = TextEditingController(text: p?.supplier ?? '');
     _selectedUnit = p?.unit ?? AppUnits.defaultUnit;
     _buyDate = p?.buyDate;
@@ -216,7 +222,7 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
       currentBuyPrice: currentBuyPrice,
       sellPrice: sellPrice,
       unit: _selectedUnit,
-      stock: double.tryParse(_stockCtrl.text.replaceAll(',', '')) ?? 0,
+      stock: _isInfiniteStock ? null : (double.tryParse(_stockCtrl.text.replaceAll(',', '')) ?? 0.0),
       createdAt: widget.product?.createdAt,
       buyDate: _buyDate,
       supplier: _supplierCtrl.text.trim().isEmpty ? null : _supplierCtrl.text.trim(),
@@ -403,12 +409,76 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                   ),
                   const SizedBox(height: 16),
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        child: TextFormField(
-                          controller: _stockCtrl,
-                          decoration: const InputDecoration(labelText: AppStrings.productStock),
-                          keyboardType: TextInputType.number,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            TextFormField(
+                              controller: _stockCtrl,
+                              enabled: !_isInfiniteStock,
+                              decoration: InputDecoration(
+                                labelText: AppStrings.productStock,
+                                hintText: _isInfiniteStock ? AppStrings.infiniteStock : '۰',
+                                prefixIcon: _isInfiniteStock
+                                    ? const Icon(Icons.all_inclusive, color: AppColors.accent, size: 20)
+                                    : null,
+                              ),
+                              keyboardType: TextInputType.number,
+                            ),
+                            const SizedBox(height: 6),
+                            InkWell(
+                              onTap: () {
+                                setState(() {
+                                  _isInfiniteStock = !_isInfiniteStock;
+                                  if (_isInfiniteStock) {
+                                    _stockCtrl.clear();
+                                  } else if (_stockCtrl.text.isEmpty) {
+                                    _stockCtrl.text = '0';
+                                  }
+                                });
+                              },
+                              borderRadius: BorderRadius.circular(8),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: Checkbox(
+                                        value: _isInfiniteStock,
+                                        activeColor: AppColors.accent,
+                                        onChanged: (val) {
+                                          setState(() {
+                                            _isInfiniteStock = val ?? false;
+                                            if (_isInfiniteStock) {
+                                              _stockCtrl.clear();
+                                            } else if (_stockCtrl.text.isEmpty) {
+                                              _stockCtrl.text = '0';
+                                            }
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    const Icon(Icons.all_inclusive, size: 16, color: AppColors.accent),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      AppStrings.infiniteStock,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: _isInfiniteStock ? FontWeight.w600 : FontWeight.normal,
+                                        color: _isInfiniteStock ? AppColors.accent : AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(width: 12),

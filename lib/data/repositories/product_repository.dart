@@ -63,17 +63,53 @@ class ProductRepository {
     return result.isNotEmpty;
   }
 
-  /// Delete a product by ID. Returns rows affected.
+  /// Delete a product by ID. Safely sets invoice_items.product_id to NULL first.
   Future<int> delete(int id) async {
     final db = await _dbHelper.database;
-    return await db.delete('products', where: 'id = ?', whereArgs: [id]);
+    return await db.transaction((txn) async {
+      await txn.rawUpdate(
+        'UPDATE invoice_items SET product_id = NULL WHERE product_id = ?',
+        [id],
+      );
+      return await txn.delete('products', where: 'id = ?', whereArgs: [id]);
+    });
+  }
+
+  /// Delete multiple products by IDs safely within a transaction.
+  Future<int> deleteMany(List<int> ids) async {
+    if (ids.isEmpty) return 0;
+    final db = await _dbHelper.database;
+    final placeholders = List.filled(ids.length, '?').join(',');
+    return await db.transaction((txn) async {
+      await txn.rawUpdate(
+        'UPDATE invoice_items SET product_id = NULL WHERE product_id IN ($placeholders)',
+        ids,
+      );
+      return await txn.rawDelete(
+        'DELETE FROM products WHERE id IN ($placeholders)',
+        ids,
+      );
+    });
+  }
+
+  /// Move multiple products to a new category (or uncategorized if null/empty).
+  Future<int> updateCategoryForIds(List<int> ids, String? category) async {
+    if (ids.isEmpty) return 0;
+    final db = await _dbHelper.database;
+    final cleanCat = (category != null && category.trim().isNotEmpty) ? category.trim() : null;
+    final placeholders = List.filled(ids.length, '?').join(',');
+    return await db.rawUpdate(
+      'UPDATE products SET category = ? WHERE id IN ($placeholders)',
+      [cleanCat, ...ids],
+    );
   }
 
   /// Adjust stock for a product (positive = add, negative = subtract).
+  /// Preserves null (infinite) stock.
   Future<void> adjustStock(int productId, double delta) async {
     final db = await _dbHelper.database;
     await db.rawUpdate(
-      'UPDATE products SET stock = stock + ? WHERE id = ?',
+      'UPDATE products SET stock = stock + ? WHERE id = ? AND stock IS NOT NULL',
       [delta, productId],
     );
   }

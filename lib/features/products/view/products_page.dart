@@ -36,6 +36,7 @@ class _ProductsView extends StatefulWidget {
 
 class _ProductsViewState extends State<_ProductsView> {
   final _searchCtrl = TextEditingController();
+  final Set<int> _selectedIds = {};
   String? _selectedCategory;
 
   @override
@@ -117,6 +118,9 @@ class _ProductsViewState extends State<_ProductsView> {
                     );
                   }
 
+                  // Clean up any stale selected IDs
+                  _selectedIds.removeWhere((id) => !state.products.any((p) => p.id == id));
+
                   final displayedProducts = state.products.where((p) {
                     if (_selectedCategory == null) return true;
                     if (_selectedCategory == '__uncategorized__') {
@@ -130,6 +134,10 @@ class _ProductsViewState extends State<_ProductsView> {
                     children: [
                       _buildCategoryFilterBar(state.products),
                       const SizedBox(height: 16),
+                      if (_selectedIds.isNotEmpty) ...[
+                        _buildBatchActionBar(context, state.products),
+                        const SizedBox(height: 12),
+                      ],
                       Expanded(
                         child: displayedProducts.isEmpty
                             ? const EmptyState(
@@ -311,12 +319,26 @@ class _ProductsViewState extends State<_ProductsView> {
           child: SizedBox(
             width: double.infinity,
             child: DataTable(
+              showCheckboxColumn: true,
               headingRowHeight: 48,
               dataRowMinHeight: 44,
               dataRowMaxHeight: 52,
               columnSpacing: 24,
               horizontalMargin: 16,
               headingRowColor: WidgetStateProperty.all(AppColors.tableHeader),
+              onSelectAll: (selected) {
+                setState(() {
+                  if (selected == true) {
+                    for (final p in products) {
+                      if (p.id != null) _selectedIds.add(p.id!);
+                    }
+                  } else {
+                    for (final p in products) {
+                      if (p.id != null) _selectedIds.remove(p.id!);
+                    }
+                  }
+                });
+              },
               columns: const [
                 DataColumn(label: Text(AppStrings.productCode)),
                 DataColumn(label: Text(AppStrings.productName)),
@@ -330,10 +352,25 @@ class _ProductsViewState extends State<_ProductsView> {
               ],
               rows: List.generate(products.length, (index) {
                 final p = products[index];
+                final isSelected = p.id != null && _selectedIds.contains(p.id);
                 return DataRow(
-                  color: WidgetStateProperty.all(
-                    index.isEven ? AppColors.tableRowEven : AppColors.tableRowOdd,
-                  ),
+                  selected: isSelected,
+                  onSelectChanged: (selected) {
+                    if (p.id == null) return;
+                    setState(() {
+                      if (selected == true) {
+                        _selectedIds.add(p.id!);
+                      } else {
+                        _selectedIds.remove(p.id!);
+                      }
+                    });
+                  },
+                  color: WidgetStateProperty.resolveWith((states) {
+                    if (states.contains(WidgetState.selected)) {
+                      return AppColors.primary.withValues(alpha: 0.15);
+                    }
+                    return index.isEven ? AppColors.tableRowEven : AppColors.tableRowOdd;
+                  }),
                   cells: [
                     DataCell(Text(p.code ?? '')),
                     DataCell(Text(p.name, style: const TextStyle(fontWeight: FontWeight.w500))),
@@ -370,7 +407,32 @@ class _ProductsViewState extends State<_ProductsView> {
                     DataCell(Text(p.currentBuyPrice != null ? p.currentBuyPrice!.toman : p.buyPrice.toman)),
                     DataCell(Text(p.sellPrice != null ? p.sellPrice!.toman : '-')),
                     DataCell(Text(p.unit)),
-                    DataCell(Text(p.stock.formattedInt)),
+                    DataCell(
+                      p.isInfiniteStock
+                          ? Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.accent.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.all_inclusive, size: 13, color: AppColors.accent),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    AppStrings.infinite,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.accent,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : Text(p.stockDisplay),
+                    ),
                     DataCell(Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -396,6 +458,236 @@ class _ProductsViewState extends State<_ProductsView> {
         ),
       ),
     );
+  }
+
+  Widget _buildBatchActionBar(BuildContext context, List<ProductModel> allProducts) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Text(
+              _selectedIds.length.formattedInt,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Text(
+            AppStrings.selectedCount,
+            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+          ),
+          const Spacer(),
+          // Move to Category
+          FilledButton.tonalIcon(
+            onPressed: () => _batchMoveCategory(context, allProducts),
+            icon: const Icon(Icons.drive_file_move_outlined, size: 18),
+            label: const Text(AppStrings.moveToCategory),
+          ),
+          const SizedBox(width: 8),
+          // Batch Delete
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.error.withValues(alpha: 0.85),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => _batchDelete(context),
+            icon: const Icon(Icons.delete_sweep_outlined, size: 18),
+            label: const Text(AppStrings.deleteSelected),
+          ),
+          const SizedBox(width: 8),
+          // Clear Selection
+          IconButton(
+            icon: const Icon(Icons.close, size: 20),
+            tooltip: AppStrings.clearSelection,
+            onPressed: () => setState(() => _selectedIds.clear()),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _batchMoveCategory(BuildContext context, List<ProductModel> allProducts) async {
+    final categories = allProducts
+        .map((p) => p.category?.trim())
+        .where((c) => c != null && c.isNotEmpty)
+        .cast<String>()
+        .toSet()
+        .toList()
+      ..sort();
+
+    final targetCategory = await showDialog<String?>(
+      context: context,
+      builder: (ctx) {
+        final ctrl = TextEditingController();
+        String? chosenCategory;
+        bool setUncategorized = false;
+
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return Directionality(
+              textDirection: TextDirection.rtl,
+              child: AlertDialog(
+                title: Text(
+                  '${AppStrings.moveToCategory} (${_selectedIds.length.formattedInt} کالا)',
+                ),
+                content: SizedBox(
+                  width: 420,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'دسته‌بندی مقصد را انتخاب کنید یا نام جدید وارد نمایید:',
+                          style: TextStyle(fontSize: 13),
+                        ),
+                        const SizedBox(height: 14),
+                        CheckboxListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text(AppStrings.uncategorized),
+                          subtitle: const Text('حذف دسته‌بندی از کالاهای انتخاب‌شده'),
+                          value: setUncategorized,
+                          onChanged: (v) {
+                            setModalState(() {
+                              setUncategorized = v ?? false;
+                              if (setUncategorized) {
+                                chosenCategory = null;
+                                ctrl.clear();
+                              }
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        if (!setUncategorized) ...[
+                          TextField(
+                            controller: ctrl,
+                            decoration: const InputDecoration(
+                              labelText: 'نام دسته‌بندی',
+                              hintText: AppStrings.enterNewCategory,
+                              prefixIcon: Icon(Icons.category_outlined, size: 18),
+                            ),
+                            onChanged: (text) {
+                              setModalState(() {
+                                chosenCategory = text.trim().isEmpty ? null : text.trim();
+                              });
+                            },
+                          ),
+                          if (categories.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            const Text(
+                              'دسته‌بندی‌های موجود:',
+                              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: categories.map((cat) {
+                                final isSelected = chosenCategory == cat;
+                                return ChoiceChip(
+                                  label: Text(cat),
+                                  selected: isSelected,
+                                  onSelected: (selected) {
+                                    setModalState(() {
+                                      if (selected) {
+                                        chosenCategory = cat;
+                                        ctrl.text = cat;
+                                      } else if (chosenCategory == cat) {
+                                        chosenCategory = null;
+                                        ctrl.clear();
+                                      }
+                                    });
+                                  },
+                                );
+                              }).toList(),
+                            ),
+                          ],
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: const Text(AppStrings.cancel),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      if (setUncategorized) {
+                        Navigator.of(ctx).pop('__uncategorized__');
+                      } else {
+                        final catName = ctrl.text.trim();
+                        if (catName.isNotEmpty) {
+                          Navigator.of(ctx).pop(catName);
+                        }
+                      }
+                    },
+                    child: const Text(AppStrings.confirm),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (targetCategory != null && context.mounted) {
+      final cubit = context.read<ProductCubit>();
+      final ids = _selectedIds.toList();
+      final newCat = targetCategory == '__uncategorized__' ? null : targetCategory;
+      final count = await cubit.moveProductsCategory(ids, newCat);
+      if (context.mounted) {
+        setState(() => _selectedIds.clear());
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              newCat == null
+                  ? '$count کالا به بخش «${AppStrings.uncategorized}» منتقل شدند'
+                  : '$count کالا به دسته‌بندی «$newCat» منتقل شدند',
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _batchDelete(BuildContext context) async {
+    final count = _selectedIds.length;
+    final confirmed = await ConfirmDialog.show(
+      context,
+      title: 'حذف گروهی کالاها',
+      message: 'آیا از حذف ${count.formattedInt} کالای انتخاب‌شده اطمینان دارید؟\nاین عملیات غیرقابل بازگشت است، اما اطلاعات فاکتورهای قبلی حفظ می‌شوند.',
+      confirmLabel: AppStrings.deleteSelected,
+    );
+
+    if (confirmed && context.mounted) {
+      final ids = _selectedIds.toList();
+      final deletedCount = await context.read<ProductCubit>().deleteProducts(ids);
+      if (context.mounted) {
+        setState(() => _selectedIds.clear());
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$deletedCount ${AppStrings.batchDeleteSuccess}'),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _addProduct(BuildContext context) async {
