@@ -252,7 +252,7 @@ class _ProductSearchDialogState extends State<ProductSearchDialog> {
     return ListView.separated(
       padding: const EdgeInsets.symmetric(vertical: 4),
       itemCount: _results.length,
-      separatorBuilder: (_, __) => Divider(height: 1, color: AppColors.dividerDark),
+      separatorBuilder: (context, index) => Divider(height: 1, color: AppColors.dividerDark),
       itemBuilder: (context, index) {
         final p = _results[index];
         final isSelected = index == _selectedIndex;
@@ -288,7 +288,7 @@ class _ProductSearchDialogState extends State<ProductSearchDialog> {
             style: const TextStyle(fontWeight: FontWeight.w500),
           ),
           subtitle: Text(
-            '${p.price.toman} • ${p.unit} • موجودی: ${p.stock.formattedInt}',
+            '${p.effectivePrice.toman} • ${p.unit} • موجودی: ${p.stock.formattedInt}',
             style: const TextStyle(fontSize: 11),
           ),
           trailing: const Icon(

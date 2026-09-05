@@ -18,13 +18,21 @@ class AppStrings {
   static const String productCode = 'کد کالا';
   static const String productName = 'نام کالا';
   static const String productCategory = 'دسته‌بندی';
-  static const String productPrice = 'قیمت';
+  static const String productBuyPrice = 'قیمت خرید اولیه';
+  static const String productCurrentBuyPrice = 'قیمت خرید روز';
+  static const String productSellPrice = 'قیمت فروش';
   static const String productUnit = 'واحد';
   static const String productStock = 'موجودی';
+  static const String productBuyDate = 'تاریخ خرید';
+  static const String productSupplier = 'تامین‌کننده';
   static const String addProduct = 'افزودن کالا';
   static const String editProduct = 'ویرایش کالا';
   static const String deleteProduct = 'حذف کالا';
   static const String searchProduct = 'جستجوی کالا...';
+  static const String profitMargin = 'درصد سود';
+  static const String applyProfitMargin = 'اعمال درصد سود';
+  static const String profitMarginHint = 'درصد سود نسبت به قیمت خرید';
+  static const String profitMarginApplied = 'درصد سود روی همه کالاها اعمال شد';
 
   // ─── Customer ───────────────────────────────────────────────────────
   static const String customers = 'مشتریان';

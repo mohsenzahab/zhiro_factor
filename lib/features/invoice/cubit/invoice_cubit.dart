@@ -70,12 +70,12 @@ class InvoiceCubit extends Cubit<InvoiceState> {
     final item = InvoiceItemModel(
       productId: product.id,
       productName: product.name,
-      unitPrice: product.price,
+      unitPrice: product.effectivePrice,
       quantity: 1.0,
       discountType: 'none',
       discountValue: 0.0,
       discountCalculatedAmount: 0.0,
-      lineTotal: product.price,
+      lineTotal: product.effectivePrice,
     );
     emit(state.copyWith(items: [...state.items, item]));
   }

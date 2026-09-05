@@ -10,7 +10,7 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._();
 
   static Database? _database;
-  static const int _version = 1;
+  static const int _version = 4;
   static const String _dbName = 'zhirofactor.db';
 
   /// Returns the initialized database instance.
@@ -52,11 +52,15 @@ class DatabaseHelper {
         code TEXT UNIQUE,
         name TEXT NOT NULL,
         category TEXT,
-        price REAL NOT NULL,
+        buy_price REAL NOT NULL,
+        current_buy_price REAL,
+        sell_price REAL,
         unit TEXT NOT NULL,
         stock REAL DEFAULT 0,
         is_temporary INTEGER DEFAULT 0,
-        created_at TEXT
+        created_at TEXT,
+        buy_date TEXT,
+        supplier TEXT
       )
     ''');
     await db.execute('CREATE INDEX idx_products_code ON products(code)');
@@ -118,7 +122,34 @@ class DatabaseHelper {
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // Future migrations go here
+    // Migration v1 → v2: add is_temporary column to products
+    if (oldVersion < 2) {
+      await db.execute(
+        "ALTER TABLE products ADD COLUMN is_temporary INTEGER DEFAULT 0",
+      );
+    }
+    // Migration v2 → v3: rename price → buy_price, add sell_price
+    if (oldVersion < 3) {
+      await db.execute(
+        "ALTER TABLE products RENAME COLUMN price TO buy_price",
+      );
+      await db.execute(
+        "ALTER TABLE products ADD COLUMN sell_price REAL",
+      );
+    }
+    // Migration v3 → v4: add current_buy_price, buy_date, supplier
+    if (oldVersion < 4) {
+      await db.execute(
+        "ALTER TABLE products ADD COLUMN current_buy_price REAL",
+      );
+      await db.execute(
+        "ALTER TABLE products ADD COLUMN buy_date TEXT",
+      );
+      await db.execute(
+        "ALTER TABLE products ADD COLUMN supplier TEXT",
+      );
+    }
+    // Future migrations: if (oldVersion < 5) { ... }
   }
 
   /// Closes the database connection.

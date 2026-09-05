@@ -48,4 +48,14 @@ class ProductCubit extends Cubit<ProductState> {
   Future<String> getNextCode() async {
     return await _repository.nextCode();
   }
+
+  /// Apply profit margin percentage to all products' sell prices.
+  Future<void> applyProfitMargin(double percentage) async {
+    try {
+      await _repository.bulkApplyProfitMargin(percentage);
+      await loadProducts();
+    } catch (e) {
+      emit(ProductError(e.toString()));
+    }
+  }
 }

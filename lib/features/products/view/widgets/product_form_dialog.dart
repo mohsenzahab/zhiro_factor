@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/app_units.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/utils/jalali_utils.dart';
 import '../../../../data/models/product_model.dart';
 import '../../../../data/repositories/product_repository.dart';
 
@@ -50,9 +52,13 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
   late final TextEditingController _codeCtrl;
   late final TextEditingController _nameCtrl;
   late final TextEditingController _categoryCtrl;
-  late final TextEditingController _priceCtrl;
+  late final TextEditingController _buyPriceCtrl;
+  late final TextEditingController _currentBuyPriceCtrl;
+  late final TextEditingController _sellPriceCtrl;
   late final TextEditingController _stockCtrl;
+  late final TextEditingController _supplierCtrl;
   late String _selectedUnit;
+  String? _buyDate;
   bool _isTemporary = false;
   List<String> _categories = [];
 
@@ -65,9 +71,13 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
     _codeCtrl = TextEditingController(text: p?.code ?? widget.nextCode ?? '');
     _nameCtrl = TextEditingController(text: p?.name ?? widget.initialName ?? '');
     _categoryCtrl = TextEditingController(text: p?.category ?? '');
-    _priceCtrl = TextEditingController(text: p != null ? p.price.toStringAsFixed(0) : '');
+    _buyPriceCtrl = TextEditingController(text: p != null ? p.buyPrice.toStringAsFixed(0) : '');
+    _currentBuyPriceCtrl = TextEditingController(text: p?.currentBuyPrice != null ? p!.currentBuyPrice!.toStringAsFixed(0) : '');
+    _sellPriceCtrl = TextEditingController(text: p?.sellPrice != null ? p!.sellPrice!.toStringAsFixed(0) : '');
     _stockCtrl = TextEditingController(text: p != null ? p.stock.toStringAsFixed(0) : '0');
+    _supplierCtrl = TextEditingController(text: p?.supplier ?? '');
     _selectedUnit = p?.unit ?? AppUnits.defaultUnit;
+    _buyDate = p?.buyDate;
     _isTemporary = p?.isTemporary ?? false;
     _loadCategories();
   }
@@ -82,23 +92,34 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
     _codeCtrl.dispose();
     _nameCtrl.dispose();
     _categoryCtrl.dispose();
-    _priceCtrl.dispose();
+    _buyPriceCtrl.dispose();
+    _currentBuyPriceCtrl.dispose();
+    _sellPriceCtrl.dispose();
     _stockCtrl.dispose();
+    _supplierCtrl.dispose();
     super.dispose();
   }
 
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
 
+    final sellPriceText = _sellPriceCtrl.text.replaceAll(',', '').trim();
+    final currentBuyPriceText = _currentBuyPriceCtrl.text.replaceAll(',', '').trim();
+    final buyPrice = double.parse(_buyPriceCtrl.text.replaceAll(',', ''));
+
     final product = ProductModel(
       id: widget.product?.id,
       code: _codeCtrl.text.trim(),
       name: _nameCtrl.text.trim(),
       category: _categoryCtrl.text.trim().isEmpty ? null : _categoryCtrl.text.trim(),
-      price: double.parse(_priceCtrl.text.replaceAll(',', '')),
+      buyPrice: buyPrice,
+      currentBuyPrice: currentBuyPriceText.isNotEmpty ? double.tryParse(currentBuyPriceText) : buyPrice,
+      sellPrice: sellPriceText.isNotEmpty ? double.tryParse(sellPriceText) : null,
       unit: _selectedUnit,
       stock: double.tryParse(_stockCtrl.text.replaceAll(',', '')) ?? 0,
       createdAt: widget.product?.createdAt,
+      buyDate: _buyDate,
+      supplier: _supplierCtrl.text.trim().isEmpty ? null : _supplierCtrl.text.trim(),
       isTemporary: _isTemporary,
     );
 
@@ -211,9 +232,9 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                     children: [
                       Expanded(
                         child: TextFormField(
-                          controller: _priceCtrl,
+                          controller: _buyPriceCtrl,
                           decoration: const InputDecoration(
-                            labelText: AppStrings.productPrice,
+                            labelText: AppStrings.productBuyPrice,
                             suffixText: AppStrings.toman,
                           ),
                           keyboardType: TextInputType.number,
@@ -224,12 +245,89 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                           },
                         ),
                       ),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _currentBuyPriceCtrl,
+                          decoration: const InputDecoration(
+                            labelText: AppStrings.productCurrentBuyPrice,
+                            suffixText: AppStrings.toman,
+                            hintText: 'در صورت خالی بودن برابر قیمت اولیه است',
+                          ),
+                          keyboardType: TextInputType.number,
+                          validator: (v) {
+                            if (v != null && v.trim().isNotEmpty) {
+                              if (double.tryParse(v.replaceAll(',', '')) == null) return AppStrings.invalidNumber;
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _sellPriceCtrl,
+                          decoration: const InputDecoration(
+                            labelText: AppStrings.productSellPrice,
+                            suffixText: AppStrings.toman,
+                            hintText: 'اختیاری',
+                          ),
+                          keyboardType: TextInputType.number,
+                          validator: (v) {
+                            if (v != null && v.trim().isNotEmpty) {
+                              if (double.tryParse(v.replaceAll(',', '')) == null) return AppStrings.invalidNumber;
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: TextFormField(
                           controller: _stockCtrl,
                           decoration: const InputDecoration(labelText: AppStrings.productStock),
                           keyboardType: TextInputType.number,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _supplierCtrl,
+                          decoration: const InputDecoration(labelText: AppStrings.productSupplier),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: InkWell(
+                          onTap: () async {
+                            final picked = await showPersianDatePicker(
+                              context: context,
+                              initialDate: _buyDate != null ? JalaliUtils.fromIso(_buyDate!) : Jalali.now(),
+                              firstDate: Jalali(1300, 1),
+                              lastDate: Jalali(1450, 12),
+                            );
+                            if (picked != null) {
+                              setState(() => _buyDate = JalaliUtils.toIso(picked));
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(10),
+                          child: InputDecorator(
+                            decoration: const InputDecoration(
+                              labelText: AppStrings.productBuyDate,
+                              suffixIcon: Icon(Icons.calendar_today, size: 18),
+                            ),
+                            child: Text(
+                              _buyDate != null ? JalaliUtils.format(JalaliUtils.fromIso(_buyDate!)) : '---',
+                              style: Theme.of(context).textTheme.bodyLarge,
+                            ),
+                          ),
                         ),
                       ),
                     ],

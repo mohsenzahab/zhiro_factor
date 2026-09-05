@@ -11,6 +11,7 @@ import '../../../data/repositories/product_repository.dart';
 import '../cubit/product_cubit.dart';
 import '../cubit/product_state.dart';
 import 'widgets/product_form_dialog.dart';
+import 'widgets/import_mapping_dialog.dart';
 
 /// Products management page with CRUD data table.
 class ProductsPage extends StatelessWidget {
@@ -77,6 +78,12 @@ class _ProductsViewState extends State<_ProductsView> {
                 ],
               ),
               const SizedBox(width: 8),
+              OutlinedButton.icon(
+                onPressed: () => _applyProfitMargin(context),
+                icon: const Icon(Icons.percent, size: 18),
+                label: const Text(AppStrings.applyProfitMargin),
+              ),
+              const SizedBox(width: 8),
               ElevatedButton.icon(
                 onPressed: () => _addProduct(context),
                 icon: const Icon(Icons.add, size: 20),
@@ -137,7 +144,8 @@ class _ProductsViewState extends State<_ProductsView> {
                 DataColumn(label: Text(AppStrings.productCode)),
                 DataColumn(label: Text(AppStrings.productName)),
                 DataColumn(label: Text(AppStrings.productCategory)),
-                DataColumn(label: Text(AppStrings.productPrice)),
+                DataColumn(label: Text(AppStrings.productBuyPrice)),
+                DataColumn(label: Text(AppStrings.productSellPrice)),
                 DataColumn(label: Text(AppStrings.productUnit)),
                 DataColumn(label: Text(AppStrings.productStock)),
                 DataColumn(label: Text('')), // Actions
@@ -152,7 +160,8 @@ class _ProductsViewState extends State<_ProductsView> {
                     DataCell(Text(p.code ?? '')),
                     DataCell(Text(p.name, style: const TextStyle(fontWeight: FontWeight.w500))),
                     DataCell(Text(p.category ?? '')),
-                    DataCell(Text(p.price.toman)),
+                    DataCell(Text(p.buyPrice.toman)),
+                    DataCell(Text(p.sellPrice != null ? p.sellPrice!.toman : '-')),
                     DataCell(Text(p.unit)),
                     DataCell(Text(p.stock.formattedInt)),
                     DataCell(Row(
@@ -207,11 +216,41 @@ class _ProductsViewState extends State<_ProductsView> {
   }
 
   Future<void> _importCsv(BuildContext context) async {
+    await _importWithMapping(context, isCsv: true);
+  }
+
+  Future<void> _importExcel(BuildContext context) async {
+    await _importWithMapping(context, isCsv: false);
+  }
+
+  Future<void> _importWithMapping(BuildContext context, {required bool isCsv}) async {
     try {
-      final products = await ImportService.importFromCsv();
-      if (products == null || products.isEmpty) return;
+      // Step 1: Read the file
+      final fileData = isCsv
+          ? await ImportService.readCsvFile()
+          : await ImportService.readExcelFile();
+
+      if (fileData == null || fileData.rows.isEmpty) return;
+      if (!context.mounted) return;
+
+      // Step 2: Show the mapping dialog
+      final mapping = await ImportMappingDialog.show(context, fileData);
+      if (mapping == null) return; // User cancelled
+
+      // Step 3: Apply mapping and import
+      final products = ImportService.applyMapping(fileData, mapping);
+      if (products.isEmpty) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('هیچ کالای معتبری در فایل یافت نشد')),
+          );
+        }
+        return;
+      }
+
       final repo = ProductRepository();
       final count = await repo.importProducts(products);
+
       if (context.mounted) {
         context.read<ProductCubit>().loadProducts();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -227,24 +266,65 @@ class _ProductsViewState extends State<_ProductsView> {
     }
   }
 
-  Future<void> _importExcel(BuildContext context) async {
-    try {
-      final products = await ImportService.importFromExcel();
-      if (products == null || products.isEmpty) return;
-      final repo = ProductRepository();
-      final count = await repo.importProducts(products);
+  Future<void> _applyProfitMargin(BuildContext context) async {
+    final controller = TextEditingController();
+    final result = await showDialog<double>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: const Text(AppStrings.applyProfitMargin),
+          content: SizedBox(
+            width: 380,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'درصد سود مورد نظر را برای محاسبه قیمت فروش بر اساس قیمت خرید وارد کنید:',
+                  style: TextStyle(fontSize: 13),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: controller,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    labelText: AppStrings.profitMargin,
+                    hintText: 'مثلاً ۲۰ برای ۲۰٪ سود',
+                    suffixText: '٪',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text(AppStrings.cancel),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final val = double.tryParse(controller.text.trim());
+                if (val != null) {
+                  Navigator.of(ctx).pop(val);
+                }
+              },
+              child: const Text(AppStrings.confirm),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result != null && context.mounted) {
+      await context.read<ProductCubit>().applyProfitMargin(result);
       if (context.mounted) {
-        context.read<ProductCubit>().loadProducts();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$count ${AppStrings.importSuccess}')),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطا: ${e.toString()}')),
+          const SnackBar(content: Text(AppStrings.profitMarginApplied)),
         );
       }
     }
   }
 }
+

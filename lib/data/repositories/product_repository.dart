@@ -97,5 +97,15 @@ class ProductRepository {
     });
     return count;
   }
+
+  /// Apply a profit percentage to all products.
+  /// Sets sell_price = current_buy_price (or buy_price) * (1 + percentage / 100) for all products.
+  Future<void> bulkApplyProfitMargin(double percentage) async {
+    final db = await _dbHelper.database;
+    await db.rawUpdate(
+      'UPDATE products SET sell_price = COALESCE(current_buy_price, buy_price) * (1 + ? / 100.0)',
+      [percentage],
+    );
+  }
 }
 

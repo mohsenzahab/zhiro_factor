@@ -18,21 +18,21 @@ class DatabaseSeeder {
 
   static Future<void> _seedProducts(Database db) async {
     final products = [
-      {'code': 'P001', 'name': 'لپ‌تاپ ایسوس VivoBook', 'category': 'الکترونیک', 'price': 45000000.0, 'unit': 'دستگاه', 'stock': 15.0},
-      {'code': 'P002', 'name': 'موس بی‌سیم لاجیتک', 'category': 'جانبی', 'price': 1200000.0, 'unit': 'عدد', 'stock': 50.0},
-      {'code': 'P003', 'name': 'کیبورد مکانیکال ردراگون', 'category': 'جانبی', 'price': 3500000.0, 'unit': 'عدد', 'stock': 30.0},
-      {'code': 'P004', 'name': 'مانیتور سامسونگ 27 اینچ', 'category': 'الکترونیک', 'price': 18000000.0, 'unit': 'دستگاه', 'stock': 8.0},
-      {'code': 'P005', 'name': 'هدفون بلوتوثی سونی', 'category': 'جانبی', 'price': 8500000.0, 'unit': 'عدد', 'stock': 25.0},
-      {'code': 'P006', 'name': 'فلش مموری 64 گیگ سن‌دیسک', 'category': 'ذخیره‌سازی', 'price': 450000.0, 'unit': 'عدد', 'stock': 100.0},
-      {'code': 'P007', 'name': 'هارد اکسترنال 1 ترابایت', 'category': 'ذخیره‌سازی', 'price': 5200000.0, 'unit': 'عدد', 'stock': 12.0},
-      {'code': 'P008', 'name': 'کابل شارژ تایپ سی', 'category': 'جانبی', 'price': 250000.0, 'unit': 'عدد', 'stock': 200.0},
-      {'code': 'P009', 'name': 'وب‌کم لاجیتک C920', 'category': 'الکترونیک', 'price': 6800000.0, 'unit': 'عدد', 'stock': 18.0},
-      {'code': 'P010', 'name': 'پرینتر اپسون L3250', 'category': 'الکترونیک', 'price': 12500000.0, 'unit': 'دستگاه', 'stock': 5.0},
-      {'code': 'P011', 'name': 'اسپیکر بلوتوثی JBL', 'category': 'جانبی', 'price': 4200000.0, 'unit': 'عدد', 'stock': 22.0},
-      {'code': 'P012', 'name': 'پاوربانک 20000 شیائومی', 'category': 'جانبی', 'price': 2800000.0, 'unit': 'عدد', 'stock': 35.0},
-      {'code': 'P013', 'name': 'خدمات نصب ویندوز', 'category': 'خدمات', 'price': 500000.0, 'unit': 'پروژه', 'stock': 999.0},
-      {'code': 'P014', 'name': 'مشاوره فنی (ساعتی)', 'category': 'خدمات', 'price': 800000.0, 'unit': 'ساعت', 'stock': 999.0},
-      {'code': 'P015', 'name': 'کارتریج پرینتر HP', 'category': 'مواد مصرفی', 'price': 1800000.0, 'unit': 'عدد', 'stock': 40.0},
+      {'code': 'P001', 'name': 'لپ‌تاپ ایسوس VivoBook', 'category': 'الکترونیک', 'buy_price': 45000000.0, 'unit': 'دستگاه', 'stock': 15.0},
+      {'code': 'P002', 'name': 'موس بی‌سیم لاجیتک', 'category': 'جانبی', 'buy_price': 1200000.0, 'unit': 'عدد', 'stock': 50.0},
+      {'code': 'P003', 'name': 'کیبورد مکانیکال ردراگون', 'category': 'جانبی', 'buy_price': 3500000.0, 'unit': 'عدد', 'stock': 30.0},
+      {'code': 'P004', 'name': 'مانیتور سامسونگ 27 اینچ', 'category': 'الکترونیک', 'buy_price': 18000000.0, 'unit': 'دستگاه', 'stock': 8.0},
+      {'code': 'P005', 'name': 'هدفون بلوتوثی سونی', 'category': 'جانبی', 'buy_price': 8500000.0, 'unit': 'عدد', 'stock': 25.0},
+      {'code': 'P006', 'name': 'فلش مموری 64 گیگ سن‌دیسک', 'category': 'ذخیره‌سازی', 'buy_price': 450000.0, 'unit': 'عدد', 'stock': 100.0},
+      {'code': 'P007', 'name': 'هارد اکسترنال 1 ترابایت', 'category': 'ذخیره‌سازی', 'buy_price': 5200000.0, 'unit': 'عدد', 'stock': 12.0},
+      {'code': 'P008', 'name': 'کابل شارژ تایپ سی', 'category': 'جانبی', 'buy_price': 250000.0, 'unit': 'عدد', 'stock': 200.0},
+      {'code': 'P009', 'name': 'وب‌کم لاجیتک C920', 'category': 'الکترونیک', 'buy_price': 6800000.0, 'unit': 'عدد', 'stock': 18.0},
+      {'code': 'P010', 'name': 'پرینتر اپسون L3250', 'category': 'الکترونیک', 'buy_price': 12500000.0, 'unit': 'دستگاه', 'stock': 5.0},
+      {'code': 'P011', 'name': 'اسپیکر بلوتوثی JBL', 'category': 'جانبی', 'buy_price': 4200000.0, 'unit': 'عدد', 'stock': 22.0},
+      {'code': 'P012', 'name': 'پاوربانک 20000 شیائومی', 'category': 'جانبی', 'buy_price': 2800000.0, 'unit': 'عدد', 'stock': 35.0},
+      {'code': 'P013', 'name': 'خدمات نصب ویندوز', 'category': 'خدمات', 'buy_price': 500000.0, 'unit': 'پروژه', 'stock': 999.0},
+      {'code': 'P014', 'name': 'مشاوره فنی (ساعتی)', 'category': 'خدمات', 'buy_price': 800000.0, 'unit': 'ساعت', 'stock': 999.0},
+      {'code': 'P015', 'name': 'کارتریج پرینتر HP', 'category': 'مواد مصرفی', 'buy_price': 1800000.0, 'unit': 'عدد', 'stock': 40.0},
     ];
 
     for (final p in products) {
