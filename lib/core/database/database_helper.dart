@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:sqflite_common/sqlite_api.dart';
 
 /// Singleton helper for SQLite database lifecycle.
 class DatabaseHelper {
@@ -20,6 +19,12 @@ class DatabaseHelper {
     return _database!;
   }
 
+  /// Get the full path to the database file.
+  static Future<String> getDatabasePath() async {
+    final Directory appDir = await getApplicationSupportDirectory();
+    return p.join(appDir.path, _dbName);
+  }
+
   Future<Database> _initDb() async {
     // Initialize FFI for desktop platforms
     sqfliteFfiInit();
@@ -27,6 +32,9 @@ class DatabaseHelper {
 
     final Directory appDir = await getApplicationSupportDirectory();
     final String dbPath = p.join(appDir.path, _dbName);
+
+    // Safeguard user data: perform an automatic rolling backup before opening
+    await _autoBackup(appDir, dbPath);
 
     return await databaseFactory.openDatabase(
       dbPath,
@@ -37,6 +45,39 @@ class DatabaseHelper {
         onConfigure: _onConfigure,
       ),
     );
+  }
+
+  /// Automatically creates a timestamped backup copy in the backups/ folder.
+  /// Retains the last 5 backups to avoid unbounded disk usage.
+  static Future<void> _autoBackup(Directory appDir, String dbPath) async {
+    final dbFile = File(dbPath);
+    if (!await dbFile.exists()) return;
+    try {
+      final backupDir = Directory(p.join(appDir.path, 'backups'));
+      if (!await backupDir.exists()) {
+        await backupDir.create(recursive: true);
+      }
+      final dateStr = DateTime.now().toIso8601String().replaceAll(':', '-').split('.').first;
+      final backupFile = File(p.join(backupDir.path, 'zhirofactor_backup_$dateStr.db'));
+      await dbFile.copy(backupFile.path);
+
+      final backupFiles = backupDir
+          .listSync()
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.db'))
+          .toList()
+        ..sort((a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()));
+
+      if (backupFiles.length > 5) {
+        for (final oldFile in backupFiles.skip(5)) {
+          try {
+            await oldFile.delete();
+          } catch (_) {}
+        }
+      }
+    } catch (_) {
+      // Backup failure must not prevent database opening
+    }
   }
 
   Future<void> _onConfigure(Database db) async {
