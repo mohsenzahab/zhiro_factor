@@ -42,14 +42,18 @@ class SalesLedgerTable extends StatelessWidget {
               DataColumn(label: Text('شماره فاکتور')),
               DataColumn(label: Text('تاریخ')),
               DataColumn(label: Text('مشتری')),
+              DataColumn(label: Text('وضعیت')),
               DataColumn(label: Text('تعداد')),
               DataColumn(label: Text('قیمت واحد')),
               DataColumn(label: Text('تخفیف')),
-              DataColumn(label: Text('جمع')),
+              DataColumn(label: Text('جمع سطر')),
+              DataColumn(label: Text('سود سطر')),
             ],
             rows: List.generate(data.length, (index) {
               final row = data[index];
               final dateStr = row['date'] as String? ?? '';
+              final status = row['invoice_status'] as String? ?? '';
+              final profit = (row['profit'] as num?)?.toDouble() ?? 0.0;
               String jalali;
               try {
                 jalali = JalaliUtils.format(JalaliUtils.fromIso(dateStr));
@@ -73,6 +77,23 @@ class SalesLedgerTable extends StatelessWidget {
                   )),
                   DataCell(Text(jalali, style: const TextStyle(fontSize: 12))),
                   DataCell(Text(row['customer_name'] as String? ?? '---')),
+                  DataCell(
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.statusColor(status).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        status,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.statusColor(status),
+                        ),
+                      ),
+                    ),
+                  ),
                   DataCell(Text((row['quantity'] as num?)?.toDouble().formattedInt ?? '')),
                   DataCell(Text((row['unit_price'] as num?)?.toDouble().formatted ?? '')),
                   DataCell(Text(
@@ -83,6 +104,17 @@ class SalesLedgerTable extends StatelessWidget {
                     (row['line_total'] as num?)?.toDouble().formatted ?? '',
                     style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.accent),
                   )),
+                  DataCell(
+                    Text(
+                      profit.formatted,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: profit > 0
+                            ? AppColors.success
+                            : (profit < 0 ? AppColors.error : AppColors.textMuted),
+                      ),
+                    ),
+                  ),
                 ],
               );
             }),

@@ -87,4 +87,38 @@ class JalaliUtils {
     ];
     return days[date.weekDay - 1];
   }
+
+  /// Converts start of a Jalali day (00:00:00.000) to ISO 8601 string.
+  static String startOfDayIso(Jalali date) {
+    final g = date.toGregorian();
+    return DateTime(g.year, g.month, g.day, 0, 0, 0, 0).toIso8601String();
+  }
+
+  /// Converts end of a Jalali day (23:59:59.999) to ISO 8601 string.
+  static String endOfDayIso(Jalali date) {
+    final g = date.toGregorian();
+    return DateTime(g.year, g.month, g.day, 23, 59, 59, 999).toIso8601String();
+  }
+
+  /// Preset range for Today (from start of today to end of today).
+  static (String, String) get todayRange {
+    final n = now;
+    return (startOfDayIso(n), endOfDayIso(n));
+  }
+
+  /// Preset range for This Week (Saturday to Friday in Iran Jalali calendar).
+  static (String, String) get thisWeekRange {
+    final n = now;
+    final saturday = n - (n.weekDay - 1);
+    final friday = saturday + 6;
+    return (startOfDayIso(saturday), endOfDayIso(friday));
+  }
+
+  /// Preset range for This Month (1st of current month to end of month).
+  static (String, String) get thisMonthRange {
+    final n = now;
+    final firstDay = Jalali(n.year, n.month, 1);
+    final lastDay = Jalali(n.year, n.month, n.monthLength);
+    return (startOfDayIso(firstDay), endOfDayIso(lastDay));
+  }
 }

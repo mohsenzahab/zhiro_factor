@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/number_extensions.dart';
+import '../../../shared/widgets/date_range_filter_bar.dart';
 import '../cubit/dashboard_cubit.dart';
 import '../cubit/dashboard_state.dart';
 import 'widgets/kpi_card.dart';
@@ -15,7 +16,7 @@ class DashboardPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => DashboardCubit()..loadDashboard(),
+      create: (_) => DashboardCubit()..loadDashboard(isInitial: true),
       child: const _DashboardView(),
     );
   }
@@ -38,7 +39,7 @@ class _DashboardView extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Title ───────────────────────────────────────
+                // ── Title & Refresh ─────────────────────────────
                 Row(
                   children: [
                     const Icon(Icons.dashboard, color: AppColors.primary, size: 28),
@@ -50,49 +51,79 @@ class _DashboardView extends StatelessWidget {
                     const Spacer(),
                     IconButton(
                       icon: const Icon(Icons.refresh),
-                      onPressed: () => context.read<DashboardCubit>().loadDashboard(),
+                      onPressed: () => context.read<DashboardCubit>().loadDashboard(
+                            dateFrom: state.dateFrom,
+                            dateTo: state.dateTo,
+                            preset: state.preset,
+                          ),
                       tooltip: 'بروزرسانی',
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
+
+                // ── Date Range Filter Bar ───────────────────────
+                DateRangeFilterBar(
+                  initialPreset: state.preset,
+                  initialDateFrom: state.dateFrom,
+                  initialDateTo: state.dateTo,
+                  onRangeChanged: ({required preset, dateFrom, dateTo}) {
+                    context.read<DashboardCubit>().loadDashboard(
+                          dateFrom: dateFrom,
+                          dateTo: dateTo,
+                          preset: preset,
+                        );
+                  },
+                ),
+                const SizedBox(height: 20),
 
                 // ── KPI Cards ───────────────────────────────────
                 Row(
                   children: [
+                    // Gross Sales (Settled)
                     Expanded(
                       child: KpiCard(
                         label: AppStrings.totalGrossSales,
                         value: state.totalGross.toman,
-                        icon: Icons.receipt,
+                        subtitle: 'تسویه‌شده',
+                        icon: Icons.receipt_long,
                         gradient: AppColors.kpiCardGradient1,
                       ),
                     ),
                     const SizedBox(width: 16),
+
+                    // Net Profit (سود خالص)
                     Expanded(
                       child: KpiCard(
-                        label: AppStrings.totalNetRevenue,
-                        value: state.totalNet.toman,
-                        icon: Icons.payments,
+                        label: AppStrings.netProfit,
+                        value: state.totalProfit.toman,
+                        subtitle: 'سود واقعی',
+                        icon: Icons.trending_up,
                         gradient: AppColors.kpiCardGradient2,
                       ),
                     ),
                     const SizedBox(width: 16),
+
+                    // Pending / Deposit Invoices
                     Expanded(
                       child: KpiCard(
-                        label: AppStrings.totalDiscountsGiven,
-                        value: state.totalDiscounts.toman,
-                        icon: Icons.discount,
-                        gradient: AppColors.kpiCardGradient3,
+                        label: AppStrings.pendingAndDeposit,
+                        value: state.pendingAmount.toman,
+                        subtitle: '${state.pendingCount} فاکتور',
+                        icon: Icons.pending_actions,
+                        gradient: AppColors.kpiCardGradient4,
                       ),
                     ),
                     const SizedBox(width: 16),
+
+                    // Discounts (Settled)
                     Expanded(
                       child: KpiCard(
-                        label: AppStrings.outstandingInvoices,
-                        value: '${state.outstandingCount} فاکتور',
-                        icon: Icons.pending_actions,
-                        gradient: AppColors.kpiCardGradient4,
+                        label: AppStrings.settledDiscounts,
+                        value: state.totalDiscounts.toman,
+                        subtitle: 'تسویه‌شده',
+                        icon: Icons.discount_outlined,
+                        gradient: AppColors.kpiCardGradient3,
                       ),
                     ),
                   ],

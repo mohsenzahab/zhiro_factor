@@ -21,10 +21,12 @@ class ExportService {
       TextCellValue('شماره فاکتور'),
       TextCellValue('تاریخ'),
       TextCellValue('مشتری'),
+      TextCellValue('وضعیت'),
       TextCellValue('تعداد'),
       TextCellValue('قیمت واحد'),
       TextCellValue('تخفیف'),
-      TextCellValue('جمع'),
+      TextCellValue('جمع سطر'),
+      TextCellValue('سود سطر'),
     ]);
 
     // Data rows
@@ -36,10 +38,12 @@ class ExportService {
         TextCellValue(row['invoice_number']?.toString() ?? ''),
         TextCellValue(row['date']?.toString() ?? ''),
         TextCellValue(row['customer_name']?.toString() ?? ''),
+        TextCellValue(row['invoice_status']?.toString() ?? ''),
         DoubleCellValue((row['quantity'] as num?)?.toDouble() ?? 0),
         DoubleCellValue((row['unit_price'] as num?)?.toDouble() ?? 0),
         DoubleCellValue((row['discount_calculated_amount'] as num?)?.toDouble() ?? 0),
         DoubleCellValue((row['line_total'] as num?)?.toDouble() ?? 0),
+        DoubleCellValue((row['profit'] as num?)?.toDouble() ?? 0),
       ]);
     }
 
@@ -64,7 +68,7 @@ class ExportService {
     buffer.write('\uFEFF');
 
     // Header
-    buffer.writeln('ردیف,نام کالا,شماره فاکتور,تاریخ,مشتری,تعداد,قیمت واحد,تخفیف,جمع');
+    buffer.writeln('ردیف,نام کالا,شماره فاکتور,تاریخ,مشتری,وضعیت,تعداد,قیمت واحد,تخفیف,جمع سطر,سود سطر');
 
     // Data
     for (var i = 0; i < data.length; i++) {
@@ -75,10 +79,12 @@ class ExportService {
         _csvEscape(row['invoice_number']?.toString() ?? ''),
         _csvEscape(row['date']?.toString() ?? ''),
         _csvEscape(row['customer_name']?.toString() ?? ''),
+        _csvEscape(row['invoice_status']?.toString() ?? ''),
         (row['quantity'] as num?)?.toDouble() ?? 0,
         (row['unit_price'] as num?)?.toDouble() ?? 0,
         (row['discount_calculated_amount'] as num?)?.toDouble() ?? 0,
         (row['line_total'] as num?)?.toDouble() ?? 0,
+        (row['profit'] as num?)?.toDouble() ?? 0,
       ].join(','));
     }
 

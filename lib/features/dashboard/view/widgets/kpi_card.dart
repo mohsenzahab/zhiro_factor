@@ -5,6 +5,7 @@ import '../../../../core/constants/app_colors.dart';
 class KpiCard extends StatelessWidget {
   final String label;
   final String value;
+  final String? subtitle;
   final IconData icon;
   final LinearGradient gradient;
 
@@ -12,6 +13,7 @@ class KpiCard extends StatelessWidget {
     super.key,
     required this.label,
     required this.value,
+    this.subtitle,
     required this.icon,
     required this.gradient,
   });
@@ -46,13 +48,29 @@ class KpiCard extends StatelessWidget {
                 child: Icon(icon, color: Colors.white, size: 22),
               ),
               const Spacer(),
+              if (subtitle != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    subtitle!,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           Text(
             value,
             style: const TextStyle(
-              fontSize: 22,
+              fontSize: 21,
               fontWeight: FontWeight.w800,
               color: Colors.white,
             ),

@@ -112,7 +112,9 @@ class AppStrings {
   static const String reports = 'گزارشات';
   static const String totalGrossSales = 'فروش ناخالص';
   static const String totalNetRevenue = 'درآمد خالص';
-  static const String totalDiscountsGiven = 'تخفیفات ارائه‌شده';
+  static const String netProfit = 'سود خالص';
+  static const String pendingAndDeposit = 'مطالبات معلق و بیعانه';
+  static const String settledDiscounts = 'تخفیفات تسویه‌شده';
   static const String outstandingInvoices = 'فاکتورهای معلق';
   static const String bestSellers = 'پرفروش‌ترین کالاها';
   static const String salesLedger = 'ریز اقلام فروش رفته';
@@ -126,6 +128,14 @@ class AppStrings {
   static const String recentInvoices = 'فاکتورهای اخیر';
   static const String byVolume = 'بر اساس تعداد';
   static const String byRevenue = 'بر اساس درآمد';
+  static const String dateRange = 'بازه تاریخ';
+  static const String today = 'امروز';
+  static const String thisWeek = 'هفته جاری';
+  static const String thisMonth = 'ماه جاری';
+  static const String allTime = 'کل دوره';
+  static const String customRange = 'بازه انتخابی';
+  static const String selectDate = 'انتخاب تاریخ';
+  static const String rowProfit = 'سود سطر';
 
   // ─── Actions ────────────────────────────────────────────────────────
   static const String save = 'ذخیره';
