@@ -35,6 +35,9 @@ class AppStrings {
   static const String deleteProduct = 'حذف کالا';
   static const String searchProduct = 'جستجوی کالا...';
   static const String profitMargin = 'درصد سود';
+  static const String profitAmount = 'میزان سود';
+  static const String profit = 'سود';
+  static const String soldCount = 'فروش رفته';
   static const String applyProfitMargin = 'اعمال درصد سود';
   static const String profitMarginHint = 'درصد سود نسبت به قیمت خرید';
   static const String profitMarginApplied = 'درصد سود روی همه کالاها اعمال شد';

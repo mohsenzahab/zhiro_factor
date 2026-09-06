@@ -16,6 +16,7 @@ class ProductModel extends Equatable {
   final String? buyDate;
   final String? supplier;
   final bool isTemporary;
+  final double totalSold;
 
   ProductModel({
     this.id,
@@ -31,10 +32,29 @@ class ProductModel extends Equatable {
     this.buyDate,
     this.supplier,
     this.isTemporary = false,
+    this.totalSold = 0.0,
   }) : sellPrice = sellPrice?.roundTo5000;
 
   /// The price used in invoices: sell price if set, otherwise buy price.
   double get effectivePrice => (sellPrice ?? buyPrice).roundTo5000;
+
+  /// The active base buy price (current buy price if set and > 0, otherwise initial buy price).
+  double get effectiveBuyPrice => (currentBuyPrice != null && currentBuyPrice! > 0) ? currentBuyPrice! : buyPrice;
+
+  /// Profit amount per unit (sellPrice - effectiveBuyPrice).
+  double get profitAmount => effectivePrice - effectiveBuyPrice;
+
+  /// Profit margin percentage relative to effective buy price.
+  double get profitPercent => effectiveBuyPrice > 0 ? ((profitAmount / effectiveBuyPrice) * 100.0) : 0.0;
+
+  /// Formatted profit amount display (e.g. "+۱۵,۰۰۰ تومان" or "-۵,۰۰۰ تومان").
+  String get profitAmountDisplay => '${profitAmount >= 0 ? '+' : ''}${profitAmount.round().formatted} تومان';
+
+  /// Formatted profit percent display (e.g. "۲۵٪").
+  String get profitPercentDisplay => '${profitPercent.toStringAsFixed(profitPercent % 1 == 0 ? 0 : 1)}٪';
+
+  /// User-facing string representation of total units sold.
+  String get totalSoldDisplay => totalSold == totalSold.roundToDouble() ? totalSold.toInt().formattedInt : totalSold.formatted;
 
   /// Whether the stock is infinite/unlimited.
   /// Recognizes null, infinity, or legacy 9999 placeholder.
@@ -58,6 +78,7 @@ class ProductModel extends Equatable {
       buyDate: map['buy_date'] as String?,
       supplier: map['supplier'] as String?,
       isTemporary: (map['is_temporary'] as int?) == 1,
+      totalSold: (map['total_sold'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
@@ -98,6 +119,7 @@ class ProductModel extends Equatable {
     String? buyDate,
     String? supplier,
     bool? isTemporary,
+    double? totalSold,
   }) {
     return ProductModel(
       id: id ?? this.id,
@@ -113,9 +135,10 @@ class ProductModel extends Equatable {
       buyDate: buyDate ?? this.buyDate,
       supplier: supplier ?? this.supplier,
       isTemporary: isTemporary ?? this.isTemporary,
+      totalSold: totalSold ?? this.totalSold,
     );
   }
 
   @override
-  List<Object?> get props => [id, code, name, category, buyPrice, currentBuyPrice, sellPrice, unit, stock, createdAt, buyDate, supplier, isTemporary];
+  List<Object?> get props => [id, code, name, category, buyPrice, currentBuyPrice, sellPrice, unit, stock, createdAt, buyDate, supplier, isTemporary, totalSold];
 }

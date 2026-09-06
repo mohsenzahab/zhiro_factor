@@ -5,29 +5,45 @@ import '../models/product_model.dart';
 class ProductRepository {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
 
-  /// Fetch all products, optionally filtered by search query.
+  /// Fetch all products with sold quantity joined, optionally filtered by search query.
   Future<List<ProductModel>> getAll({String? query}) async {
     final db = await _dbHelper.database;
-    List<Map<String, dynamic>> maps;
+    String sql = '''
+      SELECT p.*, COALESCE(s.total_sold, 0.0) as total_sold
+      FROM products p
+      LEFT JOIN (
+        SELECT product_id, SUM(quantity) as total_sold
+        FROM invoice_items
+        WHERE product_id IS NOT NULL
+        GROUP BY product_id
+      ) s ON p.id = s.product_id
+    ''';
+    final args = <dynamic>[];
 
     if (query != null && query.isNotEmpty) {
-      maps = await db.query(
-        'products',
-        where: 'name LIKE ? OR code LIKE ?',
-        whereArgs: ['%$query%', '%$query%'],
-        orderBy: 'name ASC',
-      );
-    } else {
-      maps = await db.query('products', orderBy: 'name ASC');
+      sql += ' WHERE p.name LIKE ? OR p.code LIKE ?';
+      args.addAll(['%$query%', '%$query%']);
     }
 
+    sql += ' ORDER BY p.name ASC';
+
+    final maps = await db.rawQuery(sql, args);
     return maps.map((m) => ProductModel.fromMap(m)).toList();
   }
 
-  /// Fetch a single product by ID.
+  /// Fetch a single product by ID with sold quantity joined.
   Future<ProductModel?> getById(int id) async {
     final db = await _dbHelper.database;
-    final maps = await db.query('products', where: 'id = ?', whereArgs: [id]);
+    final maps = await db.rawQuery('''
+      SELECT p.*, COALESCE(s.total_sold, 0.0) as total_sold
+      FROM products p
+      LEFT JOIN (
+        SELECT product_id, SUM(quantity) as total_sold
+        FROM invoice_items
+        WHERE product_id = ?
+      ) s ON p.id = s.product_id
+      WHERE p.id = ?
+    ''', [id, id]);
     if (maps.isEmpty) return null;
     return ProductModel.fromMap(maps.first);
   }

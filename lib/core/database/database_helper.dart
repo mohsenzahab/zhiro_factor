@@ -172,33 +172,49 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX idx_invoice_items_product ON invoice_items(product_id)');
   }
 
+  Future<bool> _columnExists(Database db, String tableName, String columnName) async {
+    try {
+      final result = await db.rawQuery('PRAGMA table_info($tableName)');
+      return result.any((row) => (row['name'] as String?)?.toLowerCase() == columnName.toLowerCase());
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _safeAddColumn(Database db, String tableName, String columnDef) async {
+    final colName = columnDef.trim().split(RegExp(r'\s+')).first;
+    if (!await _columnExists(db, tableName, colName)) {
+      try {
+        await db.execute('ALTER TABLE $tableName ADD COLUMN $columnDef');
+      } catch (_) {
+        // Silently ignore if column already exists
+      }
+    }
+  }
+
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     // Migration v1 → v2: add is_temporary column to products
     if (oldVersion < 2) {
-      await db.execute(
-        "ALTER TABLE products ADD COLUMN is_temporary INTEGER DEFAULT 0",
-      );
+      await _safeAddColumn(db, 'products', 'is_temporary INTEGER DEFAULT 0');
     }
     // Migration v2 → v3: rename price → buy_price, add sell_price
     if (oldVersion < 3) {
-      await db.execute(
-        "ALTER TABLE products RENAME COLUMN price TO buy_price",
-      );
-      await db.execute(
-        "ALTER TABLE products ADD COLUMN sell_price REAL",
-      );
+      final hasBuyPrice = await _columnExists(db, 'products', 'buy_price');
+      final hasPrice = await _columnExists(db, 'products', 'price');
+      if (!hasBuyPrice && hasPrice) {
+        try {
+          await db.execute(
+            "ALTER TABLE products RENAME COLUMN price TO buy_price",
+          );
+        } catch (_) {}
+      }
+      await _safeAddColumn(db, 'products', 'sell_price REAL');
     }
     // Migration v3 → v4: add current_buy_price, buy_date, supplier
     if (oldVersion < 4) {
-      await db.execute(
-        "ALTER TABLE products ADD COLUMN current_buy_price REAL",
-      );
-      await db.execute(
-        "ALTER TABLE products ADD COLUMN buy_date TEXT",
-      );
-      await db.execute(
-        "ALTER TABLE products ADD COLUMN supplier TEXT",
-      );
+      await _safeAddColumn(db, 'products', 'current_buy_price REAL');
+      await _safeAddColumn(db, 'products', 'buy_date TEXT');
+      await _safeAddColumn(db, 'products', 'supplier TEXT');
     }
     // Future migrations: if (oldVersion < 5) { ... }
   }

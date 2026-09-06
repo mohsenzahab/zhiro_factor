@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/app_colors.dart';
@@ -297,8 +298,8 @@ class _ProductsViewState extends State<_ProductsView> {
                 count.formattedInt,
                 style: TextStyle(
                   fontSize: 11,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  color: isSelected ? AppColors.primary : AppColors.textMuted,
+                  fontWeight: FontWeight.bold,
+                  color: isSelected ? Colors.white : AppColors.textMuted,
                 ),
               ),
             ),
@@ -318,14 +319,15 @@ class _ProductsViewState extends State<_ProductsView> {
       child: Scrollbar(
         thumbVisibility: true,
         child: SingleChildScrollView(
-          child: SizedBox(
-            width: double.infinity,
+          scrollDirection: Axis.horizontal,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.vertical,
             child: DataTable(
               showCheckboxColumn: true,
               headingRowHeight: 48,
               dataRowMinHeight: 44,
               dataRowMaxHeight: 52,
-              columnSpacing: 24,
+              columnSpacing: 20,
               horizontalMargin: 16,
               headingRowColor: WidgetStateProperty.all(AppColors.tableHeader),
               onSelectAll: (selected) {
@@ -348,8 +350,11 @@ class _ProductsViewState extends State<_ProductsView> {
                 DataColumn(label: Text(AppStrings.productBuyPrice)),
                 DataColumn(label: Text(AppStrings.productCurrentBuyPrice)),
                 DataColumn(label: Text(AppStrings.productSellPrice)),
+                DataColumn(label: Text(AppStrings.profitAmount)),
+                DataColumn(label: Text(AppStrings.profitMargin)),
                 DataColumn(label: Text(AppStrings.productUnit)),
                 DataColumn(label: Text(AppStrings.productStock)),
+                DataColumn(label: Text(AppStrings.soldCount)),
                 DataColumn(label: Text('')), // Actions
               ],
               rows: List.generate(products.length, (index) {
@@ -374,8 +379,37 @@ class _ProductsViewState extends State<_ProductsView> {
                     return index.isEven ? AppColors.tableRowEven : AppColors.tableRowOdd;
                   }),
                   cells: [
-                    DataCell(Text(p.code ?? '')),
-                    DataCell(Text(p.name, style: const TextStyle(fontWeight: FontWeight.w500))),
+                    DataCell(
+                      _EditableTableCell(
+                        displayValue: p.code ?? '-',
+                        rawValue: p.code ?? '',
+                        minWidth: 55,
+                        tooltip: 'کلیک برای ویرایش کد کالا',
+                        onSave: (val) {
+                          final clean = val.trim();
+                          context.read<ProductCubit>().updateProduct(
+                                p.copyWith(code: clean.isEmpty ? null : clean),
+                              );
+                        },
+                      ),
+                    ),
+                    DataCell(
+                      _EditableTableCell(
+                        displayValue: p.name,
+                        rawValue: p.name,
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                        minWidth: 120,
+                        tooltip: 'کلیک برای ویرایش نام کالا',
+                        onSave: (val) {
+                          final clean = val.trim();
+                          if (clean.isNotEmpty) {
+                            context.read<ProductCubit>().updateProduct(
+                                  p.copyWith(name: clean),
+                                );
+                          }
+                        },
+                      ),
+                    ),
                     DataCell(
                       InkWell(
                         onTap: () {
@@ -405,35 +439,175 @@ class _ProductsViewState extends State<_ProductsView> {
                         ),
                       ),
                     ),
-                    DataCell(Text(p.buyPrice.toman)),
-                    DataCell(Text(p.currentBuyPrice != null ? p.currentBuyPrice!.toman : p.buyPrice.toman)),
-                    DataCell(Text(p.sellPrice != null ? p.sellPrice!.toman : '-')),
-                    DataCell(Text(p.unit)),
                     DataCell(
-                      p.isInfiniteStock
-                          ? Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: AppColors.accent.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.all_inclusive, size: 13, color: AppColors.accent),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    AppStrings.infinite,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.accent,
+                      _EditableTableCell(
+                        displayValue: p.buyPrice.toman,
+                        rawValue: p.buyPrice.round().toString(),
+                        isNumber: true,
+                        minWidth: 75,
+                        tooltip: 'کلیک برای ویرایش قیمت خرید اولیه',
+                        onSave: (val) {
+                          final parsed = double.tryParse(val.replaceAll(',', '').trim());
+                          if (parsed != null && parsed >= 0) {
+                            context.read<ProductCubit>().updateProduct(
+                                  p.copyWith(buyPrice: parsed),
+                                );
+                          }
+                        },
+                      ),
+                    ),
+                    DataCell(
+                      _EditableTableCell(
+                        displayValue: p.currentBuyPrice != null ? p.currentBuyPrice!.toman : p.buyPrice.toman,
+                        rawValue: p.currentBuyPrice != null
+                            ? p.currentBuyPrice!.round().toString()
+                            : p.buyPrice.round().toString(),
+                        isNumber: true,
+                        minWidth: 75,
+                        tooltip: 'کلیک برای ویرایش قیمت خرید روز',
+                        onSave: (val) {
+                          final parsed = double.tryParse(val.replaceAll(',', '').trim());
+                          if (parsed != null && parsed >= 0) {
+                            context.read<ProductCubit>().updateProduct(
+                                  p.copyWith(currentBuyPrice: parsed),
+                                );
+                          }
+                        },
+                      ),
+                    ),
+                    DataCell(
+                      _EditableTableCell(
+                        displayValue: p.sellPrice != null ? p.sellPrice!.toman : '-',
+                        rawValue: p.sellPrice != null ? p.sellPrice!.round().toString() : '',
+                        isNumber: true,
+                        minWidth: 75,
+                        tooltip: 'کلیک برای ویرایش قیمت فروش (رند به ۵۰۰۰)',
+                        onSave: (val) {
+                          final parsed = double.tryParse(val.replaceAll(',', '').trim());
+                          if (parsed != null && parsed >= 0) {
+                            context.read<ProductCubit>().updateProduct(
+                                  p.copyWith(sellPrice: parsed.roundTo5000),
+                                );
+                          }
+                        },
+                      ),
+                    ),
+                    DataCell(
+                      Text(
+                        p.profitAmountDisplay,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: p.profitAmount > 0
+                              ? AppColors.success
+                              : (p.profitAmount < 0 ? AppColors.error : AppColors.textMuted),
+                        ),
+                      ),
+                    ),
+                    DataCell(
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: (p.profitPercent > 0
+                                  ? AppColors.success
+                                  : (p.profitPercent < 0 ? AppColors.error : AppColors.textMuted))
+                              .withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          p.profitPercentDisplay,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: p.profitPercent > 0
+                                ? AppColors.success
+                                : (p.profitPercent < 0 ? AppColors.error : AppColors.textMuted),
+                          ),
+                        ),
+                      ),
+                    ),
+                    DataCell(
+                      _EditableTableCell(
+                        displayValue: p.unit,
+                        rawValue: p.unit,
+                        minWidth: 35,
+                        tooltip: 'کلیک برای ویرایش واحد',
+                        onSave: (val) {
+                          final clean = val.trim();
+                          if (clean.isNotEmpty) {
+                            context.read<ProductCubit>().updateProduct(
+                                  p.copyWith(unit: clean),
+                                );
+                          }
+                        },
+                      ),
+                    ),
+                    DataCell(
+                      _EditableTableCell(
+                        displayValue: p.stockDisplay,
+                        rawValue: p.isInfiniteStock ? '' : (p.stock != null ? p.stock!.round().toString() : '0'),
+                        isNumber: true,
+                        minWidth: 55,
+                        tooltip: 'کلیک برای ویرایش موجودی (خالی = نامحدود)',
+                        customDisplay: p.isInfiniteStock
+                            ? Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.accent.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.all_inclusive, size: 13, color: AppColors.accent),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      AppStrings.infinite,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.accent,
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : Text(p.stockDisplay),
+                                  ],
+                                ),
+                              )
+                            : null,
+                        onSave: (val) {
+                          final clean = val.replaceAll(',', '').trim();
+                          if (clean.isEmpty || clean == 'نامحدود' || clean == '-') {
+                            context.read<ProductCubit>().updateProduct(
+                                  p.copyWith(clearStock: true),
+                                );
+                          } else {
+                            final parsed = double.tryParse(clean);
+                            if (parsed != null) {
+                              context.read<ProductCubit>().updateProduct(
+                                    p.copyWith(stock: parsed),
+                                  );
+                            }
+                          }
+                        },
+                      ),
+                    ),
+                    DataCell(
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: p.totalSold > 0
+                              ? AppColors.primary.withValues(alpha: 0.1)
+                              : AppColors.cardDark,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '${p.totalSoldDisplay} ${p.unit}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: p.totalSold > 0 ? FontWeight.w600 : FontWeight.normal,
+                            color: p.totalSold > 0 ? AppColors.primary : AppColors.textMuted,
+                          ),
+                        ),
+                      ),
                     ),
                     DataCell(Row(
                       mainAxisSize: MainAxisSize.min,
@@ -464,7 +638,7 @@ class _ProductsViewState extends State<_ProductsView> {
 
   Widget _buildBatchActionBar(BuildContext context, List<ProductModel> allProducts) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: AppColors.primary.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(10),
@@ -903,6 +1077,176 @@ class _ProductsViewState extends State<_ProductsView> {
         );
       }
     }
+  }
+}
+
+/// Compact inline editable cell for data tables.
+/// Displays value with subtle hover indicator; click to edit directly with Enter or unfocus to save.
+class _EditableTableCell extends StatefulWidget {
+  final String displayValue;
+  final String rawValue;
+  final ValueChanged<String> onSave;
+  final bool isNumber;
+  final TextStyle? style;
+  final String? tooltip;
+  final Widget? customDisplay;
+  final double minWidth;
+
+  const _EditableTableCell({
+    required this.displayValue,
+    required this.rawValue,
+    required this.onSave,
+    this.isNumber = false,
+    this.style,
+    this.tooltip,
+    this.customDisplay,
+    this.minWidth = 60,
+  });
+
+  @override
+  State<_EditableTableCell> createState() => _EditableTableCellState();
+}
+
+class _EditableTableCellState extends State<_EditableTableCell> {
+  bool _isEditing = false;
+  late final TextEditingController _ctrl;
+  late final FocusNode _focusNode;
+  bool _isHovered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: widget.rawValue);
+    _focusNode = FocusNode();
+    _focusNode.addListener(_onFocusChange);
+  }
+
+  void _onFocusChange() {
+    if (!_focusNode.hasFocus && _isEditing) {
+      _submit();
+    }
+  }
+
+  void _submit() {
+    final text = _ctrl.text.trim();
+    if (text != widget.rawValue.trim()) {
+      widget.onSave(text);
+    }
+    if (mounted) {
+      setState(() => _isEditing = false);
+    }
+  }
+
+  void _cancel() {
+    _ctrl.text = widget.rawValue;
+    if (mounted) {
+      setState(() => _isEditing = false);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _EditableTableCell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.rawValue != oldWidget.rawValue && !_isEditing) {
+      _ctrl.text = widget.rawValue;
+    }
+  }
+
+  @override
+  void dispose() {
+    _focusNode.removeListener(_onFocusChange);
+    _focusNode.dispose();
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isEditing) {
+      return SizedBox(
+        width: widget.minWidth + 36,
+        height: 34,
+        child: CallbackShortcuts(
+          bindings: {
+            const SingleActivator(LogicalKeyboardKey.escape): _cancel,
+          },
+          child: TextField(
+            controller: _ctrl,
+            focusNode: _focusNode,
+            autofocus: true,
+            keyboardType: widget.isNumber
+                ? const TextInputType.numberWithOptions(decimal: true)
+                : TextInputType.text,
+            textAlign: widget.isNumber ? TextAlign.center : TextAlign.start,
+            style: const TextStyle(fontSize: 12),
+            decoration: InputDecoration(
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+              filled: true,
+              fillColor: AppColors.surfaceDark,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+              ),
+            ),
+            onSubmitted: (_) => _submit(),
+          ),
+        ),
+      );
+    }
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      cursor: SystemMouseCursors.click,
+      child: Tooltip(
+        message: widget.tooltip ?? 'کلیک برای ویرایش سریع',
+        waitDuration: const Duration(milliseconds: 500),
+        child: InkWell(
+          onTap: () {
+            _ctrl.text = widget.rawValue;
+            setState(() => _isEditing = true);
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _focusNode.requestFocus();
+              _ctrl.selection = TextSelection(baseOffset: 0, extentOffset: _ctrl.text.length);
+            });
+          },
+          borderRadius: BorderRadius.circular(6),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            decoration: BoxDecoration(
+              color: _isHovered ? AppColors.primary.withValues(alpha: 0.08) : Colors.transparent,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: _isHovered ? AppColors.primary.withValues(alpha: 0.3) : Colors.transparent,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                widget.customDisplay ??
+                    Text(
+                      widget.displayValue,
+                      style: widget.style,
+                    ),
+                if (_isHovered) ...[
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.edit,
+                    size: 11,
+                    color: AppColors.primary.withValues(alpha: 0.7),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
