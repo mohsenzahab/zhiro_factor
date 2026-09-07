@@ -9,7 +9,7 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._();
 
   static Database? _database;
-  static const int _version = 5;
+  static const int _version = 6;
   static const String _dbName = 'zhirofactor.db';
 
   /// Returns the initialized database instance.
@@ -142,6 +142,9 @@ class DatabaseHelper {
         total_gross REAL NOT NULL,
         total_discount REAL NOT NULL,
         total_net REAL NOT NULL,
+        overall_discount_type TEXT NOT NULL DEFAULT 'none',
+        overall_discount_value REAL NOT NULL DEFAULT 0.0,
+        overall_discount_amount REAL NOT NULL DEFAULT 0.0,
         notes TEXT,
         FOREIGN KEY (customer_id) REFERENCES customers(id)
       )
@@ -260,6 +263,12 @@ class DatabaseHelper {
         )
       ''');
       await db.execute('CREATE INDEX IF NOT EXISTS idx_preset_items_template ON preset_template_items(template_id)');
+    }
+    // Migration v5 → v6: add invoice-level overall discount columns
+    if (oldVersion < 6) {
+      await _safeAddColumn(db, 'invoices', "overall_discount_type TEXT NOT NULL DEFAULT 'none'");
+      await _safeAddColumn(db, 'invoices', 'overall_discount_value REAL NOT NULL DEFAULT 0.0');
+      await _safeAddColumn(db, 'invoices', 'overall_discount_amount REAL NOT NULL DEFAULT 0.0');
     }
   }
 

@@ -41,6 +41,8 @@ class InvoiceCubit extends Cubit<InvoiceState> {
       status: invoice.status,
       items: invoice.items,
       notes: invoice.notes,
+      overallDiscountType: invoice.overallDiscountType,
+      overallDiscountValue: invoice.overallDiscountValue,
     ));
   }
 
@@ -66,6 +68,19 @@ class InvoiceCubit extends Cubit<InvoiceState> {
 
   void setNotes(String notes) {
     emit(state.copyWith(notes: notes));
+  }
+
+  /// Set the invoice-level overall discount type.
+  void setOverallDiscountType(String type) {
+    emit(state.copyWith(
+      overallDiscountType: type,
+      overallDiscountValue: 0.0, // Reset value when type changes
+    ));
+  }
+
+  /// Set the invoice-level overall discount value.
+  void setOverallDiscountValue(double value) {
+    emit(state.copyWith(overallDiscountValue: value));
   }
 
   /// Add a product as a new line item.
@@ -138,6 +153,9 @@ class InvoiceCubit extends Cubit<InvoiceState> {
         totalGross: state.totalGross,
         totalDiscount: state.totalDiscount,
         totalNet: state.totalNet,
+        overallDiscountType: state.overallDiscountType,
+        overallDiscountValue: state.overallDiscountValue,
+        overallDiscountAmount: state.overallDiscountAmount,
         notes: state.notes,
         items: state.items,
       );

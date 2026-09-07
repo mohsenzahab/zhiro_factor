@@ -12,6 +12,12 @@ class InvoiceModel extends Equatable {
   final double totalGross;
   final double totalDiscount;
   final double totalNet;
+  /// Invoice-level overall discount type: 'none', 'percentage', 'amount'
+  final String overallDiscountType;
+  /// The raw value entered by user (percentage number or fixed amount)
+  final double overallDiscountValue;
+  /// Calculated overall discount amount in currency
+  final double overallDiscountAmount;
   final String? notes;
   final List<InvoiceItemModel> items;
 
@@ -25,6 +31,9 @@ class InvoiceModel extends Equatable {
     required this.totalGross,
     required this.totalDiscount,
     required this.totalNet,
+    this.overallDiscountType = 'none',
+    this.overallDiscountValue = 0.0,
+    this.overallDiscountAmount = 0.0,
     this.notes,
     this.items = const [],
   });
@@ -40,6 +49,9 @@ class InvoiceModel extends Equatable {
       totalGross: (map['total_gross'] as num).toDouble(),
       totalDiscount: (map['total_discount'] as num).toDouble(),
       totalNet: (map['total_net'] as num).toDouble(),
+      overallDiscountType: map['overall_discount_type'] as String? ?? 'none',
+      overallDiscountValue: (map['overall_discount_value'] as num?)?.toDouble() ?? 0.0,
+      overallDiscountAmount: (map['overall_discount_amount'] as num?)?.toDouble() ?? 0.0,
       notes: map['notes'] as String?,
       items: items ?? const [],
     );
@@ -55,6 +67,9 @@ class InvoiceModel extends Equatable {
       'total_gross': totalGross,
       'total_discount': totalDiscount,
       'total_net': totalNet,
+      'overall_discount_type': overallDiscountType,
+      'overall_discount_value': overallDiscountValue,
+      'overall_discount_amount': overallDiscountAmount,
       'notes': notes,
     };
   }
@@ -69,6 +84,9 @@ class InvoiceModel extends Equatable {
     double? totalGross,
     double? totalDiscount,
     double? totalNet,
+    String? overallDiscountType,
+    double? overallDiscountValue,
+    double? overallDiscountAmount,
     String? notes,
     List<InvoiceItemModel>? items,
   }) {
@@ -82,6 +100,9 @@ class InvoiceModel extends Equatable {
       totalGross: totalGross ?? this.totalGross,
       totalDiscount: totalDiscount ?? this.totalDiscount,
       totalNet: totalNet ?? this.totalNet,
+      overallDiscountType: overallDiscountType ?? this.overallDiscountType,
+      overallDiscountValue: overallDiscountValue ?? this.overallDiscountValue,
+      overallDiscountAmount: overallDiscountAmount ?? this.overallDiscountAmount,
       notes: notes ?? this.notes,
       items: items ?? this.items,
     );
@@ -98,6 +119,9 @@ class InvoiceModel extends Equatable {
         totalGross,
         totalDiscount,
         totalNet,
+        overallDiscountType,
+        overallDiscountValue,
+        overallDiscountAmount,
         notes,
         items,
       ];

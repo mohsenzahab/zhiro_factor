@@ -205,17 +205,21 @@ class _CustomerSearchFieldState extends State<_CustomerSearchField> {
 
   void _onFocusChanged() {
     if (!_focusNode.hasFocus) {
-      _hideOverlay();
-      // If no customer was selected, clear the field text to avoid ambiguity.
-      // The "Create Customer" option is available inside the suggestion overlay.
-      final text = _controller.text.trim();
-      if (text.isNotEmpty && (_selectedCustomer == null || _selectedCustomer!.name != text)) {
-        setState(() {
-          _selectedCustomer = null;
-          _controller.clear();
-        });
-        widget.onSelected(null);
-      }
+      // Delay hiding overlay to allow tap events on overlay items to fire
+      // before the overlay is removed from the widget tree.
+      Future.delayed(const Duration(milliseconds: 200), () {
+        if (!mounted) return;
+        _hideOverlay();
+        final text = _controller.text.trim();
+        // If text doesn't match a selected customer, clear the field.
+        if (text.isNotEmpty && (_selectedCustomer == null || _selectedCustomer!.name != text)) {
+          setState(() {
+            _selectedCustomer = null;
+            _controller.clear();
+          });
+          widget.onSelected(null);
+        }
+      });
     }
   }
 

@@ -136,6 +136,10 @@ class AppStrings {
   static const String customRange = 'بازه انتخابی';
   static const String selectDate = 'انتخاب تاریخ';
   static const String rowProfit = 'سود سطر';
+  static const String overallDiscount = 'تخفیف کل فاکتور';
+  static const String overallDiscountValue = 'مقدار تخفیف کل';
+  static const String subtotalBeforeOverallDiscount = 'جمع پس از تخفیف اقلام';
+  static const String finalPayable = 'مبلغ نهایی قابل پرداخت';
 
   // ─── Actions ────────────────────────────────────────────────────────
   static const String save = 'ذخیره';

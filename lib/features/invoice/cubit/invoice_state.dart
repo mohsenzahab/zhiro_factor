@@ -15,6 +15,12 @@ class InvoiceState extends Equatable {
   final bool isSaved;
   final String? errorMessage;
 
+  /// Invoice-level overall discount type: 'none', 'percentage', 'amount'
+  final String overallDiscountType;
+
+  /// The raw value entered by user (percentage number or fixed toman amount)
+  final double overallDiscountValue;
+
   const InvoiceState({
     this.editingInvoiceId,
     this.invoiceNumber = '',
@@ -26,6 +32,8 @@ class InvoiceState extends Equatable {
     this.isSaving = false,
     this.isSaved = false,
     this.errorMessage,
+    this.overallDiscountType = 'none',
+    this.overallDiscountValue = 0.0,
   });
 
   /// Total gross = sum of (unitPrice * quantity) for all items.
@@ -33,10 +41,26 @@ class InvoiceState extends Equatable {
     return items.fold(0.0, (sum, item) => sum + (item.unitPrice * item.quantity));
   }
 
-  /// Total discount = sum of discountCalculatedAmount for all items.
-  double get totalDiscount {
+  /// Total line-item discount = sum of discountCalculatedAmount for all items.
+  double get totalItemDiscount {
     return items.fold(0.0, (sum, item) => sum + item.discountCalculatedAmount);
   }
+
+  /// Subtotal after item-level discounts (before overall discount).
+  double get subtotalAfterItemDiscounts => totalGross - totalItemDiscount;
+
+  /// Calculated overall discount amount based on type and value.
+  double get overallDiscountAmount {
+    if (overallDiscountType == 'none' || overallDiscountValue <= 0) return 0.0;
+    if (overallDiscountType == 'percentage') {
+      return subtotalAfterItemDiscounts * (overallDiscountValue / 100.0);
+    }
+    // 'amount' — fixed toman value, capped at subtotal
+    return overallDiscountValue.clamp(0, subtotalAfterItemDiscounts);
+  }
+
+  /// Total discount = line-item discounts + overall discount.
+  double get totalDiscount => totalItemDiscount + overallDiscountAmount;
 
   /// Total net = totalGross - totalDiscount.
   double get totalNet => totalGross - totalDiscount;
@@ -54,6 +78,8 @@ class InvoiceState extends Equatable {
     bool? isSaved,
     String? errorMessage,
     bool clearError = false,
+    String? overallDiscountType,
+    double? overallDiscountValue,
   }) {
     return InvoiceState(
       editingInvoiceId: editingInvoiceId ?? this.editingInvoiceId,
@@ -66,6 +92,8 @@ class InvoiceState extends Equatable {
       isSaving: isSaving ?? this.isSaving,
       isSaved: isSaved ?? this.isSaved,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      overallDiscountType: overallDiscountType ?? this.overallDiscountType,
+      overallDiscountValue: overallDiscountValue ?? this.overallDiscountValue,
     );
   }
 
@@ -81,5 +109,7 @@ class InvoiceState extends Equatable {
         isSaving,
         isSaved,
         errorMessage,
+        overallDiscountType,
+        overallDiscountValue,
       ];
 }
