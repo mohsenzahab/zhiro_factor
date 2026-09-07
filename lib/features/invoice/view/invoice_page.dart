@@ -8,6 +8,7 @@ import '../cubit/invoice_cubit.dart';
 import '../cubit/invoice_state.dart';
 import 'widgets/invoice_header.dart';
 import 'widgets/product_search_dialog.dart';
+import 'widgets/preset_template_dialog.dart';
 import 'widgets/invoice_items_grid.dart';
 import 'widgets/invoice_footer.dart';
 
@@ -86,15 +87,6 @@ class _InvoiceView extends StatelessWidget {
                     _ShortcutBadge(label: 'Ctrl+S', description: AppStrings.save),
                     const SizedBox(width: 8),
                     _ShortcutBadge(label: 'F2', description: AppStrings.addItem),
-                    const SizedBox(width: 16),
-                    ElevatedButton.icon(
-                      onPressed: () => _addProduct(context),
-                      icon: const Icon(Icons.add_circle_outline, size: 20),
-                      label: const Text(AppStrings.addItem),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.accent,
-                      ),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 20),
@@ -106,6 +98,45 @@ class _InvoiceView extends StatelessWidget {
                 // ── Items Grid ────────────────────────────────────
                 Expanded(
                   child: const InvoiceItemsGrid(),
+                ),
+                const SizedBox(height: 8),
+
+                // ── Add Item & Load Template Buttons ──────────────
+                Row(
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: () => _addProduct(context),
+                      icon: const Icon(Icons.add_circle_outline, size: 20),
+                      label: const Text(AppStrings.addItem),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.accent,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    OutlinedButton.icon(
+                      onPressed: () => _loadTemplate(context),
+                      icon: const Icon(Icons.library_books_outlined, size: 18),
+                      label: const Text(AppStrings.loadTemplate),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.5)),
+                      ),
+                    ),
+                    const Spacer(),
+                    BlocBuilder<InvoiceCubit, InvoiceState>(
+                      builder: (context, state) {
+                        if (state.items.isEmpty) return const SizedBox.shrink();
+                        return TextButton.icon(
+                          onPressed: () => _saveAsTemplate(context),
+                          icon: const Icon(Icons.save_outlined, size: 18),
+                          label: const Text(AppStrings.saveAsTemplate),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.textMuted,
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
 
@@ -137,6 +168,28 @@ class _InvoiceView extends StatelessWidget {
       return;
     }
     await PdfService.printInvoice(context, state);
+  }
+
+  Future<void> _loadTemplate(BuildContext context) async {
+    final template = await PresetTemplateDialog.show(context);
+    if (template != null && context.mounted) {
+      context.read<InvoiceCubit>().loadFromTemplate(template);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.templateLoaded)),
+      );
+    }
+  }
+
+  Future<void> _saveAsTemplate(BuildContext context) async {
+    final name = await SaveAsTemplateDialog.show(context);
+    if (name != null && name.isNotEmpty && context.mounted) {
+      await context.read<InvoiceCubit>().saveAsTemplate(name);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text(AppStrings.templateSaved)),
+        );
+      }
+    }
   }
 }
 

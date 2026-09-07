@@ -174,4 +174,17 @@ class AppStrings {
   // ─── Customer Create ────────────────────────────────────────────────
   static const String createNewCustomer = 'ساخت مشتری جدید';
   static const String customerNotFound = 'مشتری یافت نشد، ایجاد کنید';
+
+  // ─── Preset Templates (Pre-Invoice) ─────────────────────────────
+  static const String presetTemplate = 'پیش‌فاکتور';
+  static const String presetTemplates = 'پیش‌فاکتورها';
+  static const String loadTemplate = 'بارگذاری پیش‌فاکتور';
+  static const String saveAsTemplate = 'ذخیره بعنوان پیش‌فاکتور';
+  static const String templateName = 'نام پیش‌فاکتور';
+  static const String templateSaved = 'پیش‌فاکتور با موفقیت ذخیره شد';
+  static const String templateLoaded = 'اقلام پیش‌فاکتور به فاکتور اضافه شدند';
+  static const String deleteTemplate = 'حذف پیش‌فاکتور';
+  static const String noTemplates = 'هیچ پیش‌فاکتوری ثبت نشده';
+  static const String enterTemplateName = 'نام پیش‌فاکتور را وارد کنید...';
+  static const String templateItems = 'اقلام';
 }

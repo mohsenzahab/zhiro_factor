@@ -206,36 +206,16 @@ class _CustomerSearchFieldState extends State<_CustomerSearchField> {
   void _onFocusChanged() {
     if (!_focusNode.hasFocus) {
       _hideOverlay();
-      // Validate: if text doesn't match a selected customer, clear or offer create
-      _validateAndResolve();
-    }
-  }
-
-  Future<void> _validateAndResolve() async {
-    final text = _controller.text.trim();
-    if (text.isEmpty) {
-      _selectedCustomer = null;
-      widget.onSelected(null);
-      return;
-    }
-
-    // If already selected and name matches, keep it
-    if (_selectedCustomer != null && _selectedCustomer!.name == text) {
-      return;
-    }
-
-    // Search for exact match
-    final matches = await _repo.getAll(query: text);
-    final exact = matches.where((c) => c.name == text).toList();
-    if (exact.isNotEmpty) {
-      _selectedCustomer = exact.first;
-      widget.onSelected(_selectedCustomer);
-      return;
-    }
-
-    // No exact match — offer to create
-    if (mounted) {
-      _showCreateCustomerDialog(text);
+      // If no customer was selected, clear the field text to avoid ambiguity.
+      // The "Create Customer" option is available inside the suggestion overlay.
+      final text = _controller.text.trim();
+      if (text.isNotEmpty && (_selectedCustomer == null || _selectedCustomer!.name != text)) {
+        setState(() {
+          _selectedCustomer = null;
+          _controller.clear();
+        });
+        widget.onSelected(null);
+      }
     }
   }
 

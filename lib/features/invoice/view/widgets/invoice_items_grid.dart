@@ -83,10 +83,27 @@ class InvoiceItemsGrid extends StatelessWidget {
                       DataCell(Text(item.productId?.toString() ?? '-')),
                       DataCell(Text(item.productName,
                           style: const TextStyle(fontWeight: FontWeight.w500))),
-                      // Quantity
-                      DataCell(_InlineNumberField(
-                        value: item.quantity,
-                        onChanged: (v) => context.read<InvoiceCubit>().updateItemQuantity(index, v),
+                      // Quantity with +/- buttons
+                      DataCell(Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _QuantityButton(
+                            icon: Icons.remove,
+                            onPressed: item.quantity > 1
+                                ? () => context.read<InvoiceCubit>().updateItemQuantity(
+                                      index, item.quantity - 1)
+                                : null,
+                          ),
+                          _InlineNumberField(
+                            value: item.quantity,
+                            onChanged: (v) => context.read<InvoiceCubit>().updateItemQuantity(index, v),
+                          ),
+                          _QuantityButton(
+                            icon: Icons.add,
+                            onPressed: () => context.read<InvoiceCubit>().updateItemQuantity(
+                                  index, item.quantity + 1),
+                          ),
+                        ],
                       )),
                       // Unit Price
                       DataCell(_InlineNumberField(
@@ -229,6 +246,30 @@ class _InlineNumberFieldState extends State<_InlineNumberField> {
           final parsed = double.tryParse(text.replaceAll(',', ''));
           if (parsed != null) widget.onChanged(parsed);
         },
+      ),
+    );
+  }
+}
+
+/// Compact +/- button for adjusting quantity.
+class _QuantityButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  const _QuantityButton({required this.icon, this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 28,
+      height: 28,
+      child: IconButton(
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(),
+        icon: Icon(icon, size: 16),
+        color: onPressed != null ? AppColors.primary : AppColors.textMuted,
+        onPressed: onPressed,
+        tooltip: icon == Icons.add ? 'افزایش تعداد' : 'کاهش تعداد',
       ),
     );
   }

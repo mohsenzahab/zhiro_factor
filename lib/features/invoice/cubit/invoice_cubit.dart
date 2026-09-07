@@ -3,12 +3,15 @@ import '../../../data/models/invoice_model.dart';
 import '../../../data/models/invoice_item_model.dart';
 import '../../../data/models/product_model.dart';
 import '../../../data/models/customer_model.dart';
+import '../../../data/models/preset_template_model.dart';
 import '../../../data/repositories/invoice_repository.dart';
+import '../../../data/repositories/preset_template_repository.dart';
 import '../../../core/utils/invoice_number_generator.dart';
 import 'invoice_state.dart';
 
 class InvoiceCubit extends Cubit<InvoiceState> {
   final InvoiceRepository _repository = InvoiceRepository();
+  final PresetTemplateRepository _templateRepo = PresetTemplateRepository();
 
   InvoiceCubit() : super(const InvoiceState());
 
@@ -149,6 +152,43 @@ class InvoiceCubit extends Cubit<InvoiceState> {
     } catch (e) {
       emit(state.copyWith(isSaving: false, errorMessage: e.toString()));
     }
+  }
+
+  /// Load items from a preset template and add them to the current invoice.
+  void loadFromTemplate(PresetTemplateModel template) {
+    final newItems = template.items.map((ti) {
+      return InvoiceItemModel(
+        productId: ti.productId,
+        productName: ti.productName,
+        unitPrice: ti.unitPrice,
+        quantity: ti.quantity,
+        discountType: 'none',
+        discountValue: 0.0,
+        discountCalculatedAmount: 0.0,
+        lineTotal: ti.unitPrice * ti.quantity,
+      );
+    }).toList();
+
+    emit(state.copyWith(items: [...state.items, ...newItems]));
+  }
+
+  /// Save current invoice items as a preset template.
+  Future<void> saveAsTemplate(String name) async {
+    final templateItems = state.items.map((item) {
+      return PresetTemplateItem(
+        productId: item.productId,
+        productName: item.productName,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+      );
+    }).toList();
+
+    final template = PresetTemplateModel(
+      name: name,
+      items: templateItems,
+    );
+
+    await _templateRepo.insert(template);
   }
 
   /// Reset to a fresh new invoice.

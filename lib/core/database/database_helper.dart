@@ -9,7 +9,7 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._();
 
   static Database? _database;
-  static const int _version = 4;
+  static const int _version = 5;
   static const String _dbName = 'zhirofactor.db';
 
   /// Returns the initialized database instance.
@@ -170,6 +170,29 @@ class DatabaseHelper {
     ''');
     await db.execute('CREATE INDEX idx_invoice_items_invoice ON invoice_items(invoice_id)');
     await db.execute('CREATE INDEX idx_invoice_items_product ON invoice_items(product_id)');
+
+    // ── Preset Templates Table ──────────────────────────────────────
+    await db.execute('''
+      CREATE TABLE preset_templates (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        created_at TEXT
+      )
+    ''');
+
+    // ── Preset Template Items Table ─────────────────────────────────
+    await db.execute('''
+      CREATE TABLE preset_template_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        template_id INTEGER NOT NULL,
+        product_id INTEGER,
+        product_name TEXT NOT NULL,
+        quantity REAL NOT NULL DEFAULT 1.0,
+        unit_price REAL NOT NULL DEFAULT 0.0,
+        FOREIGN KEY (template_id) REFERENCES preset_templates(id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute('CREATE INDEX idx_preset_items_template ON preset_template_items(template_id)');
   }
 
   Future<bool> _columnExists(Database db, String tableName, String columnName) async {
@@ -216,7 +239,28 @@ class DatabaseHelper {
       await _safeAddColumn(db, 'products', 'buy_date TEXT');
       await _safeAddColumn(db, 'products', 'supplier TEXT');
     }
-    // Future migrations: if (oldVersion < 5) { ... }
+    // Migration v4 → v5: add preset template tables
+    if (oldVersion < 5) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS preset_templates (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          created_at TEXT
+        )
+      ''');
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS preset_template_items (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          template_id INTEGER NOT NULL,
+          product_id INTEGER,
+          product_name TEXT NOT NULL,
+          quantity REAL NOT NULL DEFAULT 1.0,
+          unit_price REAL NOT NULL DEFAULT 0.0,
+          FOREIGN KEY (template_id) REFERENCES preset_templates(id) ON DELETE CASCADE
+        )
+      ''');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_preset_items_template ON preset_template_items(template_id)');
+    }
   }
 
   /// Closes the database connection.
