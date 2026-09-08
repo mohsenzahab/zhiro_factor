@@ -79,6 +79,7 @@ class _DashboardView extends StatelessWidget {
 
                 // ── KPI Cards ───────────────────────────────────
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Gross Sales (Settled)
                     Expanded(
@@ -88,6 +89,16 @@ class _DashboardView extends StatelessWidget {
                         subtitle: 'تسویه‌شده',
                         icon: Icons.receipt_long,
                         gradient: AppColors.kpiCardGradient1,
+                        details: [
+                          KpiDetailItem(
+                            label: AppStrings.totalInitialBuyCost,
+                            value: state.totalInitialBuyCost.toman,
+                          ),
+                          KpiDetailItem(
+                            label: AppStrings.totalCurrentBuyCost,
+                            value: state.totalCurrentBuyCost.toman,
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -97,9 +108,21 @@ class _DashboardView extends StatelessWidget {
                       child: KpiCard(
                         label: AppStrings.netProfit,
                         value: state.totalProfit.toman,
-                        subtitle: 'سود واقعی',
+                        subtitle: state.profitPercentOfSales > 0
+                            ? '${state.profitPercentOfSales.toStringAsFixed(1)}٪ سود'
+                            : 'سود واقعی',
                         icon: Icons.trending_up,
                         gradient: AppColors.kpiCardGradient2,
+                        details: [
+                          KpiDetailItem(
+                            label: AppStrings.profitPercentSales,
+                            value: '${state.profitPercentOfSales.toStringAsFixed(1)}٪',
+                          ),
+                          KpiDetailItem(
+                            label: AppStrings.profitPercentCost,
+                            value: '${state.profitPercentOfCost.toStringAsFixed(1)}٪',
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -112,6 +135,18 @@ class _DashboardView extends StatelessWidget {
                         subtitle: '${state.pendingCount} فاکتور',
                         icon: Icons.pending_actions,
                         gradient: AppColors.kpiCardGradient4,
+                        details: [
+                          KpiDetailItem(
+                            label: 'تعداد فاکتورها',
+                            value: '${state.pendingCount.formattedInt} مورد',
+                          ),
+                          KpiDetailItem(
+                            label: 'میانگین هر فاکتور',
+                            value: state.pendingCount > 0
+                                ? (state.pendingAmount / state.pendingCount).toman
+                                : '۰ تومان',
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -121,9 +156,21 @@ class _DashboardView extends StatelessWidget {
                       child: KpiCard(
                         label: AppStrings.settledDiscounts,
                         value: state.totalDiscounts.toman,
-                        subtitle: 'تسویه‌شده',
+                        subtitle: state.discountPercentOfSales > 0
+                            ? '${state.discountPercentOfSales.toStringAsFixed(1)}٪ تخفیف'
+                            : 'تسویه‌شده',
                         icon: Icons.discount_outlined,
                         gradient: AppColors.kpiCardGradient3,
+                        details: [
+                          KpiDetailItem(
+                            label: AppStrings.discountPercentSales,
+                            value: '${state.discountPercentOfSales.toStringAsFixed(1)}٪',
+                          ),
+                          KpiDetailItem(
+                            label: AppStrings.netSalesAfterDiscount,
+                            value: state.netSales.toman,
+                          ),
+                        ],
                       ),
                     ),
                   ],

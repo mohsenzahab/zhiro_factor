@@ -113,6 +113,12 @@ class AppStrings {
   static const String totalGrossSales = 'فروش ناخالص';
   static const String totalNetRevenue = 'درآمد خالص';
   static const String netProfit = 'سود خالص';
+  static const String totalInitialBuyCost = 'مجموع هزینه خرید';
+  static const String totalCurrentBuyCost = 'هزینه خرید کنونی';
+  static const String profitPercentSales = 'درصد سود از فروش';
+  static const String profitPercentCost = 'درصد سود روی خرید';
+  static const String discountPercentSales = 'درصد تخفیف از فروش';
+  static const String netSalesAfterDiscount = 'فروش پس از تخفیف';
   static const String pendingAndDeposit = 'مطالبات معلق و بیعانه';
   static const String settledDiscounts = 'تخفیفات تسویه‌شده';
   static const String outstandingInvoices = 'فاکتورهای معلق';

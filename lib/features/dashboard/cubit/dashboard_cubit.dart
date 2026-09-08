@@ -47,9 +47,11 @@ class DashboardCubit extends Cubit<DashboardState> {
         _repo.bestSellersByVolume(dateFrom: effectiveFrom, dateTo: effectiveTo),
         _repo.bestSellersByRevenue(dateFrom: effectiveFrom, dateTo: effectiveTo),
         _repo.recentInvoices(dateFrom: effectiveFrom, dateTo: effectiveTo),
+        _repo.totalBuyCosts(dateFrom: effectiveFrom, dateTo: effectiveTo),
       ]);
 
       final pending = results[3] as Map<String, dynamic>;
+      final buyCosts = results[7] as ({double initialCost, double currentCost});
 
       emit(state.copyWith(
         isLoading: false,
@@ -61,6 +63,8 @@ class DashboardCubit extends Cubit<DashboardState> {
         bestSellersByVolume: results[4] as List<Map<String, dynamic>>,
         bestSellersByRevenue: results[5] as List<Map<String, dynamic>>,
         recentInvoices: results[6] as List<Map<String, dynamic>>,
+        totalInitialBuyCost: buyCosts.initialCost,
+        totalCurrentBuyCost: buyCosts.currentCost,
       ));
     } catch (e) {
       emit(state.copyWith(isLoading: false));

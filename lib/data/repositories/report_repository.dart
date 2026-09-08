@@ -70,6 +70,40 @@ class ReportRepository {
     return (result.first['total'] as num).toDouble();
   }
 
+  /// KPI: Buy costs breakdown for settled invoices (initial buy cost and current replacement cost).
+  Future<({double initialCost, double currentCost})> totalBuyCosts({
+    String? dateFrom,
+    String? dateTo,
+  }) async {
+    final db = await _dbHelper.database;
+    String sql = '''
+      SELECT 
+        COALESCE(SUM(ii.quantity * COALESCE(p.buy_price, 0)), 0) as initial_cost,
+        COALESCE(SUM(ii.quantity * COALESCE(NULLIF(p.current_buy_price, 0), p.buy_price, 0)), 0) as current_cost
+      FROM invoice_items ii
+      JOIN invoices i ON ii.invoice_id = i.id
+      LEFT JOIN products p ON ii.product_id = p.id
+      WHERE i.status = 'تسویه شده'
+    ''';
+    final args = <dynamic>[];
+
+    if (dateFrom != null && dateFrom.isNotEmpty) {
+      sql += ' AND i.date >= ?';
+      args.add(dateFrom);
+    }
+    if (dateTo != null && dateTo.isNotEmpty) {
+      sql += ' AND i.date <= ?';
+      args.add(dateTo);
+    }
+
+    final result = await db.rawQuery(sql, args);
+    final row = result.first;
+    return (
+      initialCost: (row['initial_cost'] as num).toDouble(),
+      currentCost: (row['current_cost'] as num).toDouble(),
+    );
+  }
+
   /// KPI: Summary of pending and deposit invoices (unsettled amounts and count).
   Future<Map<String, dynamic>> pendingSummary({String? dateFrom, String? dateTo}) async {
     final db = await _dbHelper.database;
