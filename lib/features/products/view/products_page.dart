@@ -8,6 +8,7 @@ import '../../../shared/widgets/search_field.dart';
 import '../../../shared/widgets/confirm_dialog.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../services/import_service.dart';
+import '../../../services/export_service.dart';
 import '../../../data/models/product_model.dart';
 import '../../../data/repositories/product_repository.dart';
 import '../cubit/product_cubit.dart';
@@ -79,6 +80,37 @@ class _ProductsViewState extends State<_ProductsView> {
                 itemBuilder: (_) => [
                   const PopupMenuItem(value: 'csv', child: Text(AppStrings.importFromCsv)),
                   const PopupMenuItem(value: 'excel', child: Text(AppStrings.importFromExcel)),
+                ],
+              ),
+              const SizedBox(width: 8),
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.file_download_outlined, color: AppColors.primary),
+                tooltip: AppStrings.exportProducts,
+                onSelected: (value) {
+                  if (value == 'excel') _exportExcel(context);
+                  if (value == 'csv') _exportCsv(context);
+                },
+                itemBuilder: (_) => [
+                  const PopupMenuItem(
+                    value: 'excel',
+                    child: Row(
+                      children: [
+                        Icon(Icons.table_chart_outlined, size: 18, color: Colors.green),
+                        SizedBox(width: 8),
+                        Text(AppStrings.exportProductsExcel),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'csv',
+                    child: Row(
+                      children: [
+                        Icon(Icons.description_outlined, size: 18, color: Colors.blueGrey),
+                        SizedBox(width: 8),
+                        Text(AppStrings.exportProductsCsv),
+                      ],
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(width: 8),
@@ -674,6 +706,13 @@ class _ProductsViewState extends State<_ProductsView> {
             label: const Text(AppStrings.applyProfitMargin),
           ),
           const SizedBox(width: 8),
+          // Export selected products
+          FilledButton.tonalIcon(
+            onPressed: () => _exportExcel(context),
+            icon: const Icon(Icons.file_download_outlined, size: 18),
+            label: const Text(AppStrings.exportExcel),
+          ),
+          const SizedBox(width: 8),
           // Move to Category
           FilledButton.tonalIcon(
             onPressed: () => _batchMoveCategory(context, allProducts),
@@ -943,6 +982,86 @@ class _ProductsViewState extends State<_ProductsView> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('خطا: ${e.toString()}')),
+        );
+      }
+    }
+  }
+
+  List<ProductModel> _getProductsToExport(BuildContext context) {
+    final state = context.read<ProductCubit>().state;
+    if (state is! ProductLoaded || state.products.isEmpty) return [];
+
+    if (_selectedIds.isNotEmpty) {
+      return state.products.where((p) => p.id != null && _selectedIds.contains(p.id!)).toList();
+    }
+    if (_selectedCategory != null) {
+      return state.products.where((p) {
+        if (_selectedCategory == '__uncategorized__') {
+          return p.category == null || p.category!.trim().isEmpty;
+        }
+        return p.category?.trim() == _selectedCategory;
+      }).toList();
+    }
+    return state.products;
+  }
+
+  Future<void> _exportExcel(BuildContext context) async {
+    final products = _getProductsToExport(context);
+    if (products.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('کالایی برای خروجی یافت نشد')),
+      );
+      return;
+    }
+
+    try {
+      await ExportService.exportProductsExcel(products);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('خروجی اکسل با موفقیت انجام شد (${products.length.formattedInt} کالا)'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('خطا در ذخیره فایل اکسل: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _exportCsv(BuildContext context) async {
+    final products = _getProductsToExport(context);
+    if (products.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('کالایی برای خروجی یافت نشد')),
+      );
+      return;
+    }
+
+    try {
+      await ExportService.exportProductsCsv(products);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('خروجی CSV با موفقیت انجام شد (${products.length.formattedInt} کالا)'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('خطا در ذخیره فایل CSV: $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     }

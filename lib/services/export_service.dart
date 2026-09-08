@@ -1,11 +1,101 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:excel_plus/excel_plus.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:path/path.dart' as p;
+import '../data/models/product_model.dart';
 
 /// Service for exporting data to Excel and CSV files.
 class ExportService {
   ExportService._();
+
+  /// Export products list to Excel (.xlsx).
+  static Future<void> exportProductsExcel(List<ProductModel> products) async {
+    if (products.isEmpty) throw Exception('داده‌ای برای خروجی وجود ندارد');
+
+    final excel = Excel.createExcel();
+    final sheet = excel['لیست کالاها'];
+
+    // Header row
+    sheet.appendRow([
+      TextCellValue('ردیف'),
+      TextCellValue('کد کالا'),
+      TextCellValue('نام کالا'),
+      TextCellValue('دسته‌بندی'),
+      TextCellValue('قیمت خرید'),
+      TextCellValue('قیمت فروش'),
+      TextCellValue('واحد'),
+      TextCellValue('موجودی'),
+      TextCellValue('سود هر واحد'),
+      TextCellValue('درصد سود'),
+      TextCellValue('تعداد فروخته شده'),
+      TextCellValue('تامین‌کننده'),
+    ]);
+
+    // Data rows
+    for (var i = 0; i < products.length; i++) {
+      final p = products[i];
+      sheet.appendRow([
+        IntCellValue(i + 1),
+        TextCellValue(p.code ?? ''),
+        TextCellValue(p.name),
+        TextCellValue(p.category ?? ''),
+        DoubleCellValue(p.effectiveBuyPrice),
+        DoubleCellValue(p.effectivePrice),
+        TextCellValue(p.unit),
+        p.isInfiniteStock
+            ? TextCellValue('نامحدود')
+            : DoubleCellValue(p.stock ?? 0),
+        DoubleCellValue(p.profitAmount),
+        DoubleCellValue(double.parse(p.profitPercent.toStringAsFixed(1))),
+        DoubleCellValue(p.totalSold),
+        TextCellValue(p.supplier ?? ''),
+      ]);
+    }
+
+    // Remove default sheet
+    if (excel.sheets.containsKey('Sheet1')) {
+      excel.delete('Sheet1');
+    }
+
+    final bytes = excel.encode();
+    if (bytes == null) throw Exception('خطا در ساخت فایل اکسل');
+
+    await _saveFile(bytes, 'لیست_کالاها.xlsx', ['xlsx']);
+  }
+
+  /// Export products list to CSV.
+  static Future<void> exportProductsCsv(List<ProductModel> products) async {
+    if (products.isEmpty) throw Exception('داده‌ای برای خروجی وجود ندارد');
+
+    final buffer = StringBuffer();
+    // BOM for Excel UTF-8 compatibility
+    buffer.write('\uFEFF');
+
+    // Header
+    buffer.writeln('ردیف,کد کالا,نام کالا,دسته‌بندی,قیمت خرید,قیمت فروش,واحد,موجودی,سود هر واحد,درصد سود,تعداد فروخته شده,تامین‌کننده');
+
+    // Data
+    for (var i = 0; i < products.length; i++) {
+      final p = products[i];
+      buffer.writeln([
+        i + 1,
+        _csvEscape(p.code ?? ''),
+        _csvEscape(p.name),
+        _csvEscape(p.category ?? ''),
+        p.effectiveBuyPrice,
+        p.effectivePrice,
+        _csvEscape(p.unit),
+        p.isInfiniteStock ? 'نامحدود' : (p.stock ?? 0),
+        p.profitAmount,
+        p.profitPercent.toStringAsFixed(1),
+        p.totalSold,
+        _csvEscape(p.supplier ?? ''),
+      ].join(','));
+    }
+
+    final bytes = utf8.encode(buffer.toString());
+    await _saveFile(bytes, 'لیست_کالاها.csv', ['csv']);
+  }
 
   /// Export sales ledger data to Excel (.xlsx).
   static Future<void> exportExcel(List<Map<String, dynamic>> data) async {
@@ -88,7 +178,7 @@ class ExportService {
       ].join(','));
     }
 
-    final bytes = buffer.toString().codeUnits;
+    final bytes = utf8.encode(buffer.toString());
     await _saveFile(bytes, 'گزارش_فروش.csv', ['csv']);
   }
 
@@ -108,7 +198,11 @@ class ExportService {
     );
 
     if (result != null) {
-      final file = File(result);
+      String filePath = result;
+      if (extensions.isNotEmpty && !filePath.toLowerCase().endsWith('.${extensions.first.toLowerCase()}')) {
+        filePath = '$filePath.${extensions.first}';
+      }
+      final file = File(filePath);
       await file.writeAsBytes(bytes);
     }
   }

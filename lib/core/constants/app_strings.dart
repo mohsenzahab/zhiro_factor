@@ -120,6 +120,9 @@ class AppStrings {
   static const String salesLedger = 'ریز اقلام فروش رفته';
   static const String exportExcel = 'خروجی اکسل';
   static const String exportCsv = 'خروجی CSV';
+  static const String exportProducts = 'خروجی فایل کالاها';
+  static const String exportProductsExcel = 'خروجی اکسل کالاها';
+  static const String exportProductsCsv = 'خروجی CSV کالاها';
   static const String filterByDate = 'فیلتر بر اساس تاریخ';
   static const String filterByCustomer = 'فیلتر بر اساس مشتری';
   static const String filterByStatus = 'فیلتر بر اساس وضعیت';
