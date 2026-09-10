@@ -79,8 +79,8 @@ class InvoiceItemsGrid extends StatelessWidget {
                       index.isEven ? AppColors.tableRowEven : AppColors.tableRowOdd,
                     ),
                     cells: [
-                      DataCell(Text('${index + 1}')),
-                      DataCell(Text(item.productId?.toString() ?? '-')),
+                      DataCell(Text('${index + 1}'.toPersianDigits())),
+                      DataCell(Text(item.productId != null ? item.productId.toString().toPersianDigits() : '-')),
                       DataCell(Text(item.productName,
                           style: const TextStyle(fontWeight: FontWeight.w500))),
                       // Quantity with +/- buttons
@@ -205,8 +205,8 @@ class _InlineNumberFieldState extends State<_InlineNumberField> {
   }
 
   String _format(double v) {
-    if (v == v.toInt().toDouble()) return v.toInt().toString();
-    return v.toStringAsFixed(1);
+    if (v == v.toInt().toDouble()) return v.toInt().toString().toPersianDigits();
+    return v.toStringAsFixed(1).toPersianDigits();
   }
 
   @override
@@ -243,7 +243,7 @@ class _InlineNumberFieldState extends State<_InlineNumberField> {
           ),
         ),
         onChanged: (text) {
-          final parsed = double.tryParse(text.replaceAll(',', ''));
+          final parsed = double.tryParse(text.toEnglishDigits().replaceAll(',', ''));
           if (parsed != null) widget.onChanged(parsed);
         },
       ),

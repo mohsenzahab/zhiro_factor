@@ -6,6 +6,7 @@ import '../../features/invoice_history/view/invoice_history_page.dart';
 import '../../features/products/view/products_page.dart';
 import '../../features/customers/view/customers_page.dart';
 import '../../features/dashboard/view/dashboard_page.dart';
+import '../../features/settings/view/settings_page.dart';
 
 /// Main application shell with sidebar and page switching.
 class AppScaffold extends StatefulWidget {
@@ -98,6 +99,10 @@ class AppScaffoldState extends State<AppScaffold> {
         );
       case NavPage.dashboard:
         return const DashboardPage();
+      case NavPage.settings:
+        return SettingsPage(
+          onSettingsSaved: () => setState(() {}),
+        );
     }
   }
 }

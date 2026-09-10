@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
+import '../../data/repositories/settings_repository.dart';
 
 /// Navigation page enum.
 enum NavPage {
@@ -9,6 +10,7 @@ enum NavPage {
   products,
   customers,
   dashboard,
+  settings,
 }
 
 /// Sidebar navigation item data.
@@ -57,6 +59,12 @@ const _navItems = <_NavItem>[
     activeIcon: Icons.dashboard,
     label: AppStrings.navDashboard,
   ),
+  _NavItem(
+    page: NavPage.settings,
+    icon: Icons.settings_outlined,
+    activeIcon: Icons.settings,
+    label: AppStrings.navSettings,
+  ),
 ];
 
 /// Collapsible RTL sidebar navigation.
@@ -78,6 +86,7 @@ class _SidebarNavState extends State<SidebarNav> with SingleTickerProviderStateM
   bool _expanded = true;
   late final AnimationController _animController;
   late final Animation<double> _widthAnim;
+  String _businessName = '';
 
   static const double _expandedWidth = 220;
   static const double _collapsedWidth = 68;
@@ -92,6 +101,21 @@ class _SidebarNavState extends State<SidebarNav> with SingleTickerProviderStateM
     _widthAnim = Tween<double>(begin: _expandedWidth, end: _collapsedWidth).animate(
       CurvedAnimation(parent: _animController, curve: Curves.easeInOut),
     );
+    _loadBusinessName();
+  }
+
+  @override
+  void didUpdateWidget(covariant SidebarNav oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Refresh business name when parent rebuilds (e.g. after settings save)
+    _loadBusinessName();
+  }
+
+  Future<void> _loadBusinessName() async {
+    final name = await SettingsRepository.instance.getBusinessName();
+    if (mounted && name != _businessName) {
+      setState(() => _businessName = name);
+    }
   }
 
   @override
@@ -176,7 +200,7 @@ class _SidebarNavState extends State<SidebarNav> with SingleTickerProviderStateM
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    AppStrings.appTitle,
+                    _businessName.isNotEmpty ? _businessName : AppStrings.appTitle,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary,

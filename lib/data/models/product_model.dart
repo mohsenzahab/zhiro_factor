@@ -51,7 +51,7 @@ class ProductModel extends Equatable {
   String get profitAmountDisplay => '${profitAmount >= 0 ? '+' : ''}${profitAmount.round().formatted} تومان';
 
   /// Formatted profit percent display (e.g. "۲۵٪").
-  String get profitPercentDisplay => '${profitPercent.toStringAsFixed(profitPercent % 1 == 0 ? 0 : 1)}٪';
+  String get profitPercentDisplay => profitPercent.percentDisplay;
 
   /// User-facing string representation of total units sold.
   String get totalSoldDisplay => totalSold == totalSold.roundToDouble() ? totalSold.toInt().formattedInt : totalSold.formatted;

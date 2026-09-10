@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_strings.dart';
 import '../../../../core/extensions/number_extensions.dart';
 import '../../../../data/models/invoice_model.dart';
 import '../../../../data/models/invoice_item_model.dart';
@@ -61,7 +60,7 @@ class _InvoiceDetailPanelState extends State<InvoiceDetailPanel> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'اقلام فاکتور ${widget.invoice.invoiceNumber}',
+            'اقلام فاکتور ${widget.invoice.invoiceNumber.toPersianDigits()}',
             style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
           ),
           const SizedBox(height: 8),
@@ -95,7 +94,7 @@ class _InvoiceDetailPanelState extends State<InvoiceDetailPanel> {
                     color: i.isEven ? AppColors.tableRowEven : AppColors.tableRowOdd,
                   ),
                   children: [
-                    _dataCell('${i + 1}'),
+                    _dataCell('${i + 1}'.toPersianDigits()),
                     _dataCell(item.productName),
                     _dataCell(item.quantity.formattedInt),
                     _dataCell(item.unitPrice.formatted),

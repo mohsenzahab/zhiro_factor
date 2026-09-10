@@ -100,7 +100,7 @@ class BestSellersChart extends StatelessWidget {
                 ),
                 child: Center(
                   child: Text(
-                    '${index + 1}',
+                    (index + 1).toString().toPersianDigits(),
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,

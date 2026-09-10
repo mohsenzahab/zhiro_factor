@@ -261,8 +261,8 @@ class _OverallDiscountFieldState extends State<_OverallDiscountField> {
 
   String _format(double v) {
     if (v == 0) return '';
-    if (v == v.toInt().toDouble()) return v.toInt().toString();
-    return v.toStringAsFixed(1);
+    if (v == v.toInt().toDouble()) return v.toInt().toString().toPersianDigits();
+    return v.toStringAsFixed(1).toPersianDigits();
   }
 
   @override
@@ -300,7 +300,7 @@ class _OverallDiscountFieldState extends State<_OverallDiscountField> {
         ),
       ),
       onChanged: (text) {
-        final parsed = double.tryParse(text.replaceAll(',', ''));
+        final parsed = double.tryParse(text.toEnglishDigits().replaceAll(',', ''));
         widget.onChanged(parsed ?? 0.0);
       },
     );

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
@@ -6,8 +7,10 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../core/extensions/number_extensions.dart';
 import '../core/utils/jalali_utils.dart';
+import '../data/models/business_settings_model.dart';
 import '../data/models/invoice_model.dart';
 import '../data/repositories/invoice_repository.dart';
+import '../data/repositories/settings_repository.dart';
 import '../features/invoice/cubit/invoice_state.dart';
 
 /// Service for generating and printing invoice PDFs.
@@ -32,8 +35,14 @@ class PdfService {
     await Printing.layoutPdf(onLayout: (_) => pdfData);
   }
 
+  /// Generate PDF bytes from an invoice model (exposed for testing).
+  @visibleForTesting
+  static Future<Uint8List> generateFromModelForTesting(InvoiceModel invoice) =>
+      _generateFromModel(invoice);
+
   static Future<Uint8List> _generateFromState(InvoiceState state) async {
     final fonts = await _loadFonts();
+    final bizSettings = await SettingsRepository.instance.loadSettings();
     final pdf = pw.Document(
       theme: pw.ThemeData.withFont(
         base: fonts.regular,
@@ -45,46 +54,44 @@ class PdfService {
         ? JalaliUtils.format(JalaliUtils.fromIso(state.date))
         : '---';
 
+    final watermarkName = bizSettings.showNameOnInvoice && bizSettings.businessName.isNotEmpty
+        ? bizSettings.businessName
+        : 'ژیروفاکتور';
+
+    // Description widget (if enabled)
+    final descriptionWidget = _buildDescriptionBlock(fonts, bizSettings);
+
+    final pageTheme = pw.PageTheme(
+      pageFormat: PdfPageFormat.a4,
+      textDirection: pw.TextDirection.rtl,
+      margin: const pw.EdgeInsets.all(24),
+      buildBackground: (context) => _buildWatermark(fonts, watermarkName),
+    );
+
     pdf.addPage(
       pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        textDirection: pw.TextDirection.rtl,
-        margin: const pw.EdgeInsets.all(24),
+        pageTheme: pageTheme,
         header: (context) {
           if (context.pageNumber == 1) {
             return pw.Container(
               margin: const pw.EdgeInsets.only(bottom: 14),
-              child: _buildPdfHeader(fonts, state.invoiceNumber, jalaliDate,
-                  state.selectedCustomer?.name ?? '---', state.status),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  _buildPdfHeader(fonts, state.invoiceNumber, jalaliDate,
+                      state.selectedCustomer?.name ?? '---', state.status, bizSettings),
+                  // Description at top (after header, before items)
+                  if (descriptionWidget != null && bizSettings.descriptionPosition == 'top') ...[
+                    pw.SizedBox(height: 8),
+                    descriptionWidget,
+                  ],
+                ],
+              ),
             );
           }
-          return pw.Container(
-            margin: const pw.EdgeInsets.only(bottom: 10),
-            padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-            decoration: const pw.BoxDecoration(
-              border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5)),
-            ),
-            child: pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                pw.Text('ژیروفاکتور (ادامه فاکتور)',
-                    style: pw.TextStyle(font: fonts.bold, fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.grey700)),
-                pw.Text('شماره فاکتور: ${state.invoiceNumber}  |  صفحه ${context.pageNumber}',
-                    style: pw.TextStyle(font: fonts.regular, fontSize: 9, color: PdfColors.grey600)),
-              ],
-            ),
-          );
+          return _buildContinuationHeader(fonts, watermarkName, state.invoiceNumber, context.pageNumber);
         },
-        footer: (context) {
-          return pw.Container(
-            margin: const pw.EdgeInsets.only(top: 8),
-            alignment: pw.Alignment.center,
-            child: pw.Text(
-              'صفحه ${context.pageNumber} از ${context.pagesCount}',
-              style: pw.TextStyle(font: fonts.regular, fontSize: 8, color: PdfColors.grey600),
-            ),
-          );
-        },
+        footer: (context) => _buildFooter(fonts, context),
         build: (context) {
           return [
             _buildItemsTable(fonts, state.items.map((item) => {
@@ -111,6 +118,11 @@ class PdfService {
               pw.Text('یادداشت: ${state.notes}',
                   style: pw.TextStyle(font: fonts.regular, fontSize: 10, color: PdfColors.grey700)),
             ],
+            // Description at bottom (after totals)
+            if (descriptionWidget != null && bizSettings.descriptionPosition == 'bottom') ...[
+              pw.SizedBox(height: 14),
+              descriptionWidget,
+            ],
           ];
         },
       ),
@@ -121,6 +133,7 @@ class PdfService {
 
   static Future<Uint8List> _generateFromModel(InvoiceModel invoice) async {
     final fonts = await _loadFonts();
+    final bizSettings = await SettingsRepository.instance.loadSettings();
     final pdf = pw.Document(
       theme: pw.ThemeData.withFont(
         base: fonts.regular,
@@ -131,46 +144,42 @@ class PdfService {
     final jalaliDate = JalaliUtils.format(JalaliUtils.fromIso(invoice.date));
     final itemDiscount = (invoice.totalDiscount - invoice.overallDiscountAmount).clamp(0.0, double.infinity);
 
+    final watermarkName = bizSettings.showNameOnInvoice && bizSettings.businessName.isNotEmpty
+        ? bizSettings.businessName
+        : 'ژیروفاکتور';
+
+    final descriptionWidget = _buildDescriptionBlock(fonts, bizSettings);
+
+    final pageTheme = pw.PageTheme(
+      pageFormat: PdfPageFormat.a4,
+      textDirection: pw.TextDirection.rtl,
+      margin: const pw.EdgeInsets.all(24),
+      buildBackground: (context) => _buildWatermark(fonts, watermarkName),
+    );
+
     pdf.addPage(
       pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        textDirection: pw.TextDirection.rtl,
-        margin: const pw.EdgeInsets.all(24),
+        pageTheme: pageTheme,
         header: (context) {
           if (context.pageNumber == 1) {
             return pw.Container(
               margin: const pw.EdgeInsets.only(bottom: 14),
-              child: _buildPdfHeader(fonts, invoice.invoiceNumber, jalaliDate,
-                  invoice.customerName ?? '---', invoice.status),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  _buildPdfHeader(fonts, invoice.invoiceNumber, jalaliDate,
+                      invoice.customerName ?? '---', invoice.status, bizSettings),
+                  if (descriptionWidget != null && bizSettings.descriptionPosition == 'top') ...[
+                    pw.SizedBox(height: 8),
+                    descriptionWidget,
+                  ],
+                ],
+              ),
             );
           }
-          return pw.Container(
-            margin: const pw.EdgeInsets.only(bottom: 10),
-            padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-            decoration: const pw.BoxDecoration(
-              border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5)),
-            ),
-            child: pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                pw.Text('ژیروفاکتور (ادامه فاکتور)',
-                    style: pw.TextStyle(font: fonts.bold, fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.grey700)),
-                pw.Text('شماره فاکتور: ${invoice.invoiceNumber}  |  صفحه ${context.pageNumber}',
-                    style: pw.TextStyle(font: fonts.regular, fontSize: 9, color: PdfColors.grey600)),
-              ],
-            ),
-          );
+          return _buildContinuationHeader(fonts, watermarkName, invoice.invoiceNumber, context.pageNumber);
         },
-        footer: (context) {
-          return pw.Container(
-            margin: const pw.EdgeInsets.only(top: 8),
-            alignment: pw.Alignment.center,
-            child: pw.Text(
-              'صفحه ${context.pageNumber} از ${context.pagesCount}',
-              style: pw.TextStyle(font: fonts.regular, fontSize: 8, color: PdfColors.grey600),
-            ),
-          );
-        },
+        footer: (context) => _buildFooter(fonts, context),
         build: (context) {
           return [
             _buildItemsTable(fonts, invoice.items.map((item) => {
@@ -197,6 +206,10 @@ class PdfService {
               pw.Text('یادداشت: ${invoice.notes}',
                   style: pw.TextStyle(font: fonts.regular, fontSize: 10, color: PdfColors.grey700)),
             ],
+            if (descriptionWidget != null && bizSettings.descriptionPosition == 'bottom') ...[
+              pw.SizedBox(height: 14),
+              descriptionWidget,
+            ],
           ];
         },
       ),
@@ -204,6 +217,8 @@ class PdfService {
 
     return pdf.save();
   }
+
+  // ── Font Loading ────────────────────────────────────────────────────
 
   static Future<({pw.Font regular, pw.Font bold})> _loadFonts() async {
     if (_cachedRegularFont != null && _cachedBoldFont != null) {
@@ -213,7 +228,7 @@ class PdfService {
     pw.Font? regular;
     pw.Font? bold;
 
-    // 1. Try bundled assets (fastest & works completely offline)
+    // 1. Vazirmatn bundled assets (primary — standard Unicode with full Persian & Latin support)
     try {
       final regData = await rootBundle.load('assets/fonts/Vazirmatn-Regular.ttf');
       regular = pw.Font.ttf(regData);
@@ -236,7 +251,7 @@ class PdfService {
       } catch (_) {}
     }
 
-    // 3. Fallback to Windows system font (Tahoma)
+    // 4. Fallback to Windows system font (Tahoma)
     if (Platform.isWindows && (regular == null || bold == null)) {
       try {
         final tahoma = File(r'C:\Windows\Fonts\tahoma.ttf');
@@ -249,7 +264,7 @@ class PdfService {
       } catch (_) {}
     }
 
-    // 4. Ultimate fallback
+    // 5. Ultimate fallback
     regular ??= pw.Font.helvetica();
     bold ??= regular;
 
@@ -259,8 +274,84 @@ class PdfService {
     return (regular: regular, bold: bold);
   }
 
+  // ── PDF Building Blocks ─────────────────────────────────────────────
+
+  /// Build a diagonal watermark with the business name.
+  static pw.Widget _buildWatermark(({pw.Font regular, pw.Font bold}) fonts, String text) {
+    return pw.FullPage(
+      ignoreMargins: true,
+      child: pw.Center(
+        child: pw.Transform.rotate(
+          angle: -math.pi / 6, // ~30 degrees diagonal
+          child: pw.Opacity(
+            opacity: 0.06,
+            child: pw.Text(
+              text,
+              style: pw.TextStyle(
+                font: fonts.bold,
+                fontSize: 72,
+                fontWeight: pw.FontWeight.bold,
+                color: PdfColors.grey,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Build description block (no label, just the text).
+  static pw.Widget? _buildDescriptionBlock(
+      ({pw.Font regular, pw.Font bold}) fonts, BusinessSettingsModel bizSettings) {
+    if (!bizSettings.showDescriptionOnInvoice || bizSettings.description.isEmpty) {
+      return null;
+    }
+    return pw.Container(
+      width: double.infinity,
+      padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      child: pw.Text(
+        bizSettings.description,
+        style: pw.TextStyle(font: fonts.regular, fontSize: 8.5, color: PdfColors.grey700, lineSpacing: 4),
+      ),
+    );
+  }
+
+  /// Continuation header for pages 2+.
+  static pw.Widget _buildContinuationHeader(
+      ({pw.Font regular, pw.Font bold}) fonts, String brandName, String invoiceNumber, int pageNumber) {
+    return pw.Container(
+      margin: const pw.EdgeInsets.only(bottom: 10),
+      padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      decoration: const pw.BoxDecoration(
+        border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5)),
+      ),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Text('$brandName (ادامه فاکتور)',
+              style: pw.TextStyle(font: fonts.bold, fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.grey700)),
+          pw.Text('شماره فاکتور: ${invoiceNumber.toPersianDigits()}  |  صفحه ${pageNumber.toString().toPersianDigits()}',
+              style: pw.TextStyle(font: fonts.regular, fontSize: 9, color: PdfColors.grey600)),
+        ],
+      ),
+    );
+  }
+
+  /// Page footer with page numbers.
+  static pw.Widget _buildFooter(({pw.Font regular, pw.Font bold}) fonts, pw.Context context) {
+    return pw.Container(
+      margin: const pw.EdgeInsets.only(top: 8),
+      alignment: pw.Alignment.center,
+      child: pw.Text(
+        'صفحه ${context.pageNumber.toString().toPersianDigits()} از ${context.pagesCount.toString().toPersianDigits()}',
+        style: pw.TextStyle(font: fonts.regular, fontSize: 8, color: PdfColors.grey600),
+      ),
+    );
+  }
+
+  /// Main invoice header (page 1 only).
   static pw.Widget _buildPdfHeader(
-      ({pw.Font regular, pw.Font bold}) fonts, String invoiceNumber, String date, String customer, String status) {
+      ({pw.Font regular, pw.Font bold}) fonts, String invoiceNumber, String date, String customer, String status, BusinessSettingsModel bizSettings) {
     return pw.Container(
       padding: const pw.EdgeInsets.all(14),
       decoration: pw.BoxDecoration(
@@ -269,11 +360,19 @@ class PdfService {
       ),
       child: pw.Column(
         children: [
+          // ── Business name + Invoice title ─────────────────
           pw.Row(
-            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              pw.Text('ژیروفاکتور',
-                  style: pw.TextStyle(font: fonts.bold, fontSize: 20, fontWeight: pw.FontWeight.bold)),
+              pw.Expanded(
+                flex: 3,
+                child: pw.Text(
+                  bizSettings.showNameOnInvoice && bizSettings.businessName.isNotEmpty
+                      ? bizSettings.businessName
+                      : 'ژیروفاکتور',
+                  style: pw.TextStyle(font: fonts.bold, fontSize: 18, fontWeight: pw.FontWeight.bold),
+                ),
+              ),
               pw.Text('فاکتور فروش',
                   style: pw.TextStyle(font: fonts.regular, fontSize: 15, color: PdfColors.grey600)),
             ],
@@ -284,9 +383,9 @@ class PdfService {
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
-              pw.Text('شماره فاکتور: $invoiceNumber',
+              pw.Text('شماره فاکتور: ${invoiceNumber.toPersianDigits()}',
                   style: pw.TextStyle(font: fonts.regular, fontSize: 10.5)),
-              pw.Text('تاریخ: $date', style: pw.TextStyle(font: fonts.regular, fontSize: 10.5)),
+              pw.Text('تاریخ: ${date.toPersianDigits()}', style: pw.TextStyle(font: fonts.regular, fontSize: 10.5)),
             ],
           ),
           pw.SizedBox(height: 4),
@@ -302,6 +401,7 @@ class PdfService {
     );
   }
 
+  /// Items table with RTL column order.
   static pw.Widget _buildItemsTable(({pw.Font regular, pw.Font bold}) fonts, List<Map<String, dynamic>> items) {
     if (items.isEmpty) {
       return pw.Container(
@@ -316,6 +416,7 @@ class PdfService {
       );
     }
 
+    // RTL column order: right → left (جمع سطر، تخفیف، قیمت واحد، تعداد، نام کالا، ردیف)
     return pw.TableHelper.fromTextArray(
       headerStyle: pw.TextStyle(font: fonts.bold, fontSize: 9.5, fontWeight: pw.FontWeight.bold),
       cellStyle: pw.TextStyle(font: fonts.regular, fontSize: 9),
@@ -325,38 +426,39 @@ class PdfService {
       headerPadding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 5),
       cellAlignments: {
         0: pw.Alignment.center,
-        1: pw.Alignment.centerRight,
+        1: pw.Alignment.center,
         2: pw.Alignment.center,
         3: pw.Alignment.center,
-        4: pw.Alignment.center,
+        4: pw.Alignment.centerRight,
         5: pw.Alignment.center,
       },
       columnWidths: {
-        0: const pw.FixedColumnWidth(42),
-        1: const pw.FlexColumnWidth(3.2),
-        2: const pw.FixedColumnWidth(46),
-        3: const pw.FlexColumnWidth(1.6),
-        4: const pw.FlexColumnWidth(1.3),
-        5: const pw.FlexColumnWidth(1.6),
+        0: const pw.FlexColumnWidth(1.6),
+        1: const pw.FlexColumnWidth(1.3),
+        2: const pw.FlexColumnWidth(1.6),
+        3: const pw.FixedColumnWidth(46),
+        4: const pw.FlexColumnWidth(3.2),
+        5: const pw.FixedColumnWidth(42),
       },
       border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
       headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
-      headers: ['ردیف', 'نام کالا', 'تعداد', 'قیمت واحد', 'تخفیف', 'جمع سطر'],
+      headers: ['جمع سطر', 'تخفیف', 'قیمت واحد', 'تعداد', 'نام کالا', 'ردیف'],
       data: items.asMap().entries.map((e) {
         final i = e.key;
         final item = e.value;
         return [
-          '${i + 1}',
-          item['product_name']?.toString() ?? '',
-          (item['quantity'] as num).toDouble().formattedInt,
-          (item['unit_price'] as num).toDouble().formatted,
-          (item['discount_calculated_amount'] as num).toDouble().formatted,
           (item['line_total'] as num).toDouble().formatted,
+          (item['discount_calculated_amount'] as num).toDouble().formatted,
+          (item['unit_price'] as num).toDouble().formatted,
+          (item['quantity'] as num).toDouble().formattedInt,
+          item['product_name']?.toString() ?? '',
+          (i + 1).toString().toPersianDigits(),
         ];
       }).toList(),
     );
   }
 
+  /// Totals summary box (right-aligned for RTL).
   static pw.Widget _buildTotals({
     required pw.Font font,
     required pw.Font boldFont,
@@ -369,7 +471,7 @@ class PdfService {
     required double net,
   }) {
     return pw.Container(
-      alignment: pw.Alignment.centerLeft,
+      alignment: pw.Alignment.centerRight,
       child: pw.Container(
           width: 260,
           padding: const pw.EdgeInsets.all(12),
@@ -389,7 +491,7 @@ class PdfService {
                 _totalRow(
                   font,
                   overallDiscountType == 'percentage'
-                      ? 'تخفیف کلی (${overallDiscountValue.toInt()}%):'
+                      ? 'تخفیف کلی (${overallDiscountValue.toInt().toString().toPersianDigits()}٪):'
                       : 'تخفیف کلی:',
                   overallDiscountAmount.toman,
                   color: PdfColors.orange,

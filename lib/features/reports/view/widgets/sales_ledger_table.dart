@@ -66,13 +66,13 @@ class SalesLedgerTable extends StatelessWidget {
                   index.isEven ? AppColors.tableRowEven : AppColors.tableRowOdd,
                 ),
                 cells: [
-                  DataCell(Text('${index + 1}')),
+                  DataCell(Text('${index + 1}'.toPersianDigits())),
                   DataCell(Text(
                     row['product_name'] as String? ?? '',
                     style: const TextStyle(fontWeight: FontWeight.w500),
                   )),
                   DataCell(Text(
-                    row['invoice_number'] as String? ?? '',
+                    (row['invoice_number'] as String? ?? '').toPersianDigits(),
                     style: const TextStyle(fontSize: 12),
                   )),
                   DataCell(Text(jalali, style: const TextStyle(fontSize: 12))),
@@ -97,7 +97,7 @@ class SalesLedgerTable extends StatelessWidget {
                   DataCell(Text((row['quantity'] as num?)?.toDouble().formattedInt ?? '')),
                   DataCell(Text((row['unit_price'] as num?)?.toDouble().formatted ?? '')),
                   DataCell(Text(
-                    (row['discount_calculated_amount'] as num?)?.toDouble().formatted ?? '0',
+                    (row['discount_calculated_amount'] as num?)?.toDouble().formatted ?? '۰',
                     style: const TextStyle(color: AppColors.warning),
                   )),
                   DataCell(Text(

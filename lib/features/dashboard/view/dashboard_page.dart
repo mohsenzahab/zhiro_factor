@@ -109,18 +109,18 @@ class _DashboardView extends StatelessWidget {
                         label: AppStrings.netProfit,
                         value: state.totalProfit.toman,
                         subtitle: state.profitPercentOfSales > 0
-                            ? '${state.profitPercentOfSales.toStringAsFixed(1)}٪ سود'
+                            ? '${state.profitPercentOfSales.percentDisplay} سود'
                             : 'سود واقعی',
                         icon: Icons.trending_up,
                         gradient: AppColors.kpiCardGradient2,
                         details: [
                           KpiDetailItem(
                             label: AppStrings.profitPercentSales,
-                            value: '${state.profitPercentOfSales.toStringAsFixed(1)}٪',
+                            value: state.profitPercentOfSales.percentDisplay,
                           ),
                           KpiDetailItem(
                             label: AppStrings.profitPercentCost,
-                            value: '${state.profitPercentOfCost.toStringAsFixed(1)}٪',
+                            value: state.profitPercentOfCost.percentDisplay,
                           ),
                         ],
                       ),
@@ -132,7 +132,7 @@ class _DashboardView extends StatelessWidget {
                       child: KpiCard(
                         label: AppStrings.pendingAndDeposit,
                         value: state.pendingAmount.toman,
-                        subtitle: '${state.pendingCount} فاکتور',
+                        subtitle: '${state.pendingCount.formattedInt} فاکتور',
                         icon: Icons.pending_actions,
                         gradient: AppColors.kpiCardGradient4,
                         details: [
@@ -157,14 +157,14 @@ class _DashboardView extends StatelessWidget {
                         label: AppStrings.settledDiscounts,
                         value: state.totalDiscounts.toman,
                         subtitle: state.discountPercentOfSales > 0
-                            ? '${state.discountPercentOfSales.toStringAsFixed(1)}٪ تخفیف'
+                            ? '${state.discountPercentOfSales.percentDisplay} تخفیف'
                             : 'تسویه‌شده',
                         icon: Icons.discount_outlined,
                         gradient: AppColors.kpiCardGradient3,
                         details: [
                           KpiDetailItem(
                             label: AppStrings.discountPercentSales,
-                            value: '${state.discountPercentOfSales.toStringAsFixed(1)}٪',
+                            value: state.discountPercentOfSales.percentDisplay,
                           ),
                           KpiDetailItem(
                             label: AppStrings.netSalesAfterDiscount,
@@ -231,7 +231,7 @@ class _DashboardView extends StatelessWidget {
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            inv['invoice_number'] as String? ?? '',
+                                            (inv['invoice_number'] as String? ?? '').toPersianDigits(),
                                             style: const TextStyle(
                                               fontWeight: FontWeight.w600,
                                               fontSize: 13,

@@ -41,7 +41,7 @@ class InvoiceFilterBar extends StatelessWidget {
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 suffixIcon: ValueListenableBuilder<TextEditingValue>(
                   valueListenable: searchController,
-                  builder: (_, v, __) {
+                  builder: (_, v, _) {
                     if (v.text.isEmpty) return const SizedBox.shrink();
                     return IconButton(
                       icon: const Icon(Icons.close, size: 16),

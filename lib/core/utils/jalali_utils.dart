@@ -1,4 +1,5 @@
 import 'package:shamsi_date/shamsi_date.dart';
+import '../extensions/number_extensions.dart';
 
 /// Utility helpers for Jalali (Shamsi / Solar Hijri) dates.
 class JalaliUtils {
@@ -7,23 +8,23 @@ class JalaliUtils {
   /// Current Jalali date.
   static Jalali get now => Jalali.now();
 
-  /// Formats a Jalali date as "YYYY/MM/DD" (e.g., "1405/06/08").
+  /// Formats a Jalali date as "YYYY/MM/DD" (e.g., "۱۴۰۵/۰۶/۰۸").
   static String format(Jalali date) {
     final y = date.year.toString();
     final m = date.month.toString().padLeft(2, '0');
     final d = date.day.toString().padLeft(2, '0');
-    return '$y/$m/$d';
+    return '$y/$m/$d'.toPersianDigits();
   }
 
-  /// Formats a Jalali date with month name: "8 شهریور 1405".
+  /// Formats a Jalali date with month name: "۸ شهریور ۱۴۰۵".
   static String formatLong(Jalali date) {
-    return '${date.day} ${_monthName(date.month)} ${date.year}';
+    return '${date.day} ${_monthName(date.month)} ${date.year}'.toPersianDigits();
   }
 
-  /// Parses a "YYYY/MM/DD" string to Jalali.
+  /// Parses a "YYYY/MM/DD" string to Jalali (supports Persian and English digits).
   static Jalali? tryParse(String text) {
     try {
-      final parts = text.split('/');
+      final parts = text.toEnglishDigits().split('/');
       if (parts.length != 3) return null;
       return Jalali(
         int.parse(parts[0]),

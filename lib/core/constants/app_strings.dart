@@ -200,4 +200,19 @@ class AppStrings {
   static const String noTemplates = 'هیچ پیش‌فاکتوری ثبت نشده';
   static const String enterTemplateName = 'نام پیش‌فاکتور را وارد کنید...';
   static const String templateItems = 'اقلام';
+
+  // ─── Settings ──────────────────────────────────────────────────────
+  static const String navSettings = 'تنظیمات';
+  static const String settings = 'تنظیمات';
+  static const String businessProfile = 'پروفایل کسب‌وکار';
+  static const String invoiceSettings = 'تنظیمات فاکتور';
+  static const String invoiceSettingsSubtitle = 'انتخاب کنید کدام اطلاعات در فاکتور چاپ شود';
+  static const String businessName = 'نام فروشگاه / کسب‌وکار';
+  static const String businessDescription = 'توضیحات';
+  static const String showNameOnInvoice = 'نمایش نام در فاکتور';
+  static const String showDescriptionOnInvoice = 'نمایش توضیحات در فاکتور';
+  static const String descriptionPosition = 'مکان توضیحات:';
+  static const String settingsSaved = 'تنظیمات با موفقیت ذخیره شد';
+  static const String businessNameHint = 'مثال: فروشگاه ژیرو';
+  static const String businessDescriptionHint = 'آدرس، تلفن، خدمات و هر توضیح دیگر...';
 }

@@ -147,7 +147,7 @@ class _InvoiceHistoryViewState extends State<_InvoiceHistoryView> {
                         SizedBox(
                           width: 140,
                           child: Text(
-                            inv.invoiceNumber,
+                            inv.invoiceNumber.toPersianDigits(),
                             style: const TextStyle(fontWeight: FontWeight.w600, letterSpacing: 0.5),
                           ),
                         ),

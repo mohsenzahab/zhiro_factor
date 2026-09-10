@@ -1,5 +1,4 @@
 import 'package:shamsi_date/shamsi_date.dart';
-import 'jalali_utils.dart';
 
 /// Generates unique invoice numbers in the format: INV-YYMM-XXXX
 /// where YY = Jalali year (last 2 digits), MM = month, XXXX = sequential counter.
