@@ -474,12 +474,12 @@ class _ProductsViewState extends State<_ProductsView> {
                     DataCell(
                       _EditableTableCell(
                         displayValue: p.buyPrice.toman,
-                        rawValue: p.buyPrice.round().toString(),
+                        rawValue: p.buyPrice.round().toString().toPersianDigits(),
                         isNumber: true,
                         minWidth: 75,
                         tooltip: 'کلیک برای ویرایش قیمت خرید اولیه',
                         onSave: (val) {
-                          final parsed = double.tryParse(val.replaceAll(',', '').trim());
+                          final parsed = val.tryParseFormatted();
                           if (parsed != null && parsed >= 0) {
                             context.read<ProductCubit>().updateProduct(
                                   p.copyWith(buyPrice: parsed),
@@ -492,13 +492,13 @@ class _ProductsViewState extends State<_ProductsView> {
                       _EditableTableCell(
                         displayValue: p.currentBuyPrice != null ? p.currentBuyPrice!.toman : p.buyPrice.toman,
                         rawValue: p.currentBuyPrice != null
-                            ? p.currentBuyPrice!.round().toString()
-                            : p.buyPrice.round().toString(),
+                            ? p.currentBuyPrice!.round().toString().toPersianDigits()
+                            : p.buyPrice.round().toString().toPersianDigits(),
                         isNumber: true,
                         minWidth: 75,
                         tooltip: 'کلیک برای ویرایش قیمت خرید روز',
                         onSave: (val) {
-                          final parsed = double.tryParse(val.replaceAll(',', '').trim());
+                          final parsed = val.tryParseFormatted();
                           if (parsed != null && parsed >= 0) {
                             context.read<ProductCubit>().updateProduct(
                                   p.copyWith(currentBuyPrice: parsed),
@@ -510,12 +510,12 @@ class _ProductsViewState extends State<_ProductsView> {
                     DataCell(
                       _EditableTableCell(
                         displayValue: p.sellPrice != null ? p.sellPrice!.toman : '-',
-                        rawValue: p.sellPrice != null ? p.sellPrice!.round().toString() : '',
+                        rawValue: p.sellPrice != null ? p.sellPrice!.round().toString().toPersianDigits() : '',
                         isNumber: true,
                         minWidth: 75,
                         tooltip: 'کلیک برای ویرایش قیمت فروش (رند به ۵۰۰۰)',
                         onSave: (val) {
-                          final parsed = double.tryParse(val.replaceAll(',', '').trim());
+                          final parsed = val.tryParseFormatted();
                           if (parsed != null && parsed >= 0) {
                             context.read<ProductCubit>().updateProduct(
                                   p.copyWith(sellPrice: parsed.roundTo5000),
@@ -577,7 +577,7 @@ class _ProductsViewState extends State<_ProductsView> {
                     DataCell(
                       _EditableTableCell(
                         displayValue: p.stockDisplay,
-                        rawValue: p.isInfiniteStock ? '' : (p.stock != null ? p.stock!.round().toString() : '0'),
+                        rawValue: p.isInfiniteStock ? '' : (p.stock != null ? p.stock!.round().toString().toPersianDigits() : '۰'),
                         isNumber: true,
                         minWidth: 55,
                         tooltip: 'کلیک برای ویرایش موجودی (خالی = نامحدود)',
@@ -612,7 +612,7 @@ class _ProductsViewState extends State<_ProductsView> {
                                   p.copyWith(clearStock: true),
                                 );
                           } else {
-                            final parsed = double.tryParse(clean);
+                            final parsed = val.tryParseFormatted();
                             if (parsed != null) {
                               context.read<ProductCubit>().updateProduct(
                                     p.copyWith(stock: parsed),
@@ -1163,7 +1163,7 @@ class _ProductsViewState extends State<_ProductsView> {
             ),
             ElevatedButton(
               onPressed: () {
-                final val = double.tryParse(controller.text.trim());
+                final val = controller.text.tryParseFormatted();
                 if (val != null) {
                   Navigator.of(ctx).pop(val);
                 }

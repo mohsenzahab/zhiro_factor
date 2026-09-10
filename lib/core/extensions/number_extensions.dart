@@ -78,6 +78,9 @@ extension NumberParsing on String {
     if (result == null) throw FormatException('Cannot parse "$this" as number');
     return result;
   }
+
+  /// Whether this string represents a valid formatted number.
+  bool get isValidNumber => tryParseFormatted() != null;
 }
 
 /// Extension on [num] for price rounding in retail.

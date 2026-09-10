@@ -1,4 +1,5 @@
 import '../../core/database/database_helper.dart';
+import '../../core/extensions/number_extensions.dart';
 import '../models/product_model.dart';
 
 /// Repository for Product CRUD operations.
@@ -21,8 +22,14 @@ class ProductRepository {
     final args = <dynamic>[];
 
     if (query != null && query.isNotEmpty) {
-      sql += ' WHERE p.name LIKE ? OR p.code LIKE ?';
-      args.addAll(['%$query%', '%$query%']);
+      final enQuery = query.toEnglishDigits();
+      if (enQuery != query) {
+        sql += ' WHERE p.name LIKE ? OR p.code LIKE ? OR p.code LIKE ?';
+        args.addAll(['%$query%', '%$query%', '%$enQuery%']);
+      } else {
+        sql += ' WHERE p.name LIKE ? OR p.code LIKE ?';
+        args.addAll(['%$query%', '%$query%']);
+      }
     }
 
     sql += ' ORDER BY p.name ASC';

@@ -168,6 +168,7 @@ class _OverallDiscountRow extends StatelessWidget {
             width: 140,
             child: DropdownButtonFormField<String>(
               value: state.overallDiscountType,
+              isExpanded: true,
               isDense: true,
               decoration: const InputDecoration(
                 isDense: true,
@@ -275,7 +276,7 @@ class _OverallDiscountFieldState extends State<_OverallDiscountField> {
   Widget build(BuildContext context) {
     return TextField(
       controller: _ctrl,
-      keyboardType: TextInputType.number,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
       textAlign: TextAlign.center,
       style: const TextStyle(fontSize: 13),
       decoration: InputDecoration(
@@ -300,7 +301,7 @@ class _OverallDiscountFieldState extends State<_OverallDiscountField> {
         ),
       ),
       onChanged: (text) {
-        final parsed = double.tryParse(text.toEnglishDigits().replaceAll(',', ''));
+        final parsed = text.tryParseFormatted();
         widget.onChanged(parsed ?? 0.0);
       },
     );
@@ -342,12 +343,16 @@ class _TotalCard extends StatelessWidget {
               children: [
                 Icon(icon, size: 16, color: color.withValues(alpha: 0.7)),
                 const SizedBox(width: 6),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textMuted,
-                    fontWeight: FontWeight.w500,
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textMuted,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               ],

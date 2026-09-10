@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/extensions/number_extensions.dart';
 import '../../../../data/models/customer_model.dart';
 
 /// Dialog for adding/editing a customer.
@@ -38,9 +39,9 @@ class _CustomerFormDialogState extends State<CustomerFormDialog> {
   void initState() {
     super.initState();
     final c = widget.customer;
-    _codeCtrl = TextEditingController(text: c?.code ?? widget.nextCode ?? '');
+    _codeCtrl = TextEditingController(text: (c?.code ?? widget.nextCode ?? '').toPersianDigits());
     _nameCtrl = TextEditingController(text: c?.name ?? '');
-    _phoneCtrl = TextEditingController(text: c?.phone ?? '');
+    _phoneCtrl = TextEditingController(text: (c?.phone ?? '').toPersianDigits());
     _addressCtrl = TextEditingController(text: c?.address ?? '');
     _notesCtrl = TextEditingController(text: c?.notes ?? '');
   }
@@ -110,6 +111,7 @@ class _CustomerFormDialogState extends State<CustomerFormDialog> {
                       Expanded(
                         child: TextFormField(
                           controller: _phoneCtrl,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: false),
                           decoration: const InputDecoration(labelText: AppStrings.customerPhone),
                         ),
                       ),

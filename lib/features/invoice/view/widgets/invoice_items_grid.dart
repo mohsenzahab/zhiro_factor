@@ -221,7 +221,7 @@ class _InlineNumberFieldState extends State<_InlineNumberField> {
       width: 90,
       child: TextField(
         controller: _ctrl,
-        keyboardType: TextInputType.number,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
         textAlign: TextAlign.center,
         style: const TextStyle(fontSize: 13),
         decoration: InputDecoration(
@@ -243,7 +243,7 @@ class _InlineNumberFieldState extends State<_InlineNumberField> {
           ),
         ),
         onChanged: (text) {
-          final parsed = double.tryParse(text.toEnglishDigits().replaceAll(',', ''));
+          final parsed = text.tryParseFormatted();
           if (parsed != null) widget.onChanged(parsed);
         },
       ),

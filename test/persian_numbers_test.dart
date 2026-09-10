@@ -49,5 +49,14 @@ void main() {
       expect(parsed.month, equals(6));
       expect(parsed.day, equals(8));
     });
+
+    test('NumberParsing.isValidNumber validates Persian and English numbers', () {
+      expect('۱,۵۰۰,۰۰۰'.isValidNumber, isTrue);
+      expect('۵۰'.isValidNumber, isTrue);
+      expect('۲۵.۵'.isValidNumber, isTrue);
+      expect('25.5'.isValidNumber, isTrue);
+      expect('abc'.isValidNumber, isFalse);
+      expect(''.isValidNumber, isFalse);
+    });
   });
 }

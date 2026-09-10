@@ -75,9 +75,9 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
     _codeCtrl = TextEditingController(text: p?.code ?? widget.nextCode ?? '');
     _nameCtrl = TextEditingController(text: p?.name ?? widget.initialName ?? '');
     _categoryCtrl = TextEditingController(text: p?.category ?? '');
-    _buyPriceCtrl = TextEditingController(text: p != null ? p.buyPrice.round().toString() : '');
+    _buyPriceCtrl = TextEditingController(text: p != null ? p.buyPrice.round().toString().toPersianDigits() : '');
     _currentBuyPriceCtrl = TextEditingController(
-      text: p?.currentBuyPrice != null ? p!.currentBuyPrice!.round().toString() : '',
+      text: p?.currentBuyPrice != null ? p!.currentBuyPrice!.round().toString().toPersianDigits() : '',
     );
 
     // Initial profit margin percentage based on current buy price (or buy price)
@@ -91,15 +91,15 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
         initialProfitMargin = pct % 1 == 0 ? pct.toStringAsFixed(0) : pct.toStringAsFixed(1);
       }
     }
-    _profitMarginCtrl = TextEditingController(text: initialProfitMargin);
+    _profitMarginCtrl = TextEditingController(text: initialProfitMargin.toPersianDigits());
     _sellPriceCtrl = TextEditingController(
-      text: p?.sellPrice != null ? p!.sellPrice!.round().toString() : '',
+      text: p?.sellPrice != null ? p!.sellPrice!.round().toString().toPersianDigits() : '',
     );
     _isInfiniteStock = p?.isInfiniteStock ?? false;
     _stockCtrl = TextEditingController(
       text: (p != null && !p.isInfiniteStock && p.stock != null)
-          ? p.stock!.round().toString()
-          : (_isInfiniteStock ? '' : '0'),
+          ? p.stock!.round().toString().toPersianDigits()
+          : (_isInfiniteStock ? '' : '۰'),
     );
     _supplierCtrl = TextEditingController(text: p?.supplier ?? '');
     _selectedUnit = p?.unit ?? AppUnits.defaultUnit;
@@ -119,48 +119,44 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
   }
 
   double _getBaseBuyPrice() {
-    final curText = _currentBuyPriceCtrl.text.replaceAll(',', '').trim();
-    final curVal = double.tryParse(curText);
+    final curVal = _currentBuyPriceCtrl.text.tryParseFormatted();
     if (curVal != null && curVal > 0) return curVal;
-    final buyText = _buyPriceCtrl.text.replaceAll(',', '').trim();
-    return double.tryParse(buyText) ?? 0;
+    return _buyPriceCtrl.text.tryParseFormatted() ?? 0;
   }
 
   void _onBuyPriceOrCurrentBuyPriceChanged() {
     if (_isAutoCalculating) return;
-    final pctText = _profitMarginCtrl.text.replaceAll(',', '').trim();
-    final pct = double.tryParse(pctText);
+    final pct = _profitMarginCtrl.text.tryParseFormatted();
     final basePrice = _getBaseBuyPrice();
     if (pct != null && basePrice > 0) {
       _isAutoCalculating = true;
       final roundedSell = (basePrice * (1 + pct / 100.0)).roundTo5000;
-      _sellPriceCtrl.text = roundedSell.round().toString();
+      _sellPriceCtrl.text = roundedSell.round().toString().toPersianDigits();
       _isAutoCalculating = false;
     }
   }
 
   void _onProfitMarginChanged() {
     if (_isAutoCalculating) return;
-    final pctText = _profitMarginCtrl.text.replaceAll(',', '').trim();
-    final pct = double.tryParse(pctText);
+    final pct = _profitMarginCtrl.text.tryParseFormatted();
     final basePrice = _getBaseBuyPrice();
     if (pct != null && basePrice > 0) {
       _isAutoCalculating = true;
       final roundedSell = (basePrice * (1 + pct / 100.0)).roundTo5000;
-      _sellPriceCtrl.text = roundedSell.round().toString();
+      _sellPriceCtrl.text = roundedSell.round().toString().toPersianDigits();
       _isAutoCalculating = false;
     }
   }
 
   void _onSellPriceChanged() {
     if (_isAutoCalculating) return;
-    final sellText = _sellPriceCtrl.text.replaceAll(',', '').trim();
-    final sell = double.tryParse(sellText);
+    final sell = _sellPriceCtrl.text.tryParseFormatted();
     final basePrice = _getBaseBuyPrice();
     if (sell != null && basePrice > 0) {
       _isAutoCalculating = true;
       final pct = ((sell - basePrice) / basePrice) * 100.0;
-      _profitMarginCtrl.text = pct % 1 == 0 ? pct.toStringAsFixed(0) : pct.toStringAsFixed(1);
+      final s = pct % 1 == 0 ? pct.toStringAsFixed(0) : pct.toStringAsFixed(1);
+      _profitMarginCtrl.text = s.toPersianDigits();
       _isAutoCalculating = false;
     }
   }
@@ -205,12 +201,10 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
       }
     }
 
-    final sellPriceText = _sellPriceCtrl.text.replaceAll(',', '').trim();
-    final currentBuyPriceText = _currentBuyPriceCtrl.text.replaceAll(',', '').trim();
-    final buyPrice = double.parse(_buyPriceCtrl.text.replaceAll(',', ''));
-
-    final currentBuyPrice = currentBuyPriceText.isNotEmpty ? double.tryParse(currentBuyPriceText) : buyPrice;
-    final sellPriceRaw = sellPriceText.isNotEmpty ? double.tryParse(sellPriceText) : null;
+    final buyPrice = _buyPriceCtrl.text.tryParseFormatted() ?? 0.0;
+    final curBuyVal = _currentBuyPriceCtrl.text.tryParseFormatted();
+    final currentBuyPrice = curBuyVal != null && curBuyVal > 0 ? curBuyVal : buyPrice;
+    final sellPriceRaw = _sellPriceCtrl.text.tryParseFormatted();
     // Always round sell price to nearest 5000
     final sellPrice = sellPriceRaw?.roundTo5000;
 
@@ -223,7 +217,7 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
       currentBuyPrice: currentBuyPrice,
       sellPrice: sellPrice,
       unit: _selectedUnit,
-      stock: _isInfiniteStock ? null : (double.tryParse(_stockCtrl.text.replaceAll(',', '')) ?? 0.0),
+      stock: _isInfiniteStock ? null : (_stockCtrl.text.tryParseFormatted() ?? 0.0),
       createdAt: widget.product?.createdAt,
       buyDate: _buyDate,
       supplier: _supplierCtrl.text.trim().isEmpty ? null : _supplierCtrl.text.trim(),
@@ -346,10 +340,10 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                             labelText: AppStrings.productBuyPrice,
                             suffixText: AppStrings.toman,
                           ),
-                          keyboardType: TextInputType.number,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           validator: (v) {
                             if (v == null || v.trim().isEmpty) return AppStrings.fieldRequired;
-                            if (double.tryParse(v.replaceAll(',', '')) == null) return AppStrings.invalidNumber;
+                            if (v.tryParseFormatted() == null) return AppStrings.invalidNumber;
                             return null;
                           },
                         ),
@@ -363,10 +357,10 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                             suffixText: AppStrings.toman,
                             hintText: 'مبنای محاسبه سود فروش',
                           ),
-                          keyboardType: TextInputType.number,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           validator: (v) {
                             if (v != null && v.trim().isNotEmpty) {
-                              if (double.tryParse(v.replaceAll(',', '')) == null) return AppStrings.invalidNumber;
+                              if (v.tryParseFormatted() == null) return AppStrings.invalidNumber;
                             }
                             return null;
                           },
@@ -386,6 +380,12 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                             hintText: 'مثلاً ۲۰',
                           ),
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          validator: (v) {
+                            if (v != null && v.trim().isNotEmpty) {
+                              if (v.tryParseFormatted() == null) return AppStrings.invalidNumber;
+                            }
+                            return null;
+                          },
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -397,10 +397,10 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                             suffixText: AppStrings.toman,
                             hintText: 'گرد به عدد صحیح',
                           ),
-                          keyboardType: TextInputType.number,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           validator: (v) {
                             if (v != null && v.trim().isNotEmpty) {
-                              if (double.tryParse(v.replaceAll(',', '')) == null) return AppStrings.invalidNumber;
+                              if (v.tryParseFormatted() == null) return AppStrings.invalidNumber;
                             }
                             return null;
                           },
@@ -426,7 +426,13 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                                     ? const Icon(Icons.all_inclusive, color: AppColors.accent, size: 20)
                                     : null,
                               ),
-                              keyboardType: TextInputType.number,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              validator: (v) {
+                                if (!_isInfiniteStock && v != null && v.trim().isNotEmpty) {
+                                  if (v.tryParseFormatted() == null) return AppStrings.invalidNumber;
+                                }
+                                return null;
+                              },
                             ),
                             const SizedBox(height: 6),
                             InkWell(

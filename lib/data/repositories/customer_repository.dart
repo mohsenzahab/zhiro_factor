@@ -1,4 +1,5 @@
 import '../../core/database/database_helper.dart';
+import '../../core/extensions/number_extensions.dart';
 import '../models/customer_model.dart';
 
 /// Repository for Customer CRUD operations.
@@ -11,12 +12,22 @@ class CustomerRepository {
     List<Map<String, dynamic>> maps;
 
     if (query != null && query.isNotEmpty) {
-      maps = await db.query(
-        'customers',
-        where: 'name LIKE ? OR phone LIKE ? OR code LIKE ?',
-        whereArgs: ['%$query%', '%$query%', '%$query%'],
-        orderBy: 'name ASC',
-      );
+      final enQuery = query.toEnglishDigits();
+      if (enQuery != query) {
+        maps = await db.query(
+          'customers',
+          where: 'name LIKE ? OR phone LIKE ? OR code LIKE ? OR phone LIKE ? OR code LIKE ?',
+          whereArgs: ['%$query%', '%$query%', '%$query%', '%$enQuery%', '%$enQuery%'],
+          orderBy: 'name ASC',
+        );
+      } else {
+        maps = await db.query(
+          'customers',
+          where: 'name LIKE ? OR phone LIKE ? OR code LIKE ?',
+          whereArgs: ['%$query%', '%$query%', '%$query%'],
+          orderBy: 'name ASC',
+        );
+      }
     } else {
       maps = await db.query('customers', orderBy: 'name ASC');
     }

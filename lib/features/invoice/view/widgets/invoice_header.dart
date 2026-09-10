@@ -111,7 +111,13 @@ class InvoiceHeader extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Text(s, style: const TextStyle(fontSize: 13)),
+                            Expanded(
+                              child: Text(
+                                s,
+                                style: const TextStyle(fontSize: 13),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                           ],
                         ),
                       );

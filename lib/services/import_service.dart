@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:excel_plus/excel_plus.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../core/extensions/number_extensions.dart';
 import '../data/models/product_model.dart';
 
 /// Represents raw data read from a file: column headers + data rows.
@@ -169,8 +170,7 @@ class ImportService {
       }
 
       double getNum(String key) {
-        final s = getField(key).replaceAll(',', '');
-        return double.tryParse(s) ?? 0;
+        return getField(key).tryParseFormatted() ?? 0;
       }
 
       final name = getField('name');

@@ -1,4 +1,5 @@
 import '../../core/database/database_helper.dart';
+import '../../core/extensions/number_extensions.dart';
 import '../models/invoice_model.dart';
 import '../models/invoice_item_model.dart';
 
@@ -24,8 +25,14 @@ class InvoiceRepository {
     final args = <dynamic>[];
 
     if (customerQuery != null && customerQuery.isNotEmpty) {
-      sql += ' AND (c.name LIKE ? OR i.invoice_number LIKE ?)';
-      args.addAll(['%$customerQuery%', '%$customerQuery%']);
+      final enQuery = customerQuery.toEnglishDigits();
+      if (enQuery != customerQuery) {
+        sql += ' AND (c.name LIKE ? OR i.invoice_number LIKE ? OR i.invoice_number LIKE ?)';
+        args.addAll(['%$customerQuery%', '%$customerQuery%', '%$enQuery%']);
+      } else {
+        sql += ' AND (c.name LIKE ? OR i.invoice_number LIKE ?)';
+        args.addAll(['%$customerQuery%', '%$customerQuery%']);
+      }
     }
     if (status != null && status.isNotEmpty) {
       sql += ' AND i.status = ?';
