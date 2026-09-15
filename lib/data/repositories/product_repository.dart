@@ -94,6 +94,10 @@ class ProductRepository {
         'UPDATE invoice_items SET product_id = NULL WHERE product_id = ?',
         [id],
       );
+      await txn.rawUpdate(
+        'UPDATE purchase_items SET product_id = NULL WHERE product_id = ?',
+        [id],
+      );
       return await txn.delete('products', where: 'id = ?', whereArgs: [id]);
     });
   }
@@ -106,6 +110,10 @@ class ProductRepository {
     return await db.transaction((txn) async {
       await txn.rawUpdate(
         'UPDATE invoice_items SET product_id = NULL WHERE product_id IN ($placeholders)',
+        ids,
+      );
+      await txn.rawUpdate(
+        'UPDATE purchase_items SET product_id = NULL WHERE product_id IN ($placeholders)',
         ids,
       );
       return await txn.rawDelete(

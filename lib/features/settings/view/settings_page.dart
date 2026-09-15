@@ -24,7 +24,8 @@ class _SettingsPageState extends State<SettingsPage> {
 
   bool _showNameOnInvoice = true;
   bool _showDescriptionOnInvoice = true;
-  String _descriptionPosition = 'top'; // 'top' | 'bottom'
+  String _descriptionPosition = 'bottom'; // 'bottom' | 'top'
+  String _defaultPageFormat = 'a4'; // 'a4' | 'a5'
 
   bool _loading = true;
   bool _saving = false;
@@ -53,6 +54,7 @@ class _SettingsPageState extends State<SettingsPage> {
       _showNameOnInvoice = settings.showNameOnInvoice;
       _showDescriptionOnInvoice = settings.showDescriptionOnInvoice;
       _descriptionPosition = settings.descriptionPosition;
+      _defaultPageFormat = settings.defaultPageFormat;
       _loading = false;
     });
   }
@@ -67,6 +69,7 @@ class _SettingsPageState extends State<SettingsPage> {
       showNameOnInvoice: _showNameOnInvoice,
       showDescriptionOnInvoice: _showDescriptionOnInvoice,
       descriptionPosition: _descriptionPosition,
+      defaultPageFormat: _defaultPageFormat,
     );
 
     await _repo.saveSettings(settings);
@@ -181,18 +184,66 @@ class _SettingsPageState extends State<SettingsPage> {
                         child: SegmentedButton<String>(
                           segments: const [
                             ButtonSegment(
+                              value: 'bottom',
+                              label: Text('کنار جمع کل (سمت چپ)'),
+                              icon: Icon(Icons.table_chart_outlined, size: 18),
+                            ),
+                            ButtonSegment(
                               value: 'top',
                               label: Text('ابتدای فاکتور'),
                               icon: Icon(Icons.vertical_align_top, size: 18),
                             ),
-                            ButtonSegment(
-                              value: 'bottom',
-                              label: Text('انتهای فاکتور'),
-                              icon: Icon(Icons.vertical_align_bottom, size: 18),
-                            ),
                           ],
                           selected: {_descriptionPosition},
                           onSelectionChanged: (v) => setState(() => _descriptionPosition = v.first),
+                          style: ButtonStyle(
+                            backgroundColor: WidgetStateProperty.resolveWith((states) {
+                              if (states.contains(WidgetState.selected)) {
+                                return AppColors.primary.withValues(alpha: 0.2);
+                              }
+                              return AppColors.surfaceDark;
+                            }),
+                            foregroundColor: WidgetStateProperty.resolveWith((states) {
+                              if (states.contains(WidgetState.selected)) {
+                                return AppColors.primary;
+                              }
+                              return AppColors.textMuted;
+                            }),
+                            side: WidgetStateProperty.all(
+                              const BorderSide(color: AppColors.dividerDark),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // ── Default Page Format ───────────────────────
+                  Row(
+                    children: [
+                      const Icon(Icons.print_outlined, color: AppColors.textMuted, size: 20),
+                      const SizedBox(width: 10),
+                      Text(
+                        AppStrings.defaultPageFormat,
+                        style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: SegmentedButton<String>(
+                          segments: const [
+                            ButtonSegment(
+                              value: 'a4',
+                              label: Text(AppStrings.pageFormatA4),
+                              icon: Icon(Icons.article_outlined, size: 18),
+                            ),
+                            ButtonSegment(
+                              value: 'a5',
+                              label: Text(AppStrings.pageFormatA5),
+                              icon: Icon(Icons.menu_book_outlined, size: 18),
+                            ),
+                          ],
+                          selected: {_defaultPageFormat},
+                          onSelectionChanged: (v) => setState(() => _defaultPageFormat = v.first),
                           style: ButtonStyle(
                             backgroundColor: WidgetStateProperty.resolveWith((states) {
                               if (states.contains(WidgetState.selected)) {

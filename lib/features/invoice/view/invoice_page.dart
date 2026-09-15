@@ -11,6 +11,7 @@ import 'widgets/product_search_dialog.dart';
 import 'widgets/preset_template_dialog.dart';
 import 'widgets/invoice_items_grid.dart';
 import 'widgets/invoice_footer.dart';
+import 'widgets/invoice_preview_dialog.dart';
 
 /// Main invoice creation/editing page.
 class InvoicePage extends StatelessWidget {
@@ -142,7 +143,8 @@ class _InvoiceView extends StatelessWidget {
 
                 // ── Footer ────────────────────────────────────────
                 InvoiceFooter(
-                  onPrint: () => _printInvoice(context),
+                  onPrint: () => _previewInvoice(context),
+                  onQuickPrint: () => _quickPrintInvoice(context),
                 ),
               ],
             ),
@@ -159,7 +161,7 @@ class _InvoiceView extends StatelessWidget {
     }
   }
 
-  Future<void> _printInvoice(BuildContext context) async {
+  Future<void> _previewInvoice(BuildContext context) async {
     final state = context.read<InvoiceCubit>().state;
     if (state.items.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -167,7 +169,18 @@ class _InvoiceView extends StatelessWidget {
       );
       return;
     }
-    await PdfService.printInvoice(context, state);
+    await InvoicePreviewDialog.showFromState(context, state);
+  }
+
+  Future<void> _quickPrintInvoice(BuildContext context) async {
+    final state = context.read<InvoiceCubit>().state;
+    if (state.items.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('فاکتور خالی است')),
+      );
+      return;
+    }
+    await PdfService.printInvoice(state);
   }
 
   Future<void> _loadTemplate(BuildContext context) async {

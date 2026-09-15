@@ -10,12 +10,16 @@ class BusinessSettingsModel {
   /// `bottom` = after the totals section at the end.
   final String descriptionPosition; // 'top' | 'bottom'
 
+  /// Default print page format: 'a4' | 'a5'.
+  final String defaultPageFormat;
+
   const BusinessSettingsModel({
     this.businessName = '',
     this.description = '',
     this.showNameOnInvoice = true,
     this.showDescriptionOnInvoice = true,
-    this.descriptionPosition = 'top',
+    this.descriptionPosition = 'bottom',
+    this.defaultPageFormat = 'a4',
   });
 
   /// Whether any business info should be shown on the invoice.
@@ -29,6 +33,7 @@ class BusinessSettingsModel {
     bool? showNameOnInvoice,
     bool? showDescriptionOnInvoice,
     String? descriptionPosition,
+    String? defaultPageFormat,
   }) {
     return BusinessSettingsModel(
       businessName: businessName ?? this.businessName,
@@ -36,6 +41,7 @@ class BusinessSettingsModel {
       showNameOnInvoice: showNameOnInvoice ?? this.showNameOnInvoice,
       showDescriptionOnInvoice: showDescriptionOnInvoice ?? this.showDescriptionOnInvoice,
       descriptionPosition: descriptionPosition ?? this.descriptionPosition,
+      defaultPageFormat: defaultPageFormat ?? this.defaultPageFormat,
     );
   }
 }

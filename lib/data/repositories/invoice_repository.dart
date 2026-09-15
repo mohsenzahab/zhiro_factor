@@ -50,7 +50,26 @@ class InvoiceRepository {
     sql += ' ORDER BY i.date DESC, i.id DESC';
 
     final maps = await db.rawQuery(sql, args);
-    return maps.map((m) => InvoiceModel.fromMap(m)).toList();
+    if (maps.isEmpty) return [];
+
+    // Batch load items for all returned invoices
+    final invoiceIds = maps.map((m) => m['id'] as int).toList();
+    final placeholders = List.filled(invoiceIds.length, '?').join(',');
+    final itemMaps = await db.rawQuery(
+      'SELECT * FROM invoice_items WHERE invoice_id IN ($placeholders) ORDER BY id ASC',
+      invoiceIds,
+    );
+    final itemsByInvoice = <int, List<InvoiceItemModel>>{};
+    for (final im in itemMaps) {
+      final item = InvoiceItemModel.fromMap(im);
+      if (item.invoiceId != null) {
+        itemsByInvoice.putIfAbsent(item.invoiceId!, () => []).add(item);
+      }
+    }
+    return maps.map((m) {
+      final id = m['id'] as int?;
+      return InvoiceModel.fromMap(m, items: id != null ? itemsByInvoice[id] : null);
+    }).toList();
   }
 
   /// Fetch a single invoice by ID with all its items.

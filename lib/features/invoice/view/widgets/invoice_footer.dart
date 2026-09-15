@@ -8,9 +8,14 @@ import '../../cubit/invoice_state.dart';
 
 /// Invoice footer with live totals, overall discount, and save/print buttons.
 class InvoiceFooter extends StatelessWidget {
-  final VoidCallback? onPrint;
+  final VoidCallback? onPrint; // Preview and Print dialog
+  final VoidCallback? onQuickPrint; // Direct print without dialog
 
-  const InvoiceFooter({super.key, this.onPrint});
+  const InvoiceFooter({
+    super.key,
+    this.onPrint,
+    this.onQuickPrint,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -66,7 +71,7 @@ class InvoiceFooter extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       SizedBox(
-                        width: 160,
+                        width: 170,
                         child: ElevatedButton.icon(
                           onPressed: state.isSaving
                               ? null
@@ -93,19 +98,34 @@ class InvoiceFooter extends StatelessWidget {
                               : const Icon(Icons.save, size: 20),
                           label: Text(AppStrings.saveInvoice),
                           style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
                         ),
                       ),
                       const SizedBox(height: 8),
                       SizedBox(
-                        width: 160,
+                        width: 170,
                         child: OutlinedButton.icon(
                           onPressed: onPrint,
-                          icon: const Icon(Icons.print, size: 20),
-                          label: const Text(AppStrings.printInvoice),
+                          icon: const Icon(Icons.visibility_outlined, size: 18),
+                          label: const Text(AppStrings.previewInvoice),
                           style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            padding: const EdgeInsets.symmetric(vertical: 11),
+                            foregroundColor: AppColors.primary,
+                            side: BorderSide(color: AppColors.primary.withValues(alpha: 0.6)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      SizedBox(
+                        width: 170,
+                        child: TextButton.icon(
+                          onPressed: onQuickPrint,
+                          icon: const Icon(Icons.print_outlined, size: 16),
+                          label: const Text(AppStrings.quickPrint),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.textMuted,
+                            padding: const EdgeInsets.symmetric(vertical: 6),
                           ),
                         ),
                       ),

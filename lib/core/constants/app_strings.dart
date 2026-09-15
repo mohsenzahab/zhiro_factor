@@ -215,4 +215,63 @@ class AppStrings {
   static const String settingsSaved = 'تنظیمات با موفقیت ذخیره شد';
   static const String businessNameHint = 'مثال: فروشگاه ژیرو';
   static const String businessDescriptionHint = 'آدرس، تلفن، خدمات و هر توضیح دیگر...';
+  static const String defaultPageFormat = 'اندازه برگه چاپ پیش‌فرض:';
+  static const String pageFormatA4 = 'A4 (استاندارد)';
+  static const String pageFormatA5 = 'A5 (دفترچه‌ای)';
+  static const String previewInvoice = 'پیش‌نمایش فاکتور';
+  static const String quickPrint = 'چاپ فوری';
+  static const String savePdf = 'ذخیره فایل PDF';
+  static const String pdfSavedSuccess = 'فایل PDF با موفقیت ذخیره شد';
+  static const String pdfSaveError = 'خطا در ذخیره فایل PDF';
+
+  // ─── Purchase (خرید) ──────────────────────────────────────────────
+  static const String navPurchases = 'خرید کالا';
+  static const String purchase = 'خرید';
+  static const String purchases = 'خریدها';
+  static const String purchaseNumber = 'شماره فاکتور خرید';
+  static const String newPurchase = 'خرید جدید';
+  static const String purchaseHistory = 'تاریخچه خریدها';
+  static const String addPurchase = 'ثبت خرید';
+  static const String editPurchase = 'ویرایش خرید';
+  static const String deletePurchase = 'حذف خرید';
+  static const String savePurchase = 'ذخیره خرید';
+  static const String purchaseDate = 'تاریخ خرید';
+  static const String shippingCost = 'هزینه ارسال';
+  static const String extraCosts = 'هزینه‌های اضافی';
+  static const String purchaseTotal = 'جمع فاکتور خرید';
+  static const String purchaseNotes = 'یادداشت خرید';
+  static const String searchPurchase = 'جستجوی خرید...';
+  static const String purchaseSaved = 'خرید با موفقیت ذخیره شد';
+  static const String purchaseDeleted = 'خرید حذف شد';
+  static const String noPurchases = 'هیچ خریدی ثبت نشده';
+  static const String purchaseItemsTotal = 'جمع اقلام';
+  static const String purchaseNetTotal = 'مبلغ نهایی';
+  static const String relatedPurchases = 'فاکتورهای خرید مرتبط';
+  static const String noPurchaseHistory = 'سابقه خریدی برای این کالا ثبت نشده';
+  static const String purchasedQty = 'تعداد خریداری شده';
+
+  // ─── Supplier (تأمین‌کننده) ─────────────────────────────────────────
+  static const String supplier = 'تأمین‌کننده';
+  static const String suppliers = 'تأمین‌کنندگان';
+  static const String supplierCode = 'کد تأمین‌کننده';
+  static const String supplierName = 'نام تأمین‌کننده';
+  static const String supplierPhone = 'تلفن';
+  static const String supplierAddress = 'آدرس';
+  static const String supplierNotes = 'یادداشت';
+  static const String addSupplier = 'افزودن تأمین‌کننده';
+  static const String editSupplier = 'ویرایش تأمین‌کننده';
+  static const String deleteSupplier = 'حذف تأمین‌کننده';
+  static const String selectSupplier = 'انتخاب تأمین‌کننده';
+  static const String searchSupplier = 'جستجوی تأمین‌کننده...';
+  static const String createNewSupplier = 'ساخت تأمین‌کننده جدید';
+
+  // ─── Purchase Statuses ──────────────────────────────────────────────
+  static const String purchaseStatusPending = 'در انتظار پرداخت';
+  static const String purchaseStatusSettled = 'تسویه شده';
+  static const String purchaseStatusCancelled = 'لغو شده';
+  static const List<String> purchaseStatuses = [
+    purchaseStatusPending,
+    purchaseStatusSettled,
+    purchaseStatusCancelled,
+  ];
 }

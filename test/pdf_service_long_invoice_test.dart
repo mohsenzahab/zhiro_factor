@@ -37,9 +37,38 @@ void main() {
       items: items,
     );
 
-    final pdfBytes = await PdfService.generateFromModelForTesting(invoice);
+    final pdfBytesA4 = await PdfService.generateFromModelForTesting(invoice, pageFormat: 'a4');
+    expect(pdfBytesA4, isNotNull);
+    expect(pdfBytesA4.length, greaterThan(1000));
 
-    expect(pdfBytes, isNotNull);
-    expect(pdfBytes.length, greaterThan(1000));
+    final pdfBytesA5 = await PdfService.generateFromModelForTesting(invoice, pageFormat: 'a5');
+    expect(pdfBytesA5, isNotNull);
+    expect(pdfBytesA5.length, greaterThan(1000));
+  });
+
+  test('Generating PDF for A5 format produces valid bytes', () async {
+    final invoice = InvoiceModel(
+      invoiceNumber: 'INV-A5',
+      date: '2026-09-10T11:00:00.000',
+      status: 'پرداخت شده',
+      totalGross: 50000,
+      totalDiscount: 5000,
+      totalNet: 45000,
+      customerName: 'تست A5',
+      items: [
+        InvoiceItemModel(
+          invoiceId: 1,
+          productName: 'کالای A5',
+          quantity: 2,
+          unitPrice: 25000,
+          discountCalculatedAmount: 5000,
+          lineTotal: 45000,
+        ),
+      ],
+    );
+
+    final bytes = await PdfService.generateFromModelForTesting(invoice, pageFormat: 'a5');
+    expect(bytes, isNotNull);
+    expect(bytes.length, greaterThan(500));
   });
 }

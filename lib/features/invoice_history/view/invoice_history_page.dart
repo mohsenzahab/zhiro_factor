@@ -9,8 +9,10 @@ import '../../../shared/widgets/empty_state.dart';
 import '../../../services/pdf_service.dart';
 import '../cubit/invoice_history_cubit.dart';
 import '../cubit/invoice_history_state.dart';
+import '../../../data/models/invoice_model.dart';
 import 'widgets/invoice_filter_bar.dart';
 import 'widgets/invoice_detail_panel.dart';
+import '../../invoice/view/widgets/invoice_preview_dialog.dart';
 
 /// Invoice history explorer page.
 class InvoiceHistoryPage extends StatelessWidget {
@@ -224,10 +226,16 @@ class _InvoiceHistoryViewState extends State<_InvoiceHistoryView> {
                           onPressed: () => widget.onEditInvoice?.call(inv.id!),
                         ),
                         IconButton(
+                          icon: const Icon(Icons.visibility_outlined, size: 18),
+                          color: AppColors.primary,
+                          tooltip: AppStrings.previewInvoice,
+                          onPressed: () => _previewInvoice(context, inv),
+                        ),
+                        IconButton(
                           icon: const Icon(Icons.print_outlined, size: 18),
                           color: AppColors.textSecondary,
-                          tooltip: AppStrings.printInvoice,
-                          onPressed: () => _printInvoice(context, inv.id!),
+                          tooltip: AppStrings.quickPrint,
+                          onPressed: () => _quickPrintInvoice(context, inv),
                         ),
                         IconButton(
                           icon: const Icon(Icons.delete_outline, size: 18),
@@ -267,7 +275,19 @@ class _InvoiceHistoryViewState extends State<_InvoiceHistoryView> {
     }
   }
 
-  Future<void> _printInvoice(BuildContext context, int invoiceId) async {
-    await PdfService.printInvoiceById(context, invoiceId);
+  Future<void> _previewInvoice(BuildContext context, InvoiceModel invoice) async {
+    if (invoice.id != null) {
+      await InvoicePreviewDialog.showFromId(context, invoice.id!);
+    } else {
+      await InvoicePreviewDialog.showFromModel(context, invoice);
+    }
+  }
+
+  Future<void> _quickPrintInvoice(BuildContext context, InvoiceModel invoice) async {
+    if (invoice.id != null) {
+      await PdfService.printInvoiceById(invoice.id!);
+    } else {
+      await PdfService.printInvoiceFromModel(invoice);
+    }
   }
 }

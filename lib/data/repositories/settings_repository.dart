@@ -12,6 +12,7 @@ class SettingsRepository {
   static const String _keyShowName = 'settings_show_name_on_invoice';
   static const String _keyShowDescription = 'settings_show_description_on_invoice';
   static const String _keyDescriptionPosition = 'settings_description_position';
+  static const String _keyDefaultPageFormat = 'settings_default_page_format';
 
   /// Load saved business settings.
   Future<BusinessSettingsModel> loadSettings() async {
@@ -21,7 +22,8 @@ class SettingsRepository {
       description: prefs.getString(_keyDescription) ?? '',
       showNameOnInvoice: prefs.getBool(_keyShowName) ?? true,
       showDescriptionOnInvoice: prefs.getBool(_keyShowDescription) ?? true,
-      descriptionPosition: prefs.getString(_keyDescriptionPosition) ?? 'top',
+      descriptionPosition: prefs.getString(_keyDescriptionPosition) ?? 'bottom',
+      defaultPageFormat: prefs.getString(_keyDefaultPageFormat) ?? 'a4',
     );
   }
 
@@ -33,6 +35,7 @@ class SettingsRepository {
     await prefs.setBool(_keyShowName, settings.showNameOnInvoice);
     await prefs.setBool(_keyShowDescription, settings.showDescriptionOnInvoice);
     await prefs.setString(_keyDescriptionPosition, settings.descriptionPosition);
+    await prefs.setString(_keyDefaultPageFormat, settings.defaultPageFormat);
   }
 
   /// Quick read of business name only (for sidebar display).

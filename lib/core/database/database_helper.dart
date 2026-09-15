@@ -9,7 +9,7 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._();
 
   static Database? _database;
-  static const int _version = 6;
+  static const int _version = 7;
   static const String _dbName = 'zhirofactor.db';
 
   /// Returns the initialized database instance.
@@ -196,6 +196,57 @@ class DatabaseHelper {
       )
     ''');
     await db.execute('CREATE INDEX idx_preset_items_template ON preset_template_items(template_id)');
+
+    // ── Suppliers Table ─────────────────────────────────────────────
+    await db.execute('''
+      CREATE TABLE suppliers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        code TEXT UNIQUE,
+        name TEXT NOT NULL,
+        phone TEXT,
+        address TEXT,
+        notes TEXT
+      )
+    ''');
+    await db.execute('CREATE INDEX idx_suppliers_code ON suppliers(code)');
+    await db.execute('CREATE INDEX idx_suppliers_name ON suppliers(name)');
+
+    // ── Purchases Table ─────────────────────────────────────────────
+    await db.execute('''
+      CREATE TABLE purchases (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        purchase_number TEXT UNIQUE NOT NULL,
+        supplier_id INTEGER,
+        date TEXT NOT NULL,
+        status TEXT,
+        total_amount REAL NOT NULL DEFAULT 0.0,
+        shipping_cost REAL NOT NULL DEFAULT 0.0,
+        extra_costs REAL NOT NULL DEFAULT 0.0,
+        total_net REAL NOT NULL DEFAULT 0.0,
+        notes TEXT,
+        FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
+      )
+    ''');
+    await db.execute('CREATE INDEX idx_purchases_number ON purchases(purchase_number)');
+    await db.execute('CREATE INDEX idx_purchases_supplier ON purchases(supplier_id)');
+    await db.execute('CREATE INDEX idx_purchases_date ON purchases(date)');
+
+    // ── Purchase Items Table ────────────────────────────────────────
+    await db.execute('''
+      CREATE TABLE purchase_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        purchase_id INTEGER NOT NULL,
+        product_id INTEGER,
+        product_name TEXT NOT NULL,
+        unit_price REAL NOT NULL,
+        quantity REAL NOT NULL DEFAULT 1.0,
+        line_total REAL NOT NULL,
+        FOREIGN KEY (purchase_id) REFERENCES purchases(id) ON DELETE CASCADE,
+        FOREIGN KEY (product_id) REFERENCES products(id)
+      )
+    ''');
+    await db.execute('CREATE INDEX idx_purchase_items_purchase ON purchase_items(purchase_id)');
+    await db.execute('CREATE INDEX idx_purchase_items_product ON purchase_items(product_id)');
   }
 
   Future<bool> _columnExists(Database db, String tableName, String columnName) async {
@@ -269,6 +320,56 @@ class DatabaseHelper {
       await _safeAddColumn(db, 'invoices', "overall_discount_type TEXT NOT NULL DEFAULT 'none'");
       await _safeAddColumn(db, 'invoices', 'overall_discount_value REAL NOT NULL DEFAULT 0.0');
       await _safeAddColumn(db, 'invoices', 'overall_discount_amount REAL NOT NULL DEFAULT 0.0');
+    }
+    // Migration v6 → v7: add suppliers, purchases, and purchase_items tables
+    if (oldVersion < 7) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS suppliers (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          code TEXT UNIQUE,
+          name TEXT NOT NULL,
+          phone TEXT,
+          address TEXT,
+          notes TEXT
+        )
+      ''');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_suppliers_code ON suppliers(code)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_suppliers_name ON suppliers(name)');
+
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS purchases (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          purchase_number TEXT UNIQUE NOT NULL,
+          supplier_id INTEGER,
+          date TEXT NOT NULL,
+          status TEXT,
+          total_amount REAL NOT NULL DEFAULT 0.0,
+          shipping_cost REAL NOT NULL DEFAULT 0.0,
+          extra_costs REAL NOT NULL DEFAULT 0.0,
+          total_net REAL NOT NULL DEFAULT 0.0,
+          notes TEXT,
+          FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
+        )
+      ''');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_purchases_number ON purchases(purchase_number)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_purchases_supplier ON purchases(supplier_id)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_purchases_date ON purchases(date)');
+
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS purchase_items (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          purchase_id INTEGER NOT NULL,
+          product_id INTEGER,
+          product_name TEXT NOT NULL,
+          unit_price REAL NOT NULL,
+          quantity REAL NOT NULL DEFAULT 1.0,
+          line_total REAL NOT NULL,
+          FOREIGN KEY (purchase_id) REFERENCES purchases(id) ON DELETE CASCADE,
+          FOREIGN KEY (product_id) REFERENCES products(id)
+        )
+      ''');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_purchase_items_purchase ON purchase_items(purchase_id)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_purchase_items_product ON purchase_items(product_id)');
     }
   }
 
