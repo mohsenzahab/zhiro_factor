@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
+import '../../../core/database/database_helper.dart';
+import '../../../core/extensions/number_extensions.dart';
 import '../../../data/models/business_settings_model.dart';
 import '../../../data/repositories/settings_repository.dart';
 
@@ -29,6 +31,8 @@ class _SettingsPageState extends State<SettingsPage> {
 
   bool _loading = true;
   bool _saving = false;
+  String _dbPath = '';
+  int _dbVersion = 0;
 
   @override
   void initState() {
@@ -47,6 +51,8 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _loadSettings() async {
     final settings = await _repo.loadSettings();
+    final dbPath = await DatabaseHelper.getDatabasePath();
+    final dbVersion = DatabaseHelper.currentVersion;
     if (!mounted) return;
     setState(() {
       _nameCtrl.text = settings.businessName;
@@ -55,6 +61,8 @@ class _SettingsPageState extends State<SettingsPage> {
       _showDescriptionOnInvoice = settings.showDescriptionOnInvoice;
       _descriptionPosition = settings.descriptionPosition;
       _defaultPageFormat = settings.defaultPageFormat;
+      _dbPath = dbPath;
+      _dbVersion = dbVersion;
       _loading = false;
     });
   }
@@ -301,6 +309,33 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
               ),
+              const SizedBox(height: 28),
+
+              // ── About Section ─────────────────────────────────────
+              _buildSectionCard(
+                icon: Icons.info_outline,
+                title: 'درباره برنامه',
+                children: [
+                  _buildInfoRow(
+                    icon: Icons.apps,
+                    label: 'نسخه برنامه',
+                    value: '۱.۰.۰'.toPersianDigits(),
+                  ),
+                  const SizedBox(height: 10),
+                  _buildInfoRow(
+                    icon: Icons.storage,
+                    label: 'نسخه پایگاه داده',
+                    value: _dbVersion.toString().toPersianDigits(),
+                  ),
+                  const SizedBox(height: 10),
+                  _buildInfoRow(
+                    icon: Icons.folder_outlined,
+                    label: 'مسیر پایگاه داده',
+                    value: _dbPath,
+                    isSmall: true,
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -425,6 +460,40 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildInfoRow({
+    required IconData icon,
+    required String label,
+    required String value,
+    bool isSmall = false,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: AppColors.textMuted, size: 20),
+        const SizedBox(width: 10),
+        Text(
+          '$label:',
+          style: const TextStyle(
+            fontSize: 14,
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: SelectableText(
+            value,
+            style: TextStyle(
+              fontSize: isSmall ? 12 : 14,
+              color: AppColors.textPrimary,
+              fontWeight: isSmall ? FontWeight.normal : FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

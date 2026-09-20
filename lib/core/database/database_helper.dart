@@ -12,6 +12,9 @@ class DatabaseHelper {
   static const int _version = 7;
   static const String _dbName = 'zhirofactor.db';
 
+  /// Public accessor for the current database schema version.
+  static int get currentVersion => _version;
+
   /// Returns the initialized database instance.
   Future<Database> get database async {
     if (_database != null) return _database!;
