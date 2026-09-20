@@ -12,6 +12,7 @@ import 'widgets/preset_template_dialog.dart';
 import 'widgets/invoice_items_grid.dart';
 import 'widgets/invoice_footer.dart';
 import 'widgets/invoice_preview_dialog.dart';
+import 'widgets/invoice_item_form_dialog.dart';
 
 /// Main invoice creation/editing page.
 class InvoicePage extends StatelessWidget {
@@ -106,11 +107,22 @@ class _InvoiceView extends StatelessWidget {
                 Row(
                   children: [
                     ElevatedButton.icon(
-                      onPressed: () => _addProduct(context),
-                      icon: const Icon(Icons.add_circle_outline, size: 20),
-                      label: const Text(AppStrings.addItem),
+                      onPressed: () => _addProduct(context, detailed: false),
+                      icon: const Icon(Icons.flash_on, size: 20),
+                      label: const Text('سریع'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.accent,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton.icon(
+                      onPressed: () => _addProduct(context, detailed: true),
+                      icon: const Icon(Icons.edit_note, size: 20),
+                      label: const Text('دقیق'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -154,10 +166,17 @@ class _InvoiceView extends StatelessWidget {
     );
   }
 
-  Future<void> _addProduct(BuildContext context) async {
+  Future<void> _addProduct(BuildContext context, {bool detailed = false}) async {
     final product = await ProductSearchDialog.show(context);
     if (product != null && context.mounted) {
-      context.read<InvoiceCubit>().addItem(product);
+      if (detailed) {
+        final item = await InvoiceItemFormDialog.show(context, product);
+        if (item != null && context.mounted) {
+          context.read<InvoiceCubit>().addDetailedItem(item);
+        }
+      } else {
+        context.read<InvoiceCubit>().addItem(product);
+      }
     }
   }
 

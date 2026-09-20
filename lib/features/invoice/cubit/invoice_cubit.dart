@@ -99,6 +99,11 @@ class InvoiceCubit extends Cubit<InvoiceState> {
     emit(state.copyWith(items: [...state.items, item]));
   }
 
+  /// Add a pre-configured detailed invoice item.
+  void addDetailedItem(InvoiceItemModel item) {
+    emit(state.copyWith(items: [...state.items, item]));
+  }
+
   /// Remove an item at index.
   void removeItem(int index) {
     final items = List<InvoiceItemModel>.from(state.items);
