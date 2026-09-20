@@ -187,7 +187,7 @@ class _OverallDiscountRow extends StatelessWidget {
           SizedBox(
             width: 140,
             child: DropdownButtonFormField<String>(
-              value: state.overallDiscountType,
+              initialValue: state.overallDiscountType,
               isExpanded: true,
               isDense: true,
               decoration: const InputDecoration(

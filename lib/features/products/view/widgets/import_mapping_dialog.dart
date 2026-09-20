@@ -249,7 +249,7 @@ class _ImportMappingDialogState extends State<ImportMappingDialog> {
           ),
           const SizedBox(height: 6),
           DropdownButtonFormField<int>(
-            value: currentIndex,
+            initialValue: currentIndex,
             isExpanded: true,
             decoration: const InputDecoration(
               isDense: true,

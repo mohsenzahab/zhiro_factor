@@ -7,8 +7,11 @@ import '../../data/repositories/settings_repository.dart';
 enum NavPage {
   newInvoice,
   invoiceHistory,
+  newPurchase,
+  purchaseHistory,
   products,
   customers,
+  suppliers,
   dashboard,
   settings,
 }

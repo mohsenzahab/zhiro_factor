@@ -320,7 +320,7 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          value: _selectedUnit,
+                          initialValue: _selectedUnit,
                           decoration: const InputDecoration(labelText: AppStrings.productUnit),
                           items: AppUnits.all
                               .map((u) => DropdownMenuItem(value: u, child: Text(u)))

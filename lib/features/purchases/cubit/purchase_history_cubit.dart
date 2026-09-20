@@ -41,6 +41,8 @@ class PurchaseHistoryCubit extends Cubit<PurchaseHistoryState> {
   /// Load all purchases with optional filters.
   Future<void> load({
     String? supplierQuery,
+    int? supplierId,
+    int? productId,
     String? status,
     String? dateFrom,
     String? dateTo,
@@ -49,6 +51,8 @@ class PurchaseHistoryCubit extends Cubit<PurchaseHistoryState> {
     try {
       final purchases = await _repository.getAll(
         supplierQuery: supplierQuery,
+        supplierId: supplierId,
+        productId: productId,
         status: status,
         dateFrom: dateFrom,
         dateTo: dateTo,

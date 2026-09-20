@@ -10,6 +10,8 @@ class PurchaseRepository {
   /// Fetch all purchases with supplier name join, optionally filtered.
   Future<List<PurchaseModel>> getAll({
     String? supplierQuery,
+    int? supplierId,
+    int? productId,
     String? status,
     String? dateFrom,
     String? dateTo,
@@ -17,9 +19,10 @@ class PurchaseRepository {
     final db = await _dbHelper.database;
 
     String sql = '''
-      SELECT p.*, s.name as supplier_name
+      SELECT DISTINCT p.*, s.name as supplier_name
       FROM purchases p
       LEFT JOIN suppliers s ON p.supplier_id = s.id
+      ${productId != null ? 'INNER JOIN purchase_items pi ON p.id = pi.purchase_id' : ''}
       WHERE 1=1
     ''';
     final args = <dynamic>[];
@@ -45,6 +48,14 @@ class PurchaseRepository {
     if (dateTo != null && dateTo.isNotEmpty) {
       sql += ' AND p.date <= ?';
       args.add(dateTo);
+    }
+    if (supplierId != null) {
+      sql += ' AND p.supplier_id = ?';
+      args.add(supplierId);
+    }
+    if (productId != null) {
+      sql += ' AND pi.product_id = ?';
+      args.add(productId);
     }
 
     sql += ' ORDER BY p.date DESC, p.id DESC';

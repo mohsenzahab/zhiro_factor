@@ -91,7 +91,7 @@ class InvoiceHeader extends StatelessWidget {
                   context,
                   label: AppStrings.invoiceStatus,
                   child: DropdownButtonFormField<String>(
-                    value: state.status,
+                    initialValue: state.status,
                     isExpanded: true,
                     decoration: const InputDecoration(
                       isDense: true,

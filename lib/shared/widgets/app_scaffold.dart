@@ -5,8 +5,11 @@ import '../../features/invoice/view/invoice_page.dart';
 import '../../features/invoice_history/view/invoice_history_page.dart';
 import '../../features/products/view/products_page.dart';
 import '../../features/customers/view/customers_page.dart';
+import '../../features/suppliers/view/suppliers_page.dart';
 import '../../features/dashboard/view/dashboard_page.dart';
 import '../../features/settings/view/settings_page.dart';
+import '../../features/purchases/view/purchase_page.dart';
+import '../../features/purchases/view/purchase_history_page.dart';
 
 /// Main application shell with sidebar and page switching.
 class AppScaffold extends StatefulWidget {
@@ -33,7 +36,18 @@ class AppScaffoldState extends State<AppScaffold> {
     _editInvoiceId = invoiceId;
   }
 
+  /// Navigate to purchase editor with a specific purchase ID.
+  void editPurchase(int purchaseId) {
+    setState(() {
+      _currentPage = NavPage.newPurchase;
+    });
+    _editPurchaseId = purchaseId;
+  }
+
   int? _editInvoiceId;
+  int? _editPurchaseId;
+  int? _filterPurchaseProductId;
+  int? _filterPurchaseSupplierId;
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +71,8 @@ class AppScaffoldState extends State<AppScaffold> {
                     setState(() {
                       _currentPage = page;
                       _editInvoiceId = null;
+                      _filterPurchaseProductId = null;
+                      _filterPurchaseSupplierId = null;
                     });
                   },
                 ),
@@ -89,12 +105,48 @@ class AppScaffoldState extends State<AppScaffold> {
         return InvoiceHistoryPage(
           onEditInvoice: (id) => editInvoice(id),
         );
+      case NavPage.newPurchase:
+        final pid = _editPurchaseId;
+        _editPurchaseId = null;
+        return PurchasePage(
+          key: ValueKey('purchase_$pid'),
+          editPurchaseId: pid,
+          onSavedAndGoBack: pid != null
+              ? () => setState(() => _currentPage = NavPage.purchaseHistory)
+              : null,
+        );
+      case NavPage.purchaseHistory:
+        final fProdId = _filterPurchaseProductId;
+        final fSuppId = _filterPurchaseSupplierId;
+        _filterPurchaseProductId = null;
+        _filterPurchaseSupplierId = null;
+        return PurchaseHistoryPage(
+          onEditPurchase: (id) => editPurchase(id),
+          productId: fProdId,
+          supplierId: fSuppId,
+        );
       case NavPage.products:
-        return const ProductsPage();
+        return ProductsPage(
+          onViewProductPurchases: (productId) {
+            setState(() {
+              _currentPage = NavPage.purchaseHistory;
+              _filterPurchaseProductId = productId;
+            });
+          },
+        );
       case NavPage.customers:
         return CustomersPage(
           onViewCustomerInvoices: (customerId) {
             setState(() => _currentPage = NavPage.invoiceHistory);
+          },
+        );
+      case NavPage.suppliers:
+        return SuppliersPage(
+          onViewSupplierPurchases: (supplierId) {
+            setState(() {
+              _currentPage = NavPage.purchaseHistory;
+              _filterPurchaseSupplierId = supplierId;
+            });
           },
         );
       case NavPage.dashboard:

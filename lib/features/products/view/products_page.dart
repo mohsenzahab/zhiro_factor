@@ -18,19 +18,23 @@ import 'widgets/import_mapping_dialog.dart';
 
 /// Products management page with CRUD data table.
 class ProductsPage extends StatelessWidget {
-  const ProductsPage({super.key});
+  final void Function(int productId)? onViewProductPurchases;
+
+  const ProductsPage({super.key, this.onViewProductPurchases});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => ProductCubit()..loadProducts(),
-      child: const _ProductsView(),
+      child: _ProductsView(onViewProductPurchases: onViewProductPurchases),
     );
   }
 }
 
 class _ProductsView extends StatefulWidget {
-  const _ProductsView();
+  final void Function(int productId)? onViewProductPurchases;
+
+  const _ProductsView({this.onViewProductPurchases});
 
   @override
   State<_ProductsView> createState() => _ProductsViewState();
@@ -644,6 +648,13 @@ class _ProductsViewState extends State<_ProductsView> {
                     DataCell(Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        if (widget.onViewProductPurchases != null)
+                          IconButton(
+                            icon: const Icon(Icons.receipt_long, size: 18),
+                            color: AppColors.accent,
+                            tooltip: 'تاریخچه خرید کالا',
+                            onPressed: () => widget.onViewProductPurchases!(p.id!),
+                          ),
                         IconButton(
                           icon: const Icon(Icons.edit_outlined, size: 18),
                           color: AppColors.info,
