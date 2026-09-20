@@ -22,13 +22,25 @@ class AppScaffold extends StatefulWidget {
 class AppScaffoldState extends State<AppScaffold> {
   NavPage _currentPage = NavPage.newInvoice;
 
+  /// Global interceptor for navigation (used to show discard warnings).
+  static Future<bool> Function()? onWillNavigateAway;
+
   /// Navigate to a specific page (can be called externally via GlobalKey).
-  void navigateTo(NavPage page) {
+  Future<void> navigateTo(NavPage page) async {
+    if (page == _currentPage) return;
+    if (onWillNavigateAway != null) {
+      final canNavigate = await onWillNavigateAway!();
+      if (!canNavigate) return;
+    }
     setState(() => _currentPage = page);
   }
 
   /// Navigate to invoice editor with a specific invoice ID.
-  void editInvoice(int invoiceId) {
+  Future<void> editInvoice(int invoiceId) async {
+    if (onWillNavigateAway != null) {
+      final canNavigate = await onWillNavigateAway!();
+      if (!canNavigate) return;
+    }
     setState(() {
       _currentPage = NavPage.newInvoice;
     });
@@ -37,7 +49,11 @@ class AppScaffoldState extends State<AppScaffold> {
   }
 
   /// Navigate to purchase editor with a specific purchase ID.
-  void editPurchase(int purchaseId) {
+  Future<void> editPurchase(int purchaseId) async {
+    if (onWillNavigateAway != null) {
+      final canNavigate = await onWillNavigateAway!();
+      if (!canNavigate) return;
+    }
     setState(() {
       _currentPage = NavPage.newPurchase;
     });

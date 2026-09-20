@@ -13,6 +13,7 @@ import 'widgets/invoice_items_grid.dart';
 import 'widgets/invoice_footer.dart';
 import 'widgets/invoice_preview_dialog.dart';
 import 'widgets/invoice_item_form_dialog.dart';
+import '../../../shared/widgets/app_scaffold.dart';
 
 /// Main invoice creation/editing page.
 class InvoicePage extends StatelessWidget {
@@ -41,23 +42,82 @@ class InvoicePage extends StatelessWidget {
   }
 }
 
-class _InvoiceView extends StatelessWidget {
+class _InvoiceView extends StatefulWidget {
   final int? editInvoiceId;
   final VoidCallback? onSavedAndGoBack;
 
   const _InvoiceView({this.editInvoiceId, this.onSavedAndGoBack});
 
   @override
+  State<_InvoiceView> createState() => _InvoiceViewState();
+}
+
+class _InvoiceViewState extends State<_InvoiceView> {
+  @override
+  void initState() {
+    super.initState();
+    // Register global interceptor for sidebar navigation
+    AppScaffoldState.onWillNavigateAway = _onWillNavigateAway;
+  }
+
+  @override
+  void dispose() {
+    // Clear global interceptor when leaving
+    AppScaffoldState.onWillNavigateAway = null;
+    super.dispose();
+  }
+
+  Future<bool> _onWillNavigateAway() async {
+    final state = context.read<InvoiceCubit>().state;
+    // Only warn if not saved and has data (items or customer)
+    if (!state.isSaved && (state.items.isNotEmpty || state.selectedCustomer != null)) {
+      final shouldLeave = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppColors.surfaceDark,
+          title: const Text('فاکتور ذخیره نشده است', style: TextStyle(color: AppColors.error)),
+          content: const Text('آیا مطمئن هستید که می‌خواهید خارج شوید؟ اطلاعات ثبت شده از دست خواهد رفت.', style: TextStyle(color: AppColors.textPrimary)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('انصراف', style: TextStyle(color: AppColors.textMuted)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('خروج و حذف', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
+      return shouldLeave ?? false;
+    }
+    return true;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return BlocListener<InvoiceCubit, InvoiceState>(
-      listenWhen: (prev, curr) => !prev.isSaved && curr.isSaved,
-      listener: (context, state) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('فاکتور با موفقیت ذخیره شد')),
-        );
-        if (editInvoiceId != null && onSavedAndGoBack != null) {
-          // Editing existing invoice → go back to history
-          onSavedAndGoBack!();
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+        final canPop = await _onWillNavigateAway();
+        if (canPop && context.mounted) {
+          // If we are editing, we can go back
+          if (widget.editInvoiceId != null && widget.onSavedAndGoBack != null) {
+            widget.onSavedAndGoBack!();
+          }
+        }
+      },
+      child: BlocListener<InvoiceCubit, InvoiceState>(
+        listenWhen: (prev, curr) => !prev.isSaved && curr.isSaved,
+        listener: (context, state) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('فاکتور با موفقیت ذخیره شد')),
+          );
+          if (widget.editInvoiceId != null && widget.onSavedAndGoBack != null) {
+            // Editing existing invoice → go back to history
+            widget.onSavedAndGoBack!();
         } else {
           // New invoice → reset form
           context.read<InvoiceCubit>().reset();
@@ -82,7 +142,7 @@ class _InvoiceView extends StatelessWidget {
                     Icon(Icons.receipt_long, color: AppColors.primary, size: 28),
                     const SizedBox(width: 12),
                     Text(
-                      editInvoiceId != null ? AppStrings.editInvoice : AppStrings.newInvoice,
+                      widget.editInvoiceId != null ? AppStrings.editInvoice : AppStrings.newInvoice,
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
                     const Spacer(),
@@ -161,6 +221,7 @@ class _InvoiceView extends StatelessWidget {
               ],
             ),
           ),
+        ),
         ),
       ),
     );
