@@ -61,9 +61,9 @@ class _CustomerFormDialogState extends State<CustomerFormDialog> {
 
     final customer = CustomerModel(
       id: widget.customer?.id,
-      code: _codeCtrl.text.trim(),
+      code: _codeCtrl.text.trim().toEnglishDigits(),
       name: _nameCtrl.text.trim(),
-      phone: _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
+      phone: _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim().toEnglishDigits(),
       address: _addressCtrl.text.trim().isEmpty ? null : _addressCtrl.text.trim(),
       notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
     );

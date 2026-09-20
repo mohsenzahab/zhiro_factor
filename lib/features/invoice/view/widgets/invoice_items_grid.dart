@@ -187,19 +187,40 @@ class _InlineNumberField extends StatefulWidget {
 class _InlineNumberFieldState extends State<_InlineNumberField> {
   late final TextEditingController _ctrl;
 
+  late final FocusNode _focusNode;
+
   @override
   void initState() {
     super.initState();
+    _focusNode = FocusNode();
     _ctrl = TextEditingController(text: _format(widget.value));
+    _focusNode.addListener(() {
+      if (!_focusNode.hasFocus) {
+        final newText = _format(widget.value);
+        if (_ctrl.text != newText) {
+          _ctrl.text = newText;
+        }
+      }
+    });
   }
 
   @override
   void didUpdateWidget(covariant _InlineNumberField oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.value != oldWidget.value) {
-      final newText = _format(widget.value);
-      if (_ctrl.text != newText) {
-        _ctrl.text = newText;
+      if (!_focusNode.hasFocus) {
+        final newText = _format(widget.value);
+        if (_ctrl.text != newText) {
+          _ctrl.text = newText;
+        }
+      } else {
+        // If focused, only update if the parsed value doesn't match the new value mathematically
+        final currentParsed = _ctrl.text.tryParseFormatted();
+        if (currentParsed != widget.value) {
+          final newText = _format(widget.value);
+          _ctrl.text = newText;
+          _ctrl.selection = TextSelection.collapsed(offset: newText.length);
+        }
       }
     }
   }
@@ -211,6 +232,7 @@ class _InlineNumberFieldState extends State<_InlineNumberField> {
 
   @override
   void dispose() {
+    _focusNode.dispose();
     _ctrl.dispose();
     super.dispose();
   }
@@ -221,6 +243,7 @@ class _InlineNumberFieldState extends State<_InlineNumberField> {
       width: 90,
       child: TextField(
         controller: _ctrl,
+        focusNode: _focusNode,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         textAlign: TextAlign.center,
         style: const TextStyle(fontSize: 13),

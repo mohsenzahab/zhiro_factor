@@ -594,21 +594,10 @@ class _PurchaseItemsGrid extends StatelessWidget {
                             flex: 2,
                             child: SizedBox(
                               height: 36,
-                              child: TextFormField(
-                                initialValue: item.unitPrice.round().toString().toPersianDigits(),
-                                onFieldSubmitted: (v) {
-                                  final price = double.tryParse(v.toEnglishDigits());
-                                  if (price != null) {
-                                    context.read<PurchaseCubit>().updateItemPrice(index, price);
-                                  }
-                                },
-                                decoration: const InputDecoration(
-                                  isDense: true,
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                  suffixText: 'تومان',
-                                ),
-                                style: const TextStyle(fontSize: 13),
-                                textAlign: TextAlign.center,
+                              child: _InlineNumberField(
+                                value: item.unitPrice,
+                                suffixText: 'تومان',
+                                onChanged: (v) => context.read<PurchaseCubit>().updateItemPrice(index, v),
                               ),
                             ),
                           ),
@@ -617,22 +606,11 @@ class _PurchaseItemsGrid extends StatelessWidget {
                             flex: 1,
                             child: SizedBox(
                               height: 36,
-                              child: TextFormField(
-                                initialValue: item.quantity == item.quantity.roundToDouble()
-                                    ? item.quantity.toInt().toString().toPersianDigits()
-                                    : item.quantity.toString().toPersianDigits(),
-                                onFieldSubmitted: (v) {
-                                  final qty = double.tryParse(v.toEnglishDigits());
-                                  if (qty != null && qty > 0) {
-                                    context.read<PurchaseCubit>().updateItemQuantity(index, qty);
-                                  }
+                              child: _InlineNumberField(
+                                value: item.quantity,
+                                onChanged: (v) {
+                                  if (v > 0) context.read<PurchaseCubit>().updateItemQuantity(index, v);
                                 },
-                                decoration: const InputDecoration(
-                                  isDense: true,
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                ),
-                                style: const TextStyle(fontSize: 13),
-                                textAlign: TextAlign.center,
                               ),
                             ),
                           ),
@@ -908,6 +886,107 @@ class _ShortcutBadge extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Inline Number Field
+// ═══════════════════════════════════════════════════════════════════
+
+class _InlineNumberField extends StatefulWidget {
+  final double value;
+  final String? suffixText;
+  final ValueChanged<double> onChanged;
+
+  const _InlineNumberField({required this.value, this.suffixText, required this.onChanged});
+
+  @override
+  State<_InlineNumberField> createState() => _InlineNumberFieldState();
+}
+
+class _InlineNumberFieldState extends State<_InlineNumberField> {
+  late final TextEditingController _ctrl;
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode = FocusNode();
+    _ctrl = TextEditingController(text: _format(widget.value));
+    _focusNode.addListener(() {
+      if (!_focusNode.hasFocus) {
+        final newText = _format(widget.value);
+        if (_ctrl.text != newText) {
+          _ctrl.text = newText;
+        }
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _InlineNumberField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.value != oldWidget.value) {
+      if (!_focusNode.hasFocus) {
+        final newText = _format(widget.value);
+        if (_ctrl.text != newText) {
+          _ctrl.text = newText;
+        }
+      } else {
+        final currentParsed = _ctrl.text.tryParseFormatted();
+        if (currentParsed != widget.value) {
+          final newText = _format(widget.value);
+          _ctrl.text = newText;
+          _ctrl.selection = TextSelection.collapsed(offset: newText.length);
+        }
+      }
+    }
+  }
+
+  String _format(double v) {
+    if (v == v.toInt().toDouble()) return v.toInt().toString().toPersianDigits();
+    return v.toStringAsFixed(1).toPersianDigits();
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _ctrl,
+      focusNode: _focusNode,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      textAlign: TextAlign.center,
+      style: const TextStyle(fontSize: 13),
+      decoration: InputDecoration(
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        filled: true,
+        fillColor: AppColors.surfaceDark,
+        suffixText: widget.suffixText,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: BorderSide(color: AppColors.dividerDark),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: BorderSide(color: AppColors.dividerDark),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: BorderSide(color: AppColors.primary),
+        ),
+      ),
+      onChanged: (text) {
+        final parsed = text.tryParseFormatted();
+        if (parsed != null) widget.onChanged(parsed);
+      },
     );
   }
 }

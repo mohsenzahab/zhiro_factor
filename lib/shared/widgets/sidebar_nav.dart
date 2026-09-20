@@ -32,6 +32,7 @@ class _NavItem {
 }
 
 const _navItems = <_NavItem>[
+  // ── فروش ────────────────────────────────
   _NavItem(
     page: NavPage.newInvoice,
     icon: Icons.receipt_long_outlined,
@@ -44,6 +45,20 @@ const _navItems = <_NavItem>[
     activeIcon: Icons.history,
     label: AppStrings.navInvoiceHistory,
   ),
+  // ── خرید ────────────────────────────────
+  _NavItem(
+    page: NavPage.newPurchase,
+    icon: Icons.add_shopping_cart_outlined,
+    activeIcon: Icons.add_shopping_cart,
+    label: AppStrings.newPurchase,
+  ),
+  _NavItem(
+    page: NavPage.purchaseHistory,
+    icon: Icons.shopping_bag_outlined,
+    activeIcon: Icons.shopping_bag,
+    label: AppStrings.purchaseHistory,
+  ),
+  // ── اطلاعات پایه ────────────────────────
   _NavItem(
     page: NavPage.products,
     icon: Icons.inventory_2_outlined,
@@ -56,6 +71,13 @@ const _navItems = <_NavItem>[
     activeIcon: Icons.people,
     label: AppStrings.navCustomers,
   ),
+  _NavItem(
+    page: NavPage.suppliers,
+    icon: Icons.local_shipping_outlined,
+    activeIcon: Icons.local_shipping,
+    label: AppStrings.navSuppliers,
+  ),
+  // ── سایر ────────────────────────────────
   _NavItem(
     page: NavPage.dashboard,
     icon: Icons.dashboard_outlined,

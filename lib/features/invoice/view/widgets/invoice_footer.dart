@@ -35,9 +35,11 @@ class InvoiceFooter extends StatelessWidget {
               const SizedBox(height: 16),
 
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // ── Totals ──────────────────────────────────────
                   Expanded(
+                    flex: 4,
                     child: Row(
                       children: [
                         _TotalCard(
@@ -60,6 +62,46 @@ class InvoiceFooter extends StatelessWidget {
                           color: AppColors.accent,
                           icon: Icons.payments_outlined,
                           isHighlighted: true,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+
+                  // ── Notes ──────────────────────────────────────
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'توضیحات فاکتور',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: AppColors.textMuted,
+                                fontWeight: FontWeight.w500,
+                              ),
+                        ),
+                        const SizedBox(height: 6),
+                        TextFormField(
+                          initialValue: state.notes ?? '',
+                          maxLines: 4,
+                          onChanged: (v) => context.read<InvoiceCubit>().setNotes(v),
+                          decoration: InputDecoration(
+                            isDense: true,
+                            hintText: 'یادداشت برای این فاکتور...',
+                            contentPadding: const EdgeInsets.all(12),
+                            filled: true,
+                            fillColor: AppColors.surfaceDark,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(color: AppColors.dividerDark),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(color: AppColors.dividerDark),
+                            ),
+                          ),
+                          style: const TextStyle(fontSize: 13),
                         ),
                       ],
                     ),
@@ -96,7 +138,7 @@ class InvoiceFooter extends StatelessWidget {
                                   child: CircularProgressIndicator(strokeWidth: 2),
                                 )
                               : const Icon(Icons.save, size: 20),
-                          label: Text(AppStrings.saveInvoice),
+                          label: const Text(AppStrings.saveInvoice),
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
