@@ -183,7 +183,7 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
     if (!_formKey.currentState!.validate()) return;
 
     final codeText = _codeCtrl.text.trim();
-    final cleanCode = codeText.isEmpty ? null : codeText;
+    final cleanCode = codeText.isEmpty ? null : codeText.toEnglishDigits();
 
     // Check unique product code
     if (cleanCode != null) {

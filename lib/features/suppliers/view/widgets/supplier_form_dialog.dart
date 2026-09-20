@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../../core/constants/app_strings.dart';
 import '../../../../../core/constants/app_colors.dart';
+import '../../../../../core/extensions/number_extensions.dart';
 import '../../../../../data/models/supplier_model.dart';
 
 class SupplierFormDialog extends StatefulWidget {
@@ -140,9 +141,9 @@ class _SupplierFormDialogState extends State<SupplierFormDialog> {
                 context,
                 SupplierModel(
                   id: widget.supplier?.id,
-                  code: _codeCtrl.text.trim().isEmpty ? null : _codeCtrl.text.trim(),
+                  code: _codeCtrl.text.trim().isEmpty ? null : _codeCtrl.text.trim().toEnglishDigits(),
                   name: name,
-                  phone: _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
+                  phone: _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim().toEnglishDigits(),
                   address: _addressCtrl.text.trim().isEmpty ? null : _addressCtrl.text.trim(),
                   notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
                 ),

@@ -4,6 +4,7 @@ import '../../../data/models/purchase_item_model.dart';
 import '../../../data/models/product_model.dart';
 import '../../../data/models/supplier_model.dart';
 import '../../../data/repositories/purchase_repository.dart';
+import '../../../core/extensions/number_extensions.dart';
 import 'purchase_state.dart';
 
 class PurchaseCubit extends Cubit<PurchaseState> {
@@ -130,7 +131,7 @@ class PurchaseCubit extends Cubit<PurchaseState> {
     try {
       final purchase = PurchaseModel(
         id: state.editingPurchaseId,
-        purchaseNumber: state.purchaseNumber,
+        purchaseNumber: state.purchaseNumber.toEnglishDigits(),
         supplierId: state.selectedSupplier?.id,
         supplierName: state.selectedSupplier?.name,
         date: state.date,

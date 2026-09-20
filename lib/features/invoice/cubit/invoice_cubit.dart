@@ -7,6 +7,7 @@ import '../../../data/models/preset_template_model.dart';
 import '../../../data/repositories/invoice_repository.dart';
 import '../../../data/repositories/preset_template_repository.dart';
 import '../../../core/utils/invoice_number_generator.dart';
+import '../../../core/extensions/number_extensions.dart';
 import 'invoice_state.dart';
 
 class InvoiceCubit extends Cubit<InvoiceState> {
@@ -145,7 +146,7 @@ class InvoiceCubit extends Cubit<InvoiceState> {
     try {
       final invoice = InvoiceModel(
         id: state.editingInvoiceId,
-        invoiceNumber: state.invoiceNumber,
+        invoiceNumber: state.invoiceNumber.toEnglishDigits(),
         customerId: state.selectedCustomer?.id,
         customerName: state.selectedCustomer?.name,
         date: state.date,
