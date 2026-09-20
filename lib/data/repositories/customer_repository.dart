@@ -73,7 +73,7 @@ class CustomerRepository {
       "SELECT code FROM customers WHERE code LIKE 'C%' ORDER BY code DESC LIMIT 1",
     );
     if (result.isEmpty) return 'C001';
-    final lastCode = result.first['code'] as String;
+    final lastCode = (result.first['code'] as String).toEnglishDigits();
     final num = int.tryParse(lastCode.substring(1)) ?? 0;
     return 'C${(num + 1).toString().padLeft(3, '0')}';
   }

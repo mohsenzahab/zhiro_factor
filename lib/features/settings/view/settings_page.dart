@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/database/database_helper.dart';
@@ -33,6 +34,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _saving = false;
   String _dbPath = '';
   int _dbVersion = 0;
+  String _appVersion = '۱.۰.۰';
 
   @override
   void initState() {
@@ -53,6 +55,18 @@ class _SettingsPageState extends State<SettingsPage> {
     final settings = await _repo.loadSettings();
     final dbPath = await DatabaseHelper.getDatabasePath();
     final dbVersion = DatabaseHelper.currentVersion;
+    
+    String versionText = '۱.۰.۰';
+    try {
+      final pubspec = await rootBundle.loadString('pubspec.yaml');
+      final versionLine = pubspec.split('\n').firstWhere((line) => line.startsWith('version:'));
+      final rawVersion = versionLine.split(':')[1].trim();
+      final versionNum = rawVersion.split('+').first; // Keep only 1.0.1, strip +2
+      versionText = versionNum.toPersianDigits();
+    } catch (_) {
+      // Fallback
+    }
+
     if (!mounted) return;
     setState(() {
       _nameCtrl.text = settings.businessName;
@@ -63,6 +77,7 @@ class _SettingsPageState extends State<SettingsPage> {
       _defaultPageFormat = settings.defaultPageFormat;
       _dbPath = dbPath;
       _dbVersion = dbVersion;
+      _appVersion = versionText;
       _loading = false;
     });
   }
@@ -319,7 +334,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   _buildInfoRow(
                     icon: Icons.apps,
                     label: 'نسخه برنامه',
-                    value: '۱.۰.۰'.toPersianDigits(),
+                    value: _appVersion,
                   ),
                   const SizedBox(height: 10),
                   _buildInfoRow(

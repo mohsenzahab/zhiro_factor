@@ -152,7 +152,7 @@ class ProductRepository {
       "SELECT code FROM products WHERE code LIKE 'P%' ORDER BY code DESC LIMIT 1",
     );
     if (result.isEmpty) return 'P001';
-    final lastCode = result.first['code'] as String;
+    final lastCode = (result.first['code'] as String).toEnglishDigits();
     final num = int.tryParse(lastCode.substring(1)) ?? 0;
     return 'P${(num + 1).toString().padLeft(3, '0')}';
   }

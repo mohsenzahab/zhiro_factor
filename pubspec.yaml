@@ -1,7 +1,7 @@
 name: sales_box
 description: "ژیروفاکتور — مدیریت فروش و فاکتور"
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ^3.13.1
@@ -52,6 +52,7 @@ flutter:
 
   assets:
     - assets/fonts/
+    - pubspec.yaml
 
   fonts:
     - family: Vazirmatn
