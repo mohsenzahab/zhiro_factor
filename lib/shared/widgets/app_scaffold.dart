@@ -32,7 +32,12 @@ class AppScaffoldState extends State<AppScaffold> {
       final canNavigate = await onWillNavigateAway!();
       if (!canNavigate) return;
     }
-    setState(() => _currentPage = page);
+    setState(() {
+      _currentPage = page;
+      _editInvoiceId = null;
+      _filterPurchaseProductId = null;
+      _filterPurchaseSupplierId = null;
+    });
   }
 
   /// Navigate to invoice editor with a specific invoice ID.
@@ -83,14 +88,7 @@ class AppScaffoldState extends State<AppScaffold> {
                 // ── Sidebar ────────────────────────────────────
                 SidebarNav(
                   currentPage: _currentPage,
-                  onPageChanged: (page) {
-                    setState(() {
-                      _currentPage = page;
-                      _editInvoiceId = null;
-                      _filterPurchaseProductId = null;
-                      _filterPurchaseSupplierId = null;
-                    });
-                  },
+                  onPageChanged: (page) => navigateTo(page),
                 ),
 
                 // ── Main Content ───────────────────────────────
