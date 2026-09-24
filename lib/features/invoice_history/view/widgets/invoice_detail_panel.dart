@@ -99,8 +99,16 @@ class _InvoiceDetailPanelState extends State<InvoiceDetailPanel> {
                     _dataCell(item.quantity.formattedInt),
                     _dataCell(item.unitPrice.formatted),
                     _dataCell(item.discountCalculatedAmount.formatted),
-                    _dataCell(item.lineTotal.formatted,
-                        style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.accent)),
+                    Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Tooltip(
+                        message: 'سود: ${item.profitAmount.formatted} تومان (${item.profitPercentage.toStringAsFixed(1).toPersianDigits()}٪)',
+                        child: Text(
+                          item.lineTotal.formatted,
+                          style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.accent, fontSize: 12),
+                        ),
+                      ),
+                    ),
                   ],
                 );
               }),
