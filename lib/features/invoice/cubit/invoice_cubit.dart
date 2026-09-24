@@ -90,7 +90,7 @@ class InvoiceCubit extends Cubit<InvoiceState> {
       productId: product.id,
       productName: product.name,
       unitPrice: product.effectivePrice,
-      purchasePrice: product.currentBuyPrice ?? 0.0, // Added purchasePrice
+      purchasePrice: product.effectiveBuyPrice, // Added purchasePrice
       quantity: 1.0,
       discountType: 'none',
       discountValue: 0.0,

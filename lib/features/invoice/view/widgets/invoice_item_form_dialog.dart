@@ -84,7 +84,7 @@ class _InvoiceItemFormDialogState extends State<InvoiceItemFormDialog> {
       productId: widget.product.id,
       productName: widget.product.name,
       unitPrice: price,
-      purchasePrice: widget.product.currentBuyPrice ?? 0.0,
+      purchasePrice: widget.product.effectiveBuyPrice,
       quantity: qty,
       discountType: _discountType,
       discountValue: discValue,
