@@ -21,6 +21,27 @@ class InvoiceModel extends Equatable {
   final String? notes;
   final List<InvoiceItemModel> items;
 
+  /// Calculated total profit for the entire invoice
+  double get totalProfitAmount {
+    double totalProfit = 0;
+    for (final item in items) {
+      totalProfit += item.profitAmount;
+    }
+    // invoice-level discount reduces profit!
+    totalProfit -= overallDiscountAmount;
+    return totalProfit;
+  }
+
+  /// Calculated total profit percentage for the entire invoice
+  double get totalProfitPercentage {
+    double totalCost = 0;
+    for (final item in items) {
+      totalCost += (item.purchasePrice * item.quantity);
+    }
+    if (totalCost <= 0) return 100.0;
+    return (totalProfitAmount / totalCost) * 100.0;
+  }
+
   const InvoiceModel({
     this.id,
     required this.invoiceNumber,

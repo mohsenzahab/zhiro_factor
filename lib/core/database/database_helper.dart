@@ -9,7 +9,7 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._();
 
   static Database? _database;
-  static const int _version = 7;
+  static const int _version = 8;
   static const String _dbName = 'zhirofactor.db';
 
   /// Public accessor for the current database schema version.
@@ -165,6 +165,7 @@ class DatabaseHelper {
         product_id INTEGER,
         product_name TEXT NOT NULL,
         unit_price REAL NOT NULL,
+        purchase_price REAL NOT NULL DEFAULT 0.0,
         quantity REAL NOT NULL DEFAULT 1.0,
         discount_type TEXT NOT NULL DEFAULT 'none',
         discount_value REAL NOT NULL DEFAULT 0.0,
@@ -373,6 +374,10 @@ class DatabaseHelper {
       ''');
       await db.execute('CREATE INDEX IF NOT EXISTS idx_purchase_items_purchase ON purchase_items(purchase_id)');
       await db.execute('CREATE INDEX IF NOT EXISTS idx_purchase_items_product ON purchase_items(product_id)');
+    }
+    // Migration v7 → v8: add purchase_price to invoice_items
+    if (oldVersion < 8) {
+      await _safeAddColumn(db, 'invoice_items', 'purchase_price REAL NOT NULL DEFAULT 0.0');
     }
   }
 

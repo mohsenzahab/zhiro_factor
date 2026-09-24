@@ -190,12 +190,15 @@ class _InvoiceHistoryViewState extends State<_InvoiceHistoryView> {
                         // Net
                         SizedBox(
                           width: 120,
-                          child: Text(
-                            inv.totalNet.formatted,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.accent,
+                          child: Tooltip(
+                            message: 'سود: ${inv.totalProfitAmount.formatted} تومان (${inv.totalProfitPercentage.toStringAsFixed(1).toPersianDigits()}٪)',
+                            child: Text(
+                              inv.totalNet.formatted,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.accent,
+                              ),
                             ),
                           ),
                         ),

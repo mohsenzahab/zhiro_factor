@@ -147,11 +147,14 @@ class InvoiceItemsGrid extends StatelessWidget {
                       DataCell(Text(item.discountCalculatedAmount.formatted,
                           style: TextStyle(color: AppColors.warning, fontSize: 12))),
                       // Line Total
-                      DataCell(Text(
-                        item.lineTotal.formatted,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.accent,
+                      DataCell(Tooltip(
+                        message: 'سود: ${item.profitAmount.formatted} تومان (${item.profitPercentage.toStringAsFixed(1).toPersianDigits()}٪)',
+                        child: Text(
+                          item.lineTotal.formatted,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.accent,
+                          ),
                         ),
                       )),
                       // Delete

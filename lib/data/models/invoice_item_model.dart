@@ -7,11 +7,22 @@ class InvoiceItemModel extends Equatable {
   final int? productId;
   final String productName;
   final double unitPrice;
+  final double purchasePrice;
   final double quantity;
   final String discountType; // 'none', 'percentage', 'amount'
   final double discountValue;
   final double discountCalculatedAmount;
   final double lineTotal;
+
+  /// Calculated total profit for this line item (lineTotal - (purchasePrice * quantity)).
+  double get profitAmount => lineTotal - (purchasePrice * quantity);
+
+  /// Calculated profit percentage for this line item.
+  double get profitPercentage {
+    final cost = purchasePrice * quantity;
+    if (cost <= 0) return 100.0;
+    return (profitAmount / cost) * 100.0;
+  }
 
   const InvoiceItemModel({
     this.id,
@@ -19,6 +30,7 @@ class InvoiceItemModel extends Equatable {
     this.productId,
     required this.productName,
     required this.unitPrice,
+    this.purchasePrice = 0.0,
     this.quantity = 1.0,
     this.discountType = 'none',
     this.discountValue = 0.0,
@@ -56,6 +68,7 @@ class InvoiceItemModel extends Equatable {
       productId: map['product_id'] as int?,
       productName: map['product_name'] as String,
       unitPrice: (map['unit_price'] as num).toDouble(),
+      purchasePrice: (map['purchase_price'] as num?)?.toDouble() ?? 0.0,
       quantity: (map['quantity'] as num?)?.toDouble() ?? 1.0,
       discountType: map['discount_type'] as String? ?? 'none',
       discountValue: (map['discount_value'] as num?)?.toDouble() ?? 0.0,
@@ -71,6 +84,7 @@ class InvoiceItemModel extends Equatable {
       'product_id': productId,
       'product_name': productName,
       'unit_price': unitPrice,
+      'purchase_price': purchasePrice,
       'quantity': quantity,
       'discount_type': discountType,
       'discount_value': discountValue,
@@ -85,6 +99,7 @@ class InvoiceItemModel extends Equatable {
     int? productId,
     String? productName,
     double? unitPrice,
+    double? purchasePrice,
     double? quantity,
     String? discountType,
     double? discountValue,
@@ -97,6 +112,7 @@ class InvoiceItemModel extends Equatable {
       productId: productId ?? this.productId,
       productName: productName ?? this.productName,
       unitPrice: unitPrice ?? this.unitPrice,
+      purchasePrice: purchasePrice ?? this.purchasePrice,
       quantity: quantity ?? this.quantity,
       discountType: discountType ?? this.discountType,
       discountValue: discountValue ?? this.discountValue,
@@ -112,6 +128,7 @@ class InvoiceItemModel extends Equatable {
         productId,
         productName,
         unitPrice,
+        purchasePrice,
         quantity,
         discountType,
         discountValue,
