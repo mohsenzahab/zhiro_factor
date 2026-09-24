@@ -8,8 +8,9 @@ import '../../../../data/repositories/invoice_repository.dart';
 /// Expandable detail panel showing invoice items.
 class InvoiceDetailPanel extends StatefulWidget {
   final InvoiceModel invoice;
+  final String? highlightQuery;
 
-  const InvoiceDetailPanel({super.key, required this.invoice});
+  const InvoiceDetailPanel({super.key, required this.invoice, this.highlightQuery});
 
   @override
   State<InvoiceDetailPanel> createState() => _InvoiceDetailPanelState();
@@ -89,10 +90,17 @@ class _InvoiceDetailPanelState extends State<InvoiceDetailPanel> {
               ...items.asMap().entries.map((e) {
                 final i = e.key;
                 final item = e.value;
+                final isHighlighted = widget.highlightQuery != null &&
+                    widget.highlightQuery!.isNotEmpty &&
+                    item.productName.contains(widget.highlightQuery!);
+
+                Color rowColor = i.isEven ? AppColors.tableRowEven : AppColors.tableRowOdd;
+                if (isHighlighted) {
+                  rowColor = Colors.green.withValues(alpha: 0.2);
+                }
+
                 return TableRow(
-                  decoration: BoxDecoration(
-                    color: i.isEven ? AppColors.tableRowEven : AppColors.tableRowOdd,
-                  ),
+                  decoration: BoxDecoration(color: rowColor),
                   children: [
                     _dataCell('${i + 1}'.toPersianDigits()),
                     _dataCell(item.productName),

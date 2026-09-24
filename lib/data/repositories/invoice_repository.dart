@@ -10,6 +10,7 @@ class InvoiceRepository {
   /// Fetch all invoices with customer name join, optionally filtered.
   Future<List<InvoiceModel>> getAll({
     String? customerQuery,
+    String? productQuery,
     String? status,
     String? dateFrom,
     String? dateTo,
@@ -33,6 +34,14 @@ class InvoiceRepository {
         sql += ' AND (c.name LIKE ? OR i.invoice_number LIKE ?)';
         args.addAll(['%$customerQuery%', '%$customerQuery%']);
       }
+    }
+    if (productQuery != null && productQuery.isNotEmpty) {
+      sql += ''' AND EXISTS (
+        SELECT 1 FROM invoice_items ii 
+        WHERE ii.invoice_id = i.id 
+        AND ii.product_name LIKE ?
+      )''';
+      args.add('%$productQuery%');
     }
     if (status != null && status.isNotEmpty) {
       sql += ' AND i.status = ?';

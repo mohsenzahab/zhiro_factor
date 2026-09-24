@@ -8,6 +8,8 @@ class InvoiceFilterBar extends StatelessWidget {
   final ValueChanged<String?> onStatusChanged;
   final ValueChanged<String> onSearchChanged;
   final TextEditingController searchController;
+  final ValueChanged<String> onProductSearchChanged;
+  final TextEditingController productSearchController;
 
   const InvoiceFilterBar({
     super.key,
@@ -15,6 +17,8 @@ class InvoiceFilterBar extends StatelessWidget {
     required this.onStatusChanged,
     required this.onSearchChanged,
     required this.searchController,
+    required this.onProductSearchChanged,
+    required this.productSearchController,
   });
 
   @override
@@ -28,14 +32,14 @@ class InvoiceFilterBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Search
+          // Search Customer/Invoice
           SizedBox(
             width: 280,
             child: TextField(
               controller: searchController,
               onChanged: onSearchChanged,
               decoration: InputDecoration(
-                hintText: 'جستجو بر اساس مشتری یا شماره فاکتور...',
+                hintText: 'جستجو مشتری یا شماره فاکتور...',
                 prefixIcon: const Icon(Icons.search, size: 20),
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -48,6 +52,35 @@ class InvoiceFilterBar extends StatelessWidget {
                       onPressed: () {
                         searchController.clear();
                         onSearchChanged('');
+                      },
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+
+          // Search Product
+          SizedBox(
+            width: 220,
+            child: TextField(
+              controller: productSearchController,
+              onChanged: onProductSearchChanged,
+              decoration: InputDecoration(
+                hintText: 'جستجو کالا در فاکتور...',
+                prefixIcon: const Icon(Icons.inventory_2_outlined, size: 20),
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: productSearchController,
+                  builder: (_, v, _) {
+                    if (v.text.isEmpty) return const SizedBox.shrink();
+                    return IconButton(
+                      icon: const Icon(Icons.close, size: 16),
+                      onPressed: () {
+                        productSearchController.clear();
+                        onProductSearchChanged('');
                       },
                     );
                   },

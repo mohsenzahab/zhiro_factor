@@ -7,6 +7,7 @@ class InvoiceHistoryCubit extends Cubit<InvoiceHistoryState> {
 
   String? _statusFilter;
   String? _customerQuery;
+  String? _productQuery;
   String? _dateFrom;
   String? _dateTo;
 
@@ -18,6 +19,7 @@ class InvoiceHistoryCubit extends Cubit<InvoiceHistoryState> {
       final invoices = await _repository.getAll(
         status: _statusFilter,
         customerQuery: _customerQuery,
+        productQuery: _productQuery,
         dateFrom: _dateFrom,
         dateTo: _dateTo,
       );
@@ -25,6 +27,7 @@ class InvoiceHistoryCubit extends Cubit<InvoiceHistoryState> {
         invoices: invoices,
         statusFilter: _statusFilter,
         customerQuery: _customerQuery,
+        productQuery: _productQuery,
       ));
     } catch (e) {
       emit(InvoiceHistoryError(e.toString()));
@@ -38,6 +41,11 @@ class InvoiceHistoryCubit extends Cubit<InvoiceHistoryState> {
 
   void setCustomerQuery(String? query) {
     _customerQuery = query;
+    loadInvoices();
+  }
+
+  void setProductQuery(String? query) {
+    _productQuery = query;
     loadInvoices();
   }
 

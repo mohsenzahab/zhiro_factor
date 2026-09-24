@@ -40,11 +40,13 @@ class _InvoiceHistoryView extends StatefulWidget {
 
 class _InvoiceHistoryViewState extends State<_InvoiceHistoryView> {
   final _searchCtrl = TextEditingController();
+  final _productSearchCtrl = TextEditingController();
   int? _expandedInvoiceId;
 
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _productSearchCtrl.dispose();
     super.dispose();
   }
 
@@ -76,6 +78,8 @@ class _InvoiceHistoryViewState extends State<_InvoiceHistoryView> {
                 onStatusChanged: (s) => context.read<InvoiceHistoryCubit>().setStatusFilter(s),
                 onSearchChanged: (q) => context.read<InvoiceHistoryCubit>().setCustomerQuery(q),
                 searchController: _searchCtrl,
+                onProductSearchChanged: (q) => context.read<InvoiceHistoryCubit>().setProductQuery(q),
+                productSearchController: _productSearchCtrl,
               );
             },
           ),
@@ -120,7 +124,8 @@ class _InvoiceHistoryViewState extends State<_InvoiceHistoryView> {
         itemCount: state.invoices.length,
         itemBuilder: (context, index) {
           final inv = state.invoices[index];
-          final isExpanded = _expandedInvoiceId == inv.id;
+          final hasProductSearch = state.productQuery != null && state.productQuery!.isNotEmpty;
+          final isExpanded = hasProductSearch || _expandedInvoiceId == inv.id;
           final jalaliDate = _tryFormatDate(inv.date);
 
           return Column(
@@ -252,7 +257,7 @@ class _InvoiceHistoryViewState extends State<_InvoiceHistoryView> {
                 ),
               ),
               // Expanded detail
-              if (isExpanded) InvoiceDetailPanel(invoice: inv),
+              if (isExpanded) InvoiceDetailPanel(invoice: inv, highlightQuery: state.productQuery),
               if (index < state.invoices.length - 1)
                 Divider(height: 1, color: AppColors.dividerDark),
             ],

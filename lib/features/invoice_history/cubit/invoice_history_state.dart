@@ -15,15 +15,17 @@ class InvoiceHistoryLoaded extends InvoiceHistoryState {
   final List<InvoiceModel> invoices;
   final String? statusFilter;
   final String? customerQuery;
+  final String? productQuery;
 
   const InvoiceHistoryLoaded({
     required this.invoices,
     this.statusFilter,
     this.customerQuery,
+    this.productQuery,
   });
 
   @override
-  List<Object?> get props => [invoices, statusFilter, customerQuery];
+  List<Object?> get props => [invoices, statusFilter, customerQuery, productQuery];
 }
 
 class InvoiceHistoryError extends InvoiceHistoryState {
