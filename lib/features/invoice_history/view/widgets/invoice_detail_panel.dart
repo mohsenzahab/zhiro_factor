@@ -41,7 +41,10 @@ class _InvoiceDetailPanelState extends State<InvoiceDetailPanel> {
       );
     }
 
-    final items = _items ?? [];
+    final allItems = _items ?? [];
+    final items = (widget.highlightQuery != null && widget.highlightQuery!.isNotEmpty)
+        ? allItems.where((item) => item.productName.contains(widget.highlightQuery!)).toList()
+        : allItems;
     if (items.isEmpty) {
       return const Padding(
         padding: EdgeInsets.all(16),
