@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../data/models/invoice_model.dart';
 import '../../../data/models/invoice_item_model.dart';
+import '../../../data/models/invoice_payment_model.dart';
 import '../../../data/models/product_model.dart';
 import '../../../data/models/customer_model.dart';
 import '../../../data/models/preset_template_model.dart';
@@ -41,6 +42,7 @@ class InvoiceCubit extends Cubit<InvoiceState> {
           : null,
       status: invoice.status,
       items: invoice.items,
+      payments: invoice.payments,
       notes: invoice.notes,
       overallDiscountType: invoice.overallDiscountType,
       overallDiscountValue: invoice.overallDiscountValue,
@@ -140,6 +142,37 @@ class InvoiceCubit extends Cubit<InvoiceState> {
     emit(state.copyWith(items: items));
   }
 
+  /// Add a partial payment and update status if applicable.
+  void addPayment(InvoicePaymentModel payment) {
+    final newPayments = [...state.payments, payment];
+    final totalPaid = newPayments.fold(0.0, (sum, p) => sum + p.amount);
+
+    String newStatus = state.status;
+    if (totalPaid >= state.totalNet && state.totalNet > 0 && state.status != 'تسویه شده' && state.status != 'لغو شده') {
+      newStatus = 'تسویه شده';
+    } else if (totalPaid > 0 && totalPaid < state.totalNet && (state.status == 'در انتظار پرداخت' || state.status == 'بیعانه')) {
+      newStatus = 'نسیه';
+    }
+
+    emit(state.copyWith(payments: newPayments, status: newStatus));
+  }
+
+  /// Remove a partial payment and revert status if needed.
+  void removePayment(int index) {
+    final payments = List<InvoicePaymentModel>.from(state.payments);
+    payments.removeAt(index);
+    final totalPaid = payments.fold(0.0, (sum, p) => sum + p.amount);
+
+    String newStatus = state.status;
+    if (totalPaid == 0 && state.status == 'نسیه') {
+      newStatus = 'در انتظار پرداخت';
+    } else if (totalPaid < state.totalNet && state.status == 'تسویه شده') {
+      newStatus = totalPaid > 0 ? 'نسیه' : 'در انتظار پرداخت';
+    }
+
+    emit(state.copyWith(payments: payments, status: newStatus));
+  }
+
   /// Save the invoice (insert or update).
   Future<void> save() async {
     if (state.items.isEmpty) {
@@ -165,6 +198,7 @@ class InvoiceCubit extends Cubit<InvoiceState> {
         overallDiscountAmount: state.overallDiscountAmount,
         notes: state.notes,
         items: state.items,
+        payments: state.payments,
       );
 
       if (state.editingInvoiceId != null) {

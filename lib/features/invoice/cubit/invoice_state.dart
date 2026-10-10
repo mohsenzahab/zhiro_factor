@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import '../../../data/models/invoice_item_model.dart';
+import '../../../data/models/invoice_payment_model.dart';
 import '../../../data/models/customer_model.dart';
 
 /// Invoice editor state.
@@ -10,6 +11,7 @@ class InvoiceState extends Equatable {
   final CustomerModel? selectedCustomer;
   final String status;
   final List<InvoiceItemModel> items;
+  final List<InvoicePaymentModel> payments;
   final String? notes;
   final bool isSaving;
   final bool isSaved;
@@ -28,6 +30,7 @@ class InvoiceState extends Equatable {
     this.selectedCustomer,
     this.status = 'در انتظار پرداخت',
     this.items = const [],
+    this.payments = const [],
     this.notes,
     this.isSaving = false,
     this.isSaved = false,
@@ -65,6 +68,17 @@ class InvoiceState extends Equatable {
   /// Total net = totalGross - totalDiscount.
   double get totalNet => totalGross - totalDiscount;
 
+  /// Total amount received across all partial payments.
+  double get paidAmount {
+    return payments.fold(0.0, (sum, p) => sum + p.amount);
+  }
+
+  /// Remaining unpaid balance.
+  double get remainingAmount {
+    final rem = totalNet - paidAmount;
+    return rem > 0 ? rem : 0.0;
+  }
+
   InvoiceState copyWith({
     int? editingInvoiceId,
     String? invoiceNumber,
@@ -73,6 +87,7 @@ class InvoiceState extends Equatable {
     bool clearCustomer = false,
     String? status,
     List<InvoiceItemModel>? items,
+    List<InvoicePaymentModel>? payments,
     String? notes,
     bool? isSaving,
     bool? isSaved,
@@ -88,6 +103,7 @@ class InvoiceState extends Equatable {
       selectedCustomer: clearCustomer ? null : (selectedCustomer ?? this.selectedCustomer),
       status: status ?? this.status,
       items: items ?? this.items,
+      payments: payments ?? this.payments,
       notes: notes ?? this.notes,
       isSaving: isSaving ?? this.isSaving,
       isSaved: isSaved ?? this.isSaved,
@@ -105,6 +121,7 @@ class InvoiceState extends Equatable {
         selectedCustomer,
         status,
         items,
+        payments,
         notes,
         isSaving,
         isSaved,

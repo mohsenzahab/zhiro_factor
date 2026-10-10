@@ -4,30 +4,60 @@ import '../../core/database/database_helper.dart';
 class ReportRepository {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
 
-  /// KPI: Total gross sales for settled invoices only.
-  Future<double> totalGrossSales({String? dateFrom, String? dateTo}) async {
-    final db = await _dbHelper.database;
-    String sql = "SELECT COALESCE(SUM(total_gross), 0) as total FROM invoices WHERE status = 'تسویه شده'";
-    final args = <dynamic>[];
-
+  // ── Helper to build date + category WHERE clauses ────────────────────
+  /// Appends date and category filters to [sql] and returns the args list.
+  /// [dateCol] is the date column reference (e.g. 'date' or 'i.date').
+  /// If [needsItemJoin] is true, the caller already JOINs invoice_items;
+  /// otherwise this helper will add a sub-query filter.
+  static void _appendFilters(
+    StringBuffer sql,
+    List<dynamic> args, {
+    required String dateCol,
+    String? dateFrom,
+    String? dateTo,
+    String? category,
+    String? itemAlias,
+  }) {
     if (dateFrom != null && dateFrom.isNotEmpty) {
-      sql += ' AND date >= ?';
+      sql.write(' AND $dateCol >= ?');
       args.add(dateFrom);
     }
     if (dateTo != null && dateTo.isNotEmpty) {
-      sql += ' AND date <= ?';
+      sql.write(' AND $dateCol <= ?');
       args.add(dateTo);
     }
+    if (category != null && category.isNotEmpty) {
+      if (itemAlias != null) {
+        // Already joining invoice_items as [itemAlias]
+        sql.write(' AND EXISTS (SELECT 1 FROM products _p WHERE _p.id = $itemAlias.product_id AND _p.category = ?)');
+      } else {
+        // Invoice-level query without item join
+        sql.write(''' AND EXISTS (
+          SELECT 1 FROM invoice_items _ii
+          JOIN products _p ON _p.id = _ii.product_id
+          WHERE _ii.invoice_id = i.id AND _p.category = ?
+        )''');
+      }
+      args.add(category);
+    }
+  }
 
-    final result = await db.rawQuery(sql, args);
+  /// KPI: Total gross sales for settled invoices only.
+  Future<double> totalGrossSales({String? dateFrom, String? dateTo, String? category}) async {
+    final db = await _dbHelper.database;
+    final sql = StringBuffer("SELECT COALESCE(SUM(total_gross), 0) as total FROM invoices i WHERE i.status = 'تسویه شده'");
+    final args = <dynamic>[];
+    _appendFilters(sql, args, dateCol: 'i.date', dateFrom: dateFrom, dateTo: dateTo, category: category);
+
+    final result = await db.rawQuery(sql.toString(), args);
     return (result.first['total'] as num).toDouble();
   }
 
   /// KPI: Total net profit (سود خالص) for settled invoices only.
   /// Profit = sum(line_total - (quantity * effective_buy_price)).
-  Future<double> totalNetProfit({String? dateFrom, String? dateTo}) async {
+  Future<double> totalNetProfit({String? dateFrom, String? dateTo, String? category}) async {
     final db = await _dbHelper.database;
-    String sql = '''
+    final sql = StringBuffer('''
       SELECT COALESCE(SUM(
         ii.line_total - (ii.quantity * COALESCE(NULLIF(p.current_buy_price, 0), p.buy_price, 0))
       ), 0) as total_profit
@@ -35,38 +65,22 @@ class ReportRepository {
       JOIN invoices i ON ii.invoice_id = i.id
       LEFT JOIN products p ON ii.product_id = p.id
       WHERE i.status = 'تسویه شده'
-    ''';
+    ''');
     final args = <dynamic>[];
+    _appendFilters(sql, args, dateCol: 'i.date', dateFrom: dateFrom, dateTo: dateTo, category: category, itemAlias: 'ii');
 
-    if (dateFrom != null && dateFrom.isNotEmpty) {
-      sql += ' AND i.date >= ?';
-      args.add(dateFrom);
-    }
-    if (dateTo != null && dateTo.isNotEmpty) {
-      sql += ' AND i.date <= ?';
-      args.add(dateTo);
-    }
-
-    final result = await db.rawQuery(sql, args);
+    final result = await db.rawQuery(sql.toString(), args);
     return (result.first['total_profit'] as num).toDouble();
   }
 
   /// KPI: Total discounts given on settled invoices.
-  Future<double> totalDiscounts({String? dateFrom, String? dateTo}) async {
+  Future<double> totalDiscounts({String? dateFrom, String? dateTo, String? category}) async {
     final db = await _dbHelper.database;
-    String sql = "SELECT COALESCE(SUM(total_discount), 0) as total FROM invoices WHERE status = 'تسویه شده'";
+    final sql = StringBuffer("SELECT COALESCE(SUM(total_discount), 0) as total FROM invoices i WHERE i.status = 'تسویه شده'");
     final args = <dynamic>[];
+    _appendFilters(sql, args, dateCol: 'i.date', dateFrom: dateFrom, dateTo: dateTo, category: category);
 
-    if (dateFrom != null && dateFrom.isNotEmpty) {
-      sql += ' AND date >= ?';
-      args.add(dateFrom);
-    }
-    if (dateTo != null && dateTo.isNotEmpty) {
-      sql += ' AND date <= ?';
-      args.add(dateTo);
-    }
-
-    final result = await db.rawQuery(sql, args);
+    final result = await db.rawQuery(sql.toString(), args);
     return (result.first['total'] as num).toDouble();
   }
 
@@ -74,9 +88,10 @@ class ReportRepository {
   Future<({double initialCost, double currentCost})> totalBuyCosts({
     String? dateFrom,
     String? dateTo,
+    String? category,
   }) async {
     final db = await _dbHelper.database;
-    String sql = '''
+    final sql = StringBuffer('''
       SELECT 
         COALESCE(SUM(ii.quantity * COALESCE(p.buy_price, 0)), 0) as initial_cost,
         COALESCE(SUM(ii.quantity * COALESCE(NULLIF(p.current_buy_price, 0), p.buy_price, 0)), 0) as current_cost
@@ -84,19 +99,11 @@ class ReportRepository {
       JOIN invoices i ON ii.invoice_id = i.id
       LEFT JOIN products p ON ii.product_id = p.id
       WHERE i.status = 'تسویه شده'
-    ''';
+    ''');
     final args = <dynamic>[];
+    _appendFilters(sql, args, dateCol: 'i.date', dateFrom: dateFrom, dateTo: dateTo, category: category, itemAlias: 'ii');
 
-    if (dateFrom != null && dateFrom.isNotEmpty) {
-      sql += ' AND i.date >= ?';
-      args.add(dateFrom);
-    }
-    if (dateTo != null && dateTo.isNotEmpty) {
-      sql += ' AND i.date <= ?';
-      args.add(dateTo);
-    }
-
-    final result = await db.rawQuery(sql, args);
+    final result = await db.rawQuery(sql.toString(), args);
     final row = result.first;
     return (
       initialCost: (row['initial_cost'] as num).toDouble(),
@@ -105,27 +112,19 @@ class ReportRepository {
   }
 
   /// KPI: Summary of pending and deposit invoices (unsettled amounts and count).
-  Future<Map<String, dynamic>> pendingSummary({String? dateFrom, String? dateTo}) async {
+  Future<Map<String, dynamic>> pendingSummary({String? dateFrom, String? dateTo, String? category}) async {
     final db = await _dbHelper.database;
-    String sql = '''
+    final sql = StringBuffer('''
       SELECT 
         COUNT(*) as cnt,
-        COALESCE(SUM(total_net), 0) as total_amount
-      FROM invoices 
-      WHERE status = 'در انتظار پرداخت' OR status = 'بیعانه'
-    ''';
+        COALESCE(SUM(total_net - COALESCE((SELECT SUM(amount) FROM invoice_payments ip WHERE ip.invoice_id = i.id), 0)), 0) as total_amount
+      FROM invoices i
+      WHERE (i.status = 'در انتظار پرداخت' OR i.status = 'بیعانه' OR i.status = 'نسیه')
+    ''');
     final args = <dynamic>[];
+    _appendFilters(sql, args, dateCol: 'i.date', dateFrom: dateFrom, dateTo: dateTo, category: category);
 
-    if (dateFrom != null && dateFrom.isNotEmpty) {
-      sql += ' AND date >= ?';
-      args.add(dateFrom);
-    }
-    if (dateTo != null && dateTo.isNotEmpty) {
-      sql += ' AND date <= ?';
-      args.add(dateTo);
-    }
-
-    final result = await db.rawQuery(sql, args);
+    final result = await db.rawQuery(sql.toString(), args);
     return {
       'count': (result.first['cnt'] as int?) ?? 0,
       'amount': (result.first['total_amount'] as num?)?.toDouble() ?? 0.0,
@@ -133,8 +132,8 @@ class ReportRepository {
   }
 
   /// KPI: Count of outstanding (unsettled) invoices.
-  Future<int> outstandingCount({String? dateFrom, String? dateTo}) async {
-    final summary = await pendingSummary(dateFrom: dateFrom, dateTo: dateTo);
+  Future<int> outstandingCount({String? dateFrom, String? dateTo, String? category}) async {
+    final summary = await pendingSummary(dateFrom: dateFrom, dateTo: dateTo, category: category);
     return summary['count'] as int;
   }
 
@@ -143,9 +142,10 @@ class ReportRepository {
     int limit = 10,
     String? dateFrom,
     String? dateTo,
+    String? category,
   }) async {
     final db = await _dbHelper.database;
-    String sql = '''
+    final sql = StringBuffer('''
       SELECT 
         ii.product_name,
         ii.product_id,
@@ -153,27 +153,20 @@ class ReportRepository {
         SUM(ii.line_total) as total_revenue
       FROM invoice_items ii
       JOIN invoices i ON ii.invoice_id = i.id
+      LEFT JOIN products p ON ii.product_id = p.id
       WHERE i.status = 'تسویه شده'
-    ''';
+    ''');
     final args = <dynamic>[];
+    _appendFilters(sql, args, dateCol: 'i.date', dateFrom: dateFrom, dateTo: dateTo, category: category, itemAlias: 'ii');
 
-    if (dateFrom != null && dateFrom.isNotEmpty) {
-      sql += ' AND i.date >= ?';
-      args.add(dateFrom);
-    }
-    if (dateTo != null && dateTo.isNotEmpty) {
-      sql += ' AND i.date <= ?';
-      args.add(dateTo);
-    }
-
-    sql += '''
+    sql.write('''
       GROUP BY ii.product_id, ii.product_name
       ORDER BY total_quantity DESC
       LIMIT ?
-    ''';
+    ''');
     args.add(limit);
 
-    return await db.rawQuery(sql, args);
+    return await db.rawQuery(sql.toString(), args);
   }
 
   /// Best-selling products by revenue (settled invoices).
@@ -181,9 +174,10 @@ class ReportRepository {
     int limit = 10,
     String? dateFrom,
     String? dateTo,
+    String? category,
   }) async {
     final db = await _dbHelper.database;
-    String sql = '''
+    final sql = StringBuffer('''
       SELECT 
         ii.product_name,
         ii.product_id,
@@ -191,27 +185,20 @@ class ReportRepository {
         SUM(ii.line_total) as total_revenue
       FROM invoice_items ii
       JOIN invoices i ON ii.invoice_id = i.id
+      LEFT JOIN products p ON ii.product_id = p.id
       WHERE i.status = 'تسویه شده'
-    ''';
+    ''');
     final args = <dynamic>[];
+    _appendFilters(sql, args, dateCol: 'i.date', dateFrom: dateFrom, dateTo: dateTo, category: category, itemAlias: 'ii');
 
-    if (dateFrom != null && dateFrom.isNotEmpty) {
-      sql += ' AND i.date >= ?';
-      args.add(dateFrom);
-    }
-    if (dateTo != null && dateTo.isNotEmpty) {
-      sql += ' AND i.date <= ?';
-      args.add(dateTo);
-    }
-
-    sql += '''
+    sql.write('''
       GROUP BY ii.product_id, ii.product_name
       ORDER BY total_revenue DESC
       LIMIT ?
-    ''';
+    ''');
     args.add(limit);
 
-    return await db.rawQuery(sql, args);
+    return await db.rawQuery(sql.toString(), args);
   }
 
   /// Item-level sales ledger with date, product, status filtering and profit calculation.
@@ -314,33 +301,26 @@ class ReportRepository {
     };
   }
 
-  /// Recent invoices with optional date filtering.
+  /// Recent invoices with optional date and category filtering.
   Future<List<Map<String, dynamic>>> recentInvoices({
     int limit = 5,
     String? dateFrom,
     String? dateTo,
+    String? category,
   }) async {
     final db = await _dbHelper.database;
-    String sql = '''
+    final sql = StringBuffer('''
       SELECT i.*, c.name as customer_name
       FROM invoices i
       LEFT JOIN customers c ON i.customer_id = c.id
       WHERE 1=1
-    ''';
+    ''');
     final args = <dynamic>[];
+    _appendFilters(sql, args, dateCol: 'i.date', dateFrom: dateFrom, dateTo: dateTo, category: category);
 
-    if (dateFrom != null && dateFrom.isNotEmpty) {
-      sql += ' AND i.date >= ?';
-      args.add(dateFrom);
-    }
-    if (dateTo != null && dateTo.isNotEmpty) {
-      sql += ' AND i.date <= ?';
-      args.add(dateTo);
-    }
-
-    sql += ' ORDER BY i.date DESC, i.id DESC LIMIT ?';
+    sql.write(' ORDER BY i.date DESC, i.id DESC LIMIT ?');
     args.add(limit);
 
-    return await db.rawQuery(sql, args);
+    return await db.rawQuery(sql.toString(), args);
   }
 }

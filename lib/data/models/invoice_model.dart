@@ -1,7 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'invoice_item_model.dart';
+import 'invoice_payment_model.dart';
 
-/// Invoice data model with embedded line items.
+/// Invoice data model with embedded line items and payments.
 class InvoiceModel extends Equatable {
   final int? id;
   final String invoiceNumber;
@@ -20,6 +21,7 @@ class InvoiceModel extends Equatable {
   final double overallDiscountAmount;
   final String? notes;
   final List<InvoiceItemModel> items;
+  final List<InvoicePaymentModel> payments;
 
   /// Calculated total profit for the entire invoice
   double get totalProfitAmount {
@@ -42,6 +44,29 @@ class InvoiceModel extends Equatable {
     return (totalProfitAmount / totalCost) * 100.0;
   }
 
+  /// Total amount received/paid for this invoice.
+  double get paidAmount {
+    if (payments.isEmpty && status == 'تسویه شده') {
+      return totalNet;
+    }
+    return payments.fold(0.0, (sum, p) => sum + p.amount);
+  }
+
+  /// Remaining unpaid balance (مانده نسیه).
+  double get remainingAmount {
+    if (status == 'تسویه شده') {
+      return 0.0;
+    }
+    final rem = totalNet - paidAmount;
+    return rem > 0 ? rem : 0.0;
+  }
+
+  /// Whether invoice is completely paid.
+  bool get isFullyPaid => status == 'تسویه شده' || (totalNet > 0 && paidAmount >= totalNet);
+
+  /// Whether invoice has partial payment (نسیه).
+  bool get isPartiallyPaid => status != 'تسویه شده' && paidAmount > 0 && paidAmount < totalNet;
+
   const InvoiceModel({
     this.id,
     required this.invoiceNumber,
@@ -57,9 +82,14 @@ class InvoiceModel extends Equatable {
     this.overallDiscountAmount = 0.0,
     this.notes,
     this.items = const [],
+    this.payments = const [],
   });
 
-  factory InvoiceModel.fromMap(Map<String, dynamic> map, {List<InvoiceItemModel>? items}) {
+  factory InvoiceModel.fromMap(
+    Map<String, dynamic> map, {
+    List<InvoiceItemModel>? items,
+    List<InvoicePaymentModel>? payments,
+  }) {
     return InvoiceModel(
       id: map['id'] as int?,
       invoiceNumber: map['invoice_number'] as String,
@@ -75,6 +105,7 @@ class InvoiceModel extends Equatable {
       overallDiscountAmount: (map['overall_discount_amount'] as num?)?.toDouble() ?? 0.0,
       notes: map['notes'] as String?,
       items: items ?? const [],
+      payments: payments ?? const [],
     );
   }
 
@@ -110,6 +141,7 @@ class InvoiceModel extends Equatable {
     double? overallDiscountAmount,
     String? notes,
     List<InvoiceItemModel>? items,
+    List<InvoicePaymentModel>? payments,
   }) {
     return InvoiceModel(
       id: id ?? this.id,
@@ -126,6 +158,7 @@ class InvoiceModel extends Equatable {
       overallDiscountAmount: overallDiscountAmount ?? this.overallDiscountAmount,
       notes: notes ?? this.notes,
       items: items ?? this.items,
+      payments: payments ?? this.payments,
     );
   }
 
@@ -145,5 +178,6 @@ class InvoiceModel extends Equatable {
         overallDiscountAmount,
         notes,
         items,
+        payments,
       ];
 }

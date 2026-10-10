@@ -25,6 +25,7 @@ class AppColors {
   static const Color statusSettled = Color(0xFF4CAF50);
   static const Color statusPending = Color(0xFFFFC107);
   static const Color statusDeposit = Color(0xFFFF9800);
+  static const Color statusCredit = Color(0xFFFF7043);
   static const Color statusCancelled = Color(0xFFEF5350);
 
   // ─── Sidebar ────────────────────────────────────────────────────────
@@ -89,6 +90,8 @@ class AppColors {
         return statusPending;
       case 'بیعانه':
         return statusDeposit;
+      case 'نسیه':
+        return statusCredit;
       case 'لغو شده':
         return statusCancelled;
       default:

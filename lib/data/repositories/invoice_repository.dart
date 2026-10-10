@@ -2,8 +2,9 @@ import '../../core/database/database_helper.dart';
 import '../../core/extensions/number_extensions.dart';
 import '../models/invoice_model.dart';
 import '../models/invoice_item_model.dart';
+import '../models/invoice_payment_model.dart';
 
-/// Repository for Invoice CRUD with transactional item management.
+/// Repository for Invoice CRUD with transactional item and payment management.
 class InvoiceRepository {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
 
@@ -61,9 +62,10 @@ class InvoiceRepository {
     final maps = await db.rawQuery(sql, args);
     if (maps.isEmpty) return [];
 
-    // Batch load items for all returned invoices
+    // Batch load items and payments for all returned invoices
     final invoiceIds = maps.map((m) => m['id'] as int).toList();
     final placeholders = List.filled(invoiceIds.length, '?').join(',');
+
     final itemMaps = await db.rawQuery(
       'SELECT * FROM invoice_items WHERE invoice_id IN ($placeholders) ORDER BY id ASC',
       invoiceIds,
@@ -75,13 +77,30 @@ class InvoiceRepository {
         itemsByInvoice.putIfAbsent(item.invoiceId!, () => []).add(item);
       }
     }
+
+    final paymentMaps = await db.rawQuery(
+      'SELECT * FROM invoice_payments WHERE invoice_id IN ($placeholders) ORDER BY date ASC, id ASC',
+      invoiceIds,
+    );
+    final paymentsByInvoice = <int, List<InvoicePaymentModel>>{};
+    for (final pm in paymentMaps) {
+      final payment = InvoicePaymentModel.fromMap(pm);
+      if (payment.invoiceId != null) {
+        paymentsByInvoice.putIfAbsent(payment.invoiceId!, () => []).add(payment);
+      }
+    }
+
     return maps.map((m) {
       final id = m['id'] as int?;
-      return InvoiceModel.fromMap(m, items: id != null ? itemsByInvoice[id] : null);
+      return InvoiceModel.fromMap(
+        m,
+        items: id != null ? itemsByInvoice[id] : null,
+        payments: id != null ? paymentsByInvoice[id] : null,
+      );
     }).toList();
   }
 
-  /// Fetch a single invoice by ID with all its items.
+  /// Fetch a single invoice by ID with all its items and payments.
   Future<InvoiceModel?> getById(int id) async {
     final db = await _dbHelper.database;
     final invoiceMaps = await db.rawQuery('''
@@ -99,9 +118,17 @@ class InvoiceRepository {
       whereArgs: [id],
       orderBy: 'id ASC',
     );
-
     final items = itemMaps.map((m) => InvoiceItemModel.fromMap(m)).toList();
-    return InvoiceModel.fromMap(invoiceMaps.first, items: items);
+
+    final paymentMaps = await db.query(
+      'invoice_payments',
+      where: 'invoice_id = ?',
+      whereArgs: [id],
+      orderBy: 'date ASC, id ASC',
+    );
+    final payments = paymentMaps.map((m) => InvoicePaymentModel.fromMap(m)).toList();
+
+    return InvoiceModel.fromMap(invoiceMaps.first, items: items, payments: payments);
   }
 
   /// Fetch items for a given invoice.
@@ -116,7 +143,19 @@ class InvoiceRepository {
     return maps.map((m) => InvoiceItemModel.fromMap(m)).toList();
   }
 
-  /// Save a new invoice with items in a single transaction.
+  /// Fetch payments for a given invoice.
+  Future<List<InvoicePaymentModel>> getPaymentsByInvoiceId(int invoiceId) async {
+    final db = await _dbHelper.database;
+    final maps = await db.query(
+      'invoice_payments',
+      where: 'invoice_id = ?',
+      whereArgs: [invoiceId],
+      orderBy: 'date ASC, id ASC',
+    );
+    return maps.map((m) => InvoicePaymentModel.fromMap(m)).toList();
+  }
+
+  /// Save a new invoice with items and payments in a single transaction.
   /// Automatically deducts purchased quantities from product stock (unless stock is infinite/null).
   /// Returns the new invoice ID.
   Future<int> insert(InvoiceModel invoice) async {
@@ -139,12 +178,18 @@ class InvoiceRepository {
           );
         }
       }
+
+      for (final payment in invoice.payments) {
+        final pMap = payment.copyWith(invoiceId: invoiceId).toMap();
+        pMap.remove('id');
+        await txn.insert('invoice_payments', pMap);
+      }
     });
 
     return invoiceId;
   }
 
-  /// Update an existing invoice and its items in a single transaction.
+  /// Update an existing invoice, its items, and its payments in a single transaction.
   /// Restores previous items' stock and deducts new items' stock.
   Future<void> update(InvoiceModel invoice) async {
     final db = await _dbHelper.database;
@@ -183,7 +228,6 @@ class InvoiceRepository {
 
       for (final item in invoice.items) {
         final itemMap = item.copyWith(invoiceId: invoice.id).toMap();
-        // Remove the item id so it gets auto-incremented
         itemMap.remove('id');
         await txn.insert('invoice_items', itemMap);
 
@@ -193,6 +237,93 @@ class InvoiceRepository {
             'UPDATE products SET stock = stock - ? WHERE id = ? AND stock IS NOT NULL',
             [item.quantity, item.productId],
           );
+        }
+      }
+
+      // Sync payments
+      await txn.delete(
+        'invoice_payments',
+        where: 'invoice_id = ?',
+        whereArgs: [invoice.id],
+      );
+      for (final payment in invoice.payments) {
+        final pMap = payment.copyWith(invoiceId: invoice.id).toMap();
+        pMap.remove('id');
+        await txn.insert('invoice_payments', pMap);
+      }
+    });
+  }
+
+  /// Add a single payment to an existing invoice directly and update invoice status.
+  Future<int> addPayment(InvoicePaymentModel payment) async {
+    final db = await _dbHelper.database;
+    return await db.transaction((txn) async {
+      final pMap = payment.toMap();
+      pMap.remove('id');
+      final paymentId = await txn.insert('invoice_payments', pMap);
+
+      if (payment.invoiceId != null) {
+        final invList = await txn.query('invoices', where: 'id = ?', whereArgs: [payment.invoiceId]);
+        if (invList.isNotEmpty) {
+          final totalNet = (invList.first['total_net'] as num).toDouble();
+          final currentStatus = invList.first['status'] as String? ?? '';
+          final paySumResult = await txn.rawQuery(
+            'SELECT SUM(amount) as sum_amount FROM invoice_payments WHERE invoice_id = ?',
+            [payment.invoiceId],
+          );
+          final totalPaid = (paySumResult.first['sum_amount'] as num?)?.toDouble() ?? 0.0;
+
+          if (totalPaid >= totalNet && currentStatus != 'تسویه شده' && currentStatus != 'لغو شده') {
+            await txn.update(
+              'invoices',
+              {'status': 'تسویه شده'},
+              where: 'id = ?',
+              whereArgs: [payment.invoiceId],
+            );
+          } else if (totalPaid > 0 && totalPaid < totalNet && (currentStatus == 'در انتظار پرداخت' || currentStatus == 'بیعانه')) {
+            await txn.update(
+              'invoices',
+              {'status': 'نسیه'},
+              where: 'id = ?',
+              whereArgs: [payment.invoiceId],
+            );
+          }
+        }
+      }
+
+      return paymentId;
+    });
+  }
+
+  /// Delete a single payment from an invoice and re-check invoice status.
+  Future<void> deletePayment(int paymentId) async {
+    final db = await _dbHelper.database;
+    await db.transaction((txn) async {
+      final pList = await txn.query('invoice_payments', where: 'id = ?', whereArgs: [paymentId]);
+      if (pList.isNotEmpty) {
+        final invId = pList.first['invoice_id'] as int?;
+        await txn.delete('invoice_payments', where: 'id = ?', whereArgs: [paymentId]);
+
+        if (invId != null) {
+          final invList = await txn.query('invoices', where: 'id = ?', whereArgs: [invId]);
+          if (invList.isNotEmpty) {
+            final totalNet = (invList.first['total_net'] as num).toDouble();
+            final currentStatus = invList.first['status'] as String? ?? '';
+            final paySumResult = await txn.rawQuery(
+              'SELECT SUM(amount) as sum_amount FROM invoice_payments WHERE invoice_id = ?',
+              [invId],
+            );
+            final totalPaid = (paySumResult.first['sum_amount'] as num?)?.toDouble() ?? 0.0;
+
+            if (totalPaid < totalNet && currentStatus == 'تسویه شده') {
+              await txn.update(
+                'invoices',
+                {'status': totalPaid > 0 ? 'نسیه' : 'در انتظار پرداخت'},
+                where: 'id = ?',
+                whereArgs: [invId],
+              );
+            }
+          }
         }
       }
     });
@@ -219,8 +350,9 @@ class InvoiceRepository {
         }
       }
 
-      // Delete items and invoice
+      // Delete items, payments and invoice
       await txn.delete('invoice_items', where: 'invoice_id = ?', whereArgs: [id]);
+      await txn.delete('invoice_payments', where: 'invoice_id = ?', whereArgs: [id]);
       return await txn.delete('invoices', where: 'id = ?', whereArgs: [id]);
     });
   }

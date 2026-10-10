@@ -95,13 +95,29 @@ class AppStrings {
   static const String statusSettled = 'تسویه شده';
   static const String statusPending = 'در انتظار پرداخت';
   static const String statusDeposit = 'بیعانه';
+  static const String statusCredit = 'نسیه';
   static const String statusCancelled = 'لغو شده';
   static const List<String> invoiceStatuses = [
     statusPending,
     statusSettled,
     statusDeposit,
+    statusCredit,
     statusCancelled,
   ];
+
+  // ─── Payments & Credit ──────────────────────────────────────────────
+  static const String payments = 'دریافتی‌ها';
+  static const String paymentsAndCredit = 'دریافتی‌ها و نسیه';
+  static const String paidAmount = 'مبلغ دریافتی';
+  static const String remainingAmount = 'مانده (نسیه)';
+  static const String addPayment = 'ثبت دریافتی';
+  static const String newPayment = 'دریافتی جدید';
+  static const String paymentDate = 'تاریخ دریافت';
+  static const String paymentAmount = 'مبلغ دریافت';
+  static const String paymentNote = 'توضیحات / بابت';
+  static const String paymentSuccess = 'دریافتی با موفقیت ثبت شد';
+  static const String noPayments = 'هیچ دریافتی ثبت نشده است';
+  static const String settleAll = 'تسویه کل مانده';
 
   // ─── Discount Types ─────────────────────────────────────────────────
   static const String discountNone = 'بدون تخفیف';

@@ -9,7 +9,7 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._();
 
   static Database? _database;
-  static const int _version = 8;
+  static const int _version = 9;
   static const String _dbName = 'zhirofactor.db';
 
   /// Public accessor for the current database schema version.
@@ -177,6 +177,20 @@ class DatabaseHelper {
     ''');
     await db.execute('CREATE INDEX idx_invoice_items_invoice ON invoice_items(invoice_id)');
     await db.execute('CREATE INDEX idx_invoice_items_product ON invoice_items(product_id)');
+
+    // ── Invoice Payments Table ──────────────────────────────────────
+    await db.execute('''
+      CREATE TABLE invoice_payments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        invoice_id INTEGER NOT NULL,
+        amount REAL NOT NULL,
+        date TEXT NOT NULL,
+        note TEXT,
+        FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute('CREATE INDEX idx_invoice_payments_invoice ON invoice_payments(invoice_id)');
+    await db.execute('CREATE INDEX idx_invoice_payments_date ON invoice_payments(date)');
 
     // ── Preset Templates Table ──────────────────────────────────────
     await db.execute('''
@@ -378,6 +392,21 @@ class DatabaseHelper {
     // Migration v7 → v8: add purchase_price to invoice_items
     if (oldVersion < 8) {
       await _safeAddColumn(db, 'invoice_items', 'purchase_price REAL NOT NULL DEFAULT 0.0');
+    }
+    // Migration v8 → v9: add invoice_payments table
+    if (oldVersion < 9) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS invoice_payments (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          invoice_id INTEGER NOT NULL,
+          amount REAL NOT NULL,
+          date TEXT NOT NULL,
+          note TEXT,
+          FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
+        )
+      ''');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_invoice_payments_invoice ON invoice_payments(invoice_id)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_invoice_payments_date ON invoice_payments(date)');
     }
   }
 

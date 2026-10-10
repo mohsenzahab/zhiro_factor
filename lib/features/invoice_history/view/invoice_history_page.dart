@@ -197,13 +197,28 @@ class _InvoiceHistoryViewState extends State<_InvoiceHistoryView> {
                           width: 120,
                           child: Tooltip(
                             message: 'سود: ${inv.totalProfitAmount.formatted} تومان (${inv.totalProfitPercentage.toStringAsFixed(1).toPersianDigits()}٪)',
-                            child: Text(
-                              inv.totalNet.formatted,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.accent,
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  inv.totalNet.formatted,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.accent,
+                                  ),
+                                ),
+                                if (inv.paidAmount > 0 && inv.remainingAmount > 0)
+                                  Text(
+                                    'مانده: ${inv.remainingAmount.formatted}',
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.statusCredit,
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                         ),
@@ -257,7 +272,12 @@ class _InvoiceHistoryViewState extends State<_InvoiceHistoryView> {
                 ),
               ),
               // Expanded detail
-              if (isExpanded) InvoiceDetailPanel(invoice: inv, highlightQuery: state.productQuery),
+              if (isExpanded)
+                InvoiceDetailPanel(
+                  invoice: inv,
+                  highlightQuery: state.productQuery,
+                  onPaymentsChanged: () => context.read<InvoiceHistoryCubit>().loadInvoices(),
+                ),
               if (index < state.invoices.length - 1)
                 Divider(height: 1, color: AppColors.dividerDark),
             ],

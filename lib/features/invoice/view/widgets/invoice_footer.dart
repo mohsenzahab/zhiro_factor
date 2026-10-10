@@ -5,6 +5,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/extensions/number_extensions.dart';
 import '../../cubit/invoice_cubit.dart';
 import '../../cubit/invoice_state.dart';
+import 'invoice_payments_dialog.dart';
 
 /// Invoice footer with live totals, overall discount, and save/print buttons.
 class InvoiceFooter extends StatelessWidget {
@@ -37,31 +38,40 @@ class InvoiceFooter extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ── Totals ──────────────────────────────────────
+                  // ── Totals & Credit ────────────────────────────
                   Expanded(
                     flex: 4,
-                    child: Row(
+                    child: Column(
                       children: [
-                        _TotalCard(
-                          label: AppStrings.totalGross,
-                          value: state.totalGross.toman,
-                          color: AppColors.textPrimary,
-                          icon: Icons.receipt,
+                        Row(
+                          children: [
+                            _TotalCard(
+                              label: AppStrings.totalGross,
+                              value: state.totalGross.toman,
+                              color: AppColors.textPrimary,
+                              icon: Icons.receipt,
+                            ),
+                            const SizedBox(width: 12),
+                            _TotalCard(
+                              label: AppStrings.totalDiscount,
+                              value: state.totalDiscount.toman,
+                              color: AppColors.warning,
+                              icon: Icons.discount_outlined,
+                            ),
+                            const SizedBox(width: 12),
+                            _TotalCard(
+                              label: AppStrings.finalPayable,
+                              value: state.totalNet.toman,
+                              color: AppColors.accent,
+                              icon: Icons.payments_outlined,
+                              isHighlighted: true,
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 12),
-                        _TotalCard(
-                          label: AppStrings.totalDiscount,
-                          value: state.totalDiscount.toman,
-                          color: AppColors.warning,
-                          icon: Icons.discount_outlined,
-                        ),
-                        const SizedBox(width: 12),
-                        _TotalCard(
-                          label: AppStrings.finalPayable,
-                          value: state.totalNet.toman,
-                          color: AppColors.accent,
-                          icon: Icons.payments_outlined,
-                          isHighlighted: true,
+                        const SizedBox(height: 10),
+                        _PaymentsSummaryBar(
+                          state: state,
+                          onManage: () => _openPaymentsDialog(context, state),
                         ),
                       ],
                     ),
@@ -179,6 +189,18 @@ class InvoiceFooter extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  void _openPaymentsDialog(BuildContext context, InvoiceState state) {
+    InvoicePaymentsDialog.showForEditor(
+      context: context,
+      invoiceId: state.editingInvoiceId,
+      invoiceNumber: state.invoiceNumber,
+      totalNet: state.totalNet,
+      payments: state.payments,
+      onPaymentAdded: (p) => context.read<InvoiceCubit>().addPayment(p),
+      onPaymentRemoved: (index, p) => context.read<InvoiceCubit>().removePayment(index),
     );
   }
 }
@@ -430,6 +452,109 @@ class _TotalCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _PaymentsSummaryBar extends StatelessWidget {
+  final InvoiceState state;
+  final VoidCallback onManage;
+
+  const _PaymentsSummaryBar({
+    required this.state,
+    required this.onManage,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasPayments = state.payments.isNotEmpty;
+    final hasRemaining = state.remainingAmount > 0;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: hasRemaining && hasPayments
+            ? AppColors.statusCredit.withValues(alpha: 0.08)
+            : AppColors.surfaceDark,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: hasRemaining && hasPayments
+              ? AppColors.statusCredit.withValues(alpha: 0.3)
+              : AppColors.dividerDark,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: AppColors.statusCredit.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Icon(Icons.account_balance_wallet_outlined, size: 16, color: AppColors.statusCredit),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 14,
+              runSpacing: 4,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '${AppStrings.paidAmount}: ',
+                      style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                    ),
+                    Text(
+                      state.paidAmount.toman,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: state.paidAmount > 0 ? AppColors.statusSettled : AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '${AppStrings.remainingAmount}: ',
+                      style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                    ),
+                    Text(
+                      state.remainingAmount.toman,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: hasRemaining ? AppColors.statusCredit : AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          OutlinedButton.icon(
+            onPressed: onManage,
+            icon: const Icon(Icons.edit_note, size: 16),
+            label: Text(
+              hasPayments
+                  ? 'مدیریت دریافتی‌ها (${state.payments.length.toString().toPersianDigits()})'
+                  : AppStrings.addPayment,
+              style: const TextStyle(fontSize: 12),
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.statusCredit,
+              side: BorderSide(color: AppColors.statusCredit.withValues(alpha: 0.6)),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              minimumSize: Size.zero,
+            ),
+          ),
+        ],
       ),
     );
   }

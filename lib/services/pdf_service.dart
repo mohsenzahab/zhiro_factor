@@ -37,6 +37,8 @@ class PdfDocumentParams {
   final double overallDiscountValue;
   final double totalDiscount;
   final double totalNet;
+  final double paidAmount;
+  final double remainingAmount;
 
   const PdfDocumentParams({
     required this.regularFontBytes,
@@ -60,6 +62,8 @@ class PdfDocumentParams {
     required this.overallDiscountValue,
     required this.totalDiscount,
     required this.totalNet,
+    this.paidAmount = 0.0,
+    this.remainingAmount = 0.0,
   });
 }
 
@@ -149,6 +153,8 @@ class PdfService {
       overallDiscountValue: state.overallDiscountValue,
       totalDiscount: state.totalDiscount,
       totalNet: state.totalNet,
+      paidAmount: state.paidAmount,
+      remainingAmount: state.remainingAmount,
     );
 
     return compute(_generatePdfInIsolate, params);
@@ -200,6 +206,8 @@ class PdfService {
       overallDiscountValue: effectiveInvoice.overallDiscountValue,
       totalDiscount: effectiveInvoice.totalDiscount,
       totalNet: effectiveInvoice.totalNet,
+      paidAmount: effectiveInvoice.paidAmount,
+      remainingAmount: effectiveInvoice.remainingAmount,
     );
 
     return compute(_generatePdfInIsolate, params);
@@ -357,6 +365,8 @@ Future<Uint8List> _generatePdfInIsolate(PdfDocumentParams params) async {
           overallDiscountValue: params.overallDiscountValue,
           totalDiscount: params.totalDiscount,
           net: params.totalNet,
+          paidAmount: params.paidAmount,
+          remainingAmount: params.remainingAmount,
           isA5: isA5,
         );
 
@@ -662,6 +672,8 @@ pw.Widget _buildTotals({
   required double overallDiscountValue,
   required double totalDiscount,
   required double net,
+  required double paidAmount,
+  required double remainingAmount,
   required bool isA5,
 }) {
   return pw.Container(
@@ -702,6 +714,12 @@ pw.Widget _buildTotals({
           fontWeight: pw.FontWeight.bold,
           fontSize: isA5 ? 9.5 : 12,
         ),
+        if (paidAmount > 0) ...[
+          pw.SizedBox(height: isA5 ? 2 : 4),
+          _totalRow(font, 'مبلغ دریافتی:', paidAmount.toman, color: PdfColors.green700, fontSize: isA5 ? 8.5 : 10),
+          pw.SizedBox(height: isA5 ? 2 : 4),
+          _totalRow(boldFont, 'مانده (نسیه):', remainingAmount.toman, color: PdfColors.orange800, fontWeight: pw.FontWeight.bold, fontSize: isA5 ? 9 : 11),
+        ],
       ],
     ),
   );
