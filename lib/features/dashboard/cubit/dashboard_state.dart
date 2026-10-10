@@ -13,6 +13,8 @@ class DashboardState extends Equatable {
   final String? dateFrom;
   final String? dateTo;
   final DateRangePreset preset;
+  final String? categoryFilter;
+  final List<String> availableCategories;
   final List<Map<String, dynamic>> bestSellersByVolume;
   final List<Map<String, dynamic>> bestSellersByRevenue;
   final List<Map<String, dynamic>> recentInvoices;
@@ -29,6 +31,8 @@ class DashboardState extends Equatable {
     this.dateFrom,
     this.dateTo,
     this.preset = DateRangePreset.thisMonth,
+    this.categoryFilter,
+    this.availableCategories = const [],
     this.bestSellersByVolume = const [],
     this.bestSellersByRevenue = const [],
     this.recentInvoices = const [],
@@ -59,6 +63,9 @@ class DashboardState extends Equatable {
     String? dateTo,
     bool clearDates = false,
     DateRangePreset? preset,
+    String? categoryFilter,
+    bool clearCategory = false,
+    List<String>? availableCategories,
     List<Map<String, dynamic>>? bestSellersByVolume,
     List<Map<String, dynamic>>? bestSellersByRevenue,
     List<Map<String, dynamic>>? recentInvoices,
@@ -75,6 +82,8 @@ class DashboardState extends Equatable {
       dateFrom: clearDates ? null : (dateFrom ?? this.dateFrom),
       dateTo: clearDates ? null : (dateTo ?? this.dateTo),
       preset: preset ?? this.preset,
+      categoryFilter: clearCategory ? null : (categoryFilter ?? this.categoryFilter),
+      availableCategories: availableCategories ?? this.availableCategories,
       bestSellersByVolume: bestSellersByVolume ?? this.bestSellersByVolume,
       bestSellersByRevenue: bestSellersByRevenue ?? this.bestSellersByRevenue,
       recentInvoices: recentInvoices ?? this.recentInvoices,
@@ -94,6 +103,8 @@ class DashboardState extends Equatable {
         dateFrom,
         dateTo,
         preset,
+        categoryFilter,
+        availableCategories,
         bestSellersByVolume,
         bestSellersByRevenue,
         recentInvoices,

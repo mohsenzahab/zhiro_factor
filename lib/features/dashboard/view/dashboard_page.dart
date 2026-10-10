@@ -75,6 +75,32 @@ class _DashboardView extends StatelessWidget {
                         );
                   },
                 ),
+                const SizedBox(height: 12),
+
+                // ── Category Filter ────────────────────────────
+                if (state.availableCategories.isNotEmpty)
+                  Row(
+                    children: [
+                      const Icon(Icons.category_outlined, size: 18, color: AppColors.textMuted),
+                      const SizedBox(width: 8),
+                      const Text('دسته‌بندی:', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+                      const SizedBox(width: 8),
+                      _CategoryChip(
+                        label: 'همه',
+                        isSelected: state.categoryFilter == null,
+                        onTap: () => context.read<DashboardCubit>().setCategoryFilter(null),
+                      ),
+                      const SizedBox(width: 6),
+                      ...state.availableCategories.map((cat) => Padding(
+                            padding: const EdgeInsets.only(left: 6),
+                            child: _CategoryChip(
+                              label: cat,
+                              isSelected: state.categoryFilter == cat,
+                              onTap: () => context.read<DashboardCubit>().setCategoryFilter(cat),
+                            ),
+                          )),
+                    ],
+                  ),
                 const SizedBox(height: 20),
 
                 // ── KPI Cards ───────────────────────────────────
@@ -294,6 +320,46 @@ class _DashboardView extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _CategoryChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _CategoryChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary.withValues(alpha: 0.15) : AppColors.cardDark,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : AppColors.dividerDark,
+            width: isSelected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            color: isSelected ? AppColors.primary : AppColors.textSecondary,
+          ),
+        ),
+      ),
     );
   }
 }
