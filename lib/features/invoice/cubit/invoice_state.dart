@@ -79,6 +79,16 @@ class InvoiceState extends Equatable {
     return rem > 0 ? rem : 0.0;
   }
 
+  /// Total cost of items (sum of purchasePrice * quantity).
+  double get totalCost => items.fold(0.0, (sum, item) => sum + (item.purchasePrice * item.quantity));
+
+  /// Total profit amount for this invoice.
+  double get totalProfit => totalNet - totalCost;
+
+  /// Total profit percentage relative to cost.
+  double get totalProfitPercentage =>
+      totalCost > 0 ? (totalProfit / totalCost) * 100.0 : (totalNet > 0 ? 100.0 : 0.0);
+
   InvoiceState copyWith({
     int? editingInvoiceId,
     String? invoiceNumber,

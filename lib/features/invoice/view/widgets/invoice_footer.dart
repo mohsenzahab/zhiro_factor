@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/extensions/number_extensions.dart';
+import '../../../../shared/widgets/privacy_tooltip.dart';
 import '../../cubit/invoice_cubit.dart';
 import '../../cubit/invoice_state.dart';
 import 'invoice_payments_dialog.dart';
@@ -50,6 +51,8 @@ class InvoiceFooter extends StatelessWidget {
                               value: state.totalGross.toman,
                               color: AppColors.textPrimary,
                               icon: Icons.receipt,
+                              tooltip: 'قیمت خرید: ${state.totalCost.formatted} تومان\n'
+                                  'سود (روی خرید): ${(state.totalGross - state.totalCost).formatted} تومان (${(state.totalCost > 0 ? ((state.totalGross - state.totalCost) / state.totalCost) * 100.0 : 0.0).toStringAsFixed(1).toPersianDigits()}٪)',
                             ),
                             const SizedBox(width: 12),
                             _TotalCard(
@@ -57,6 +60,7 @@ class InvoiceFooter extends StatelessWidget {
                               value: state.totalDiscount.toman,
                               color: AppColors.warning,
                               icon: Icons.discount_outlined,
+                              tooltip: 'درصد تخفیف: ${(state.totalGross > 0 ? (state.totalDiscount / state.totalGross) * 100.0 : 0.0).toStringAsFixed(1).toPersianDigits()}٪',
                             ),
                             const SizedBox(width: 12),
                             _TotalCard(
@@ -65,6 +69,7 @@ class InvoiceFooter extends StatelessWidget {
                               color: AppColors.accent,
                               icon: Icons.payments_outlined,
                               isHighlighted: true,
+                              tooltip: 'سود فاکتور: ${state.totalProfit.formatted} تومان (${state.totalProfitPercentage.toStringAsFixed(1).toPersianDigits()}٪)',
                             ),
                           ],
                         ),
@@ -398,6 +403,7 @@ class _TotalCard extends StatelessWidget {
   final Color color;
   final IconData icon;
   final bool isHighlighted;
+  final String? tooltip;
 
   const _TotalCard({
     required this.label,
@@ -405,55 +411,60 @@ class _TotalCard extends StatelessWidget {
     required this.color,
     required this.icon,
     this.isHighlighted = false,
+    this.tooltip,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: isHighlighted ? color.withValues(alpha: 0.08) : AppColors.surfaceDark,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isHighlighted ? color.withValues(alpha: 0.3) : AppColors.dividerDark,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Icon(icon, size: 16, color: color.withValues(alpha: 0.7)),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textMuted,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: color,
-              ),
-            ),
-          ],
+    Widget card = Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isHighlighted ? color.withValues(alpha: 0.08) : AppColors.surfaceDark,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isHighlighted ? color.withValues(alpha: 0.3) : AppColors.dividerDark,
         ),
       ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: color.withValues(alpha: 0.7)),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textMuted,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ),
     );
+
+    if (tooltip != null && tooltip!.isNotEmpty) {
+      card = PrivacyTooltip(message: tooltip!, child: card);
+    }
+
+    return Expanded(child: card);
   }
 }
 

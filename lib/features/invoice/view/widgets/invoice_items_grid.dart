@@ -3,16 +3,63 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/extensions/number_extensions.dart';
+import '../../../../data/models/invoice_item_model.dart';
+import '../../../../data/repositories/product_repository.dart';
+import '../../../../shared/widgets/privacy_tooltip.dart';
 import '../../cubit/invoice_cubit.dart';
 import '../../cubit/invoice_state.dart';
 
 /// Invoice line items data grid with inline editing.
-class InvoiceItemsGrid extends StatelessWidget {
-  const InvoiceItemsGrid({super.key});
+class InvoiceItemsGrid extends StatefulWidget {
+  final ProductRepository? productRepo;
+
+  const InvoiceItemsGrid({super.key, this.productRepo});
+
+  @override
+  State<InvoiceItemsGrid> createState() => _InvoiceItemsGridState();
+}
+
+class _InvoiceItemsGridState extends State<InvoiceItemsGrid> {
+  late final ProductRepository _productRepo;
+  final Map<int, ProductDetailInfo> _productDetails = {};
+  final Set<int> _loadedProductIds = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _productRepo = widget.productRepo ?? ProductRepository();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _loadProductDetails(context.read<InvoiceCubit>().state.items);
+      }
+    });
+  }
+
+  void _loadProductDetails(List<InvoiceItemModel> items) async {
+    final missingIds = items
+        .map((e) => e.productId)
+        .whereType<int>()
+        .where((id) => !_loadedProductIds.contains(id))
+        .toSet()
+        .toList();
+
+    if (missingIds.isEmpty) return;
+
+    final details = await _productRepo.getProductsDetailInfo(missingIds);
+    if (mounted) {
+      setState(() {
+        _loadedProductIds.addAll(missingIds);
+        _productDetails.addAll(details);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<InvoiceCubit, InvoiceState>(
+    return BlocConsumer<InvoiceCubit, InvoiceState>(
+      listener: (context, state) {
+        _loadProductDetails(state.items);
+      },
       builder: (context, state) {
         if (state.items.isEmpty) {
           return Container(
@@ -74,6 +121,50 @@ class InvoiceItemsGrid extends StatelessWidget {
                 ],
                 rows: List.generate(state.items.length, (index) {
                   final item = state.items[index];
+                  final detail = item.productId != null ? _productDetails[item.productId!] : null;
+
+                  // Tooltip: Product category
+                  final categoryText = (detail?.category != null && detail!.category!.trim().isNotEmpty)
+                      ? detail.category!
+                      : 'عمومی / بدون دسته‌بندی';
+                  final nameTooltip = 'دسته‌بندی: $categoryText';
+
+                  // Tooltip: Stock & sold
+                  final stockText = detail != null
+                      ? (detail.stock != null ? detail.stock!.formattedInt : 'نامحدود')
+                      : 'نامشخص';
+                  final soldText = detail != null
+                      ? detail.totalSold.formattedInt
+                      : item.quantity.formattedInt;
+                  final quantityTooltip = 'مانده در انبار: $stockText عدد\nکل فروخته شده: $soldText عدد';
+
+                  // Tooltip: Unit price
+                  final currBuy = detail?.currentBuyPrice ?? item.purchasePrice;
+                  final profitOnCurr = item.unitPrice - currBuy;
+                  final profitPctOnCurr = currBuy > 0 ? (profitOnCurr / currBuy) * 100.0 : 0.0;
+                  final initBuy = detail?.initialBuyPrice ?? item.purchasePrice;
+                  final unitPriceTooltip = 'قیمت خرید کنونی: ${currBuy.formatted} تومان\n'
+                      'سود (روی خرید کنونی): ${profitOnCurr.formatted} تومان (${profitPctOnCurr.toStringAsFixed(1).toPersianDigits()}٪)\n'
+                      'قیمت خرید اولیه: ${initBuy.formatted} تومان';
+
+                  // Tooltip: Discount
+                  final discAmount = item.discountCalculatedAmount;
+                  String discountTooltip;
+                  if (discAmount <= 0) {
+                    discountTooltip = 'تخفیف: ۰ تومان (۰٪)';
+                  } else {
+                    final unitDisc = item.quantity > 0 ? discAmount / item.quantity : discAmount;
+                    final pctOnCurr = currBuy > 0 ? (unitDisc / currBuy) * 100.0 : 0.0;
+                    final pctOnInit = initBuy > 0 ? (unitDisc / initBuy) * 100.0 : 0.0;
+                    discountTooltip = 'مبلغ تخفیف: ${discAmount.formatted} تومان\n'
+                        'درصد از خرید کنونی: ${pctOnCurr.toStringAsFixed(1).toPersianDigits()}٪\n'
+                        'درصد از خرید اولیه: ${pctOnInit.toStringAsFixed(1).toPersianDigits()}٪';
+                  }
+
+                  // Tooltip: Line total profit
+                  final lineTotalTooltip =
+                      'سود: ${item.profitAmount.formatted} تومان (${item.profitPercentage.toStringAsFixed(1).toPersianDigits()}٪)';
+
                   return DataRow(
                     color: WidgetStateProperty.all(
                       index.isEven ? AppColors.tableRowEven : AppColors.tableRowOdd,
@@ -81,35 +172,52 @@ class InvoiceItemsGrid extends StatelessWidget {
                     cells: [
                       DataCell(Text('${index + 1}'.toPersianDigits())),
                       DataCell(Text(item.productId != null ? item.productId.toString().toPersianDigits() : '-')),
-                      DataCell(Text(item.productName,
-                          style: const TextStyle(fontWeight: FontWeight.w500))),
-                      // Quantity with +/- buttons
-                      DataCell(Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _QuantityButton(
-                            icon: Icons.remove,
-                            onPressed: item.quantity > 1
-                                ? () => context.read<InvoiceCubit>().updateItemQuantity(
-                                      index, item.quantity - 1)
-                                : null,
+                      DataCell(
+                        PrivacyTooltip(
+                          message: nameTooltip,
+                          child: Text(
+                            item.productName,
+                            style: const TextStyle(fontWeight: FontWeight.w500),
                           ),
-                          _InlineNumberField(
-                            value: item.quantity,
-                            onChanged: (v) => context.read<InvoiceCubit>().updateItemQuantity(index, v),
+                        ),
+                      ),
+                      // Quantity with +/- buttons & Tooltip
+                      DataCell(
+                        PrivacyTooltip(
+                          message: quantityTooltip,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _QuantityButton(
+                                icon: Icons.remove,
+                                onPressed: item.quantity > 1
+                                    ? () => context.read<InvoiceCubit>().updateItemQuantity(
+                                          index, item.quantity - 1)
+                                    : null,
+                              ),
+                              _InlineNumberField(
+                                value: item.quantity,
+                                onChanged: (v) => context.read<InvoiceCubit>().updateItemQuantity(index, v),
+                              ),
+                              _QuantityButton(
+                                icon: Icons.add,
+                                onPressed: () => context.read<InvoiceCubit>().updateItemQuantity(
+                                      index, item.quantity + 1),
+                              ),
+                            ],
                           ),
-                          _QuantityButton(
-                            icon: Icons.add,
-                            onPressed: () => context.read<InvoiceCubit>().updateItemQuantity(
-                                  index, item.quantity + 1),
+                        ),
+                      ),
+                      // Unit Price & Tooltip
+                      DataCell(
+                        PrivacyTooltip(
+                          message: unitPriceTooltip,
+                          child: _InlineNumberField(
+                            value: item.unitPrice,
+                            onChanged: (v) => context.read<InvoiceCubit>().updateItemPrice(index, v),
                           ),
-                        ],
-                      )),
-                      // Unit Price
-                      DataCell(_InlineNumberField(
-                        value: item.unitPrice,
-                        onChanged: (v) => context.read<InvoiceCubit>().updateItemPrice(index, v),
-                      )),
+                        ),
+                      ),
                       // Discount Type
                       DataCell(
                         DropdownButton<String>(
@@ -143,20 +251,29 @@ class InvoiceItemsGrid extends StatelessWidget {
                                     .updateItemDiscountValue(index, v),
                               ),
                       ),
-                      // Calculated discount
-                      DataCell(Text(item.discountCalculatedAmount.formatted,
-                          style: TextStyle(color: AppColors.warning, fontSize: 12))),
-                      // Line Total
-                      DataCell(Tooltip(
-                        message: 'سود: ${item.profitAmount.formatted} تومان (${item.profitPercentage.toStringAsFixed(1).toPersianDigits()}٪)',
-                        child: Text(
-                          item.lineTotal.formatted,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.accent,
+                      // Calculated discount & Tooltip
+                      DataCell(
+                        PrivacyTooltip(
+                          message: discountTooltip,
+                          child: Text(
+                            item.discountCalculatedAmount.formatted,
+                            style: const TextStyle(color: AppColors.warning, fontSize: 12),
                           ),
                         ),
-                      )),
+                      ),
+                      // Line Total with PrivacyTooltip
+                      DataCell(
+                        PrivacyTooltip(
+                          message: lineTotalTooltip,
+                          child: Text(
+                            item.lineTotal.formatted,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.accent,
+                            ),
+                          ),
+                        ),
+                      ),
                       // Delete
                       DataCell(IconButton(
                         icon: const Icon(Icons.delete_outline, size: 18),

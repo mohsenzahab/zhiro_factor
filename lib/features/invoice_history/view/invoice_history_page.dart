@@ -12,6 +12,7 @@ import '../../../shared/widgets/privacy_tooltip.dart';
 import '../cubit/invoice_history_cubit.dart';
 import '../cubit/invoice_history_state.dart';
 import '../../../data/models/invoice_model.dart';
+import '../../../data/repositories/product_repository.dart';
 import 'widgets/invoice_filter_bar.dart';
 import 'widgets/invoice_detail_panel.dart';
 import '../../invoice/view/widgets/invoice_preview_dialog.dart';
@@ -44,6 +45,43 @@ class _InvoiceHistoryViewState extends State<_InvoiceHistoryView> {
   final _searchCtrl = TextEditingController();
   final _productSearchCtrl = TextEditingController();
   int? _expandedInvoiceId;
+
+  final ProductRepository _productRepo = ProductRepository();
+  final Map<int, ProductDetailInfo> _productDetails = {};
+  final Set<int> _loadedProductIds = {};
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final state = context.read<InvoiceHistoryCubit>().state;
+        if (state is InvoiceHistoryLoaded) {
+          _loadProductDetails(state.invoices);
+        }
+      }
+    });
+  }
+
+  void _loadProductDetails(List<InvoiceModel> invoices) async {
+    final productIds = invoices
+        .expand((inv) => inv.items)
+        .map((item) => item.productId)
+        .whereType<int>()
+        .where((id) => !_loadedProductIds.contains(id))
+        .toSet()
+        .toList();
+
+    if (productIds.isEmpty) return;
+
+    final details = await _productRepo.getProductsDetailInfo(productIds);
+    if (mounted) {
+      setState(() {
+        _loadedProductIds.addAll(productIds);
+        _productDetails.addAll(details);
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -144,7 +182,12 @@ class _InvoiceHistoryViewState extends State<_InvoiceHistoryView> {
 
           // ── Table ───────────────────────────────────────────
           Expanded(
-            child: BlocBuilder<InvoiceHistoryCubit, InvoiceHistoryState>(
+            child: BlocConsumer<InvoiceHistoryCubit, InvoiceHistoryState>(
+              listener: (context, state) {
+                if (state is InvoiceHistoryLoaded) {
+                  _loadProductDetails(state.invoices);
+                }
+              },
               builder: (context, state) {
                 if (state is InvoiceHistoryLoading) {
                   return const Center(child: CircularProgressIndicator());
@@ -184,6 +227,35 @@ class _InvoiceHistoryViewState extends State<_InvoiceHistoryView> {
           final hasProductSearch = state.productQuery != null && state.productQuery!.isNotEmpty;
           final isExpanded = hasProductSearch || _expandedInvoiceId == inv.id;
           final jalaliDate = _tryFormatDate(inv.date);
+
+          // Calculate buy prices & profits across all line items
+          double totalCurrentBuy = 0.0;
+          double totalInitialBuy = 0.0;
+          for (final item in inv.items) {
+            final detail = item.productId != null ? _productDetails[item.productId!] : null;
+            final currBuy = detail?.currentBuyPrice ?? item.purchasePrice;
+            final initBuy = detail?.initialBuyPrice ?? item.purchasePrice;
+            totalCurrentBuy += currBuy * item.quantity;
+            totalInitialBuy += initBuy * item.quantity;
+          }
+
+          final grossProfitOnCurr = inv.totalGross - totalCurrentBuy;
+          final grossProfitPctOnCurr = totalCurrentBuy > 0 ? (grossProfitOnCurr / totalCurrentBuy) * 100.0 : 0.0;
+          final grossTooltip = 'قیمت خرید کنونی: ${totalCurrentBuy.formatted} تومان\n'
+              'سود (روی خرید کنونی): ${grossProfitOnCurr.formatted} تومان (${grossProfitPctOnCurr.toStringAsFixed(1).toPersianDigits()}٪)\n'
+              'قیمت خرید اولیه: ${totalInitialBuy.formatted} تومان';
+
+          final discountPct = inv.totalGross > 0 ? (inv.totalDiscount / inv.totalGross) * 100.0 : 0.0;
+          String discountTooltip;
+          if (inv.totalDiscount <= 0) {
+            discountTooltip = 'تخفیف: ۰ تومان (۰٪)';
+          } else {
+            final pctOnCurr = totalCurrentBuy > 0 ? (inv.totalDiscount / totalCurrentBuy) * 100.0 : 0.0;
+            final pctOnInit = totalInitialBuy > 0 ? (inv.totalDiscount / totalInitialBuy) * 100.0 : 0.0;
+            discountTooltip = 'درصد تخفیف: ${discountPct.toStringAsFixed(1).toPersianDigits()}٪\n'
+                'درصد از خرید کنونی: ${pctOnCurr.toStringAsFixed(1).toPersianDigits()}٪\n'
+                'درصد از خرید اولیه: ${pctOnInit.toStringAsFixed(1).toPersianDigits()}٪';
+          }
 
           return Column(
             children: [
@@ -231,21 +303,27 @@ class _InvoiceHistoryViewState extends State<_InvoiceHistoryView> {
                           ),
                         ),
 
-                        // Gross
+                        // Gross (قیمت بدون تخفیف)
                         SizedBox(
                           width: 120,
-                          child: Text(
-                            inv.totalGross.formatted,
-                            style: const TextStyle(fontSize: 13),
+                          child: PrivacyTooltip(
+                            message: grossTooltip,
+                            child: Text(
+                              inv.totalGross.formatted,
+                              style: const TextStyle(fontSize: 13),
+                            ),
                           ),
                         ),
 
-                        // Discount
+                        // Discount (تخفیف)
                         SizedBox(
                           width: 100,
-                          child: Text(
-                            inv.totalDiscount.formatted,
-                            style: const TextStyle(fontSize: 13, color: AppColors.warning),
+                          child: PrivacyTooltip(
+                            message: discountTooltip,
+                            child: Text(
+                              inv.totalDiscount.formatted,
+                              style: const TextStyle(fontSize: 13, color: AppColors.warning),
+                            ),
                           ),
                         ),
 
