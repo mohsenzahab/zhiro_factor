@@ -1,4 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../shared/widgets/date_range_filter_bar.dart';
 import '../models/business_settings_model.dart';
 
 /// Repository for persisting business settings via SharedPreferences.
@@ -43,4 +44,76 @@ class SettingsRepository {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_keyBusinessName) ?? '';
   }
+
+  // Dashboard filter keys
+  static const String _keyDashboardFilterPreset = 'dashboard_filter_preset';
+  static const String _keyDashboardFilterCategory = 'dashboard_filter_category';
+  static const String _keyDashboardFilterCustomFrom = 'dashboard_filter_custom_from';
+  static const String _keyDashboardFilterCustomTo = 'dashboard_filter_custom_to';
+
+  /// Load saved dashboard filter preferences.
+  Future<DashboardFilterPreference> loadDashboardFilter() async {
+    final prefs = await SharedPreferences.getInstance();
+    final presetName = prefs.getString(_keyDashboardFilterPreset);
+    DateRangePreset preset = DateRangePreset.thisMonth;
+    if (presetName != null) {
+      for (final p in DateRangePreset.values) {
+        if (p.name == presetName) {
+          preset = p;
+          break;
+        }
+      }
+    }
+    final category = prefs.getString(_keyDashboardFilterCategory);
+    final customFrom = prefs.getString(_keyDashboardFilterCustomFrom);
+    final customTo = prefs.getString(_keyDashboardFilterCustomTo);
+
+    return DashboardFilterPreference(
+      preset: preset,
+      customDateFrom: customFrom,
+      customDateTo: customTo,
+      category: category,
+    );
+  }
+
+  /// Save dashboard filter preferences.
+  Future<void> saveDashboardFilter({
+    required DateRangePreset preset,
+    String? customDateFrom,
+    String? customDateTo,
+    String? category,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyDashboardFilterPreset, preset.name);
+    if (category != null && category.isNotEmpty) {
+      await prefs.setString(_keyDashboardFilterCategory, category);
+    } else {
+      await prefs.remove(_keyDashboardFilterCategory);
+    }
+    if (customDateFrom != null && customDateFrom.isNotEmpty) {
+      await prefs.setString(_keyDashboardFilterCustomFrom, customDateFrom);
+    } else {
+      await prefs.remove(_keyDashboardFilterCustomFrom);
+    }
+    if (customDateTo != null && customDateTo.isNotEmpty) {
+      await prefs.setString(_keyDashboardFilterCustomTo, customDateTo);
+    } else {
+      await prefs.remove(_keyDashboardFilterCustomTo);
+    }
+  }
+}
+
+/// Preferences for dashboard date and category filters.
+class DashboardFilterPreference {
+  final DateRangePreset preset;
+  final String? customDateFrom;
+  final String? customDateTo;
+  final String? category;
+
+  const DashboardFilterPreference({
+    this.preset = DateRangePreset.thisMonth,
+    this.customDateFrom,
+    this.customDateTo,
+    this.category,
+  });
 }

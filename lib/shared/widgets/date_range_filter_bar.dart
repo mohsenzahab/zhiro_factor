@@ -56,6 +56,34 @@ class _DateRangeFilterBarState extends State<DateRangeFilterBar> {
     }
   }
 
+  @override
+  void didUpdateWidget(covariant DateRangeFilterBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialPreset != oldWidget.initialPreset ||
+        widget.initialDateFrom != oldWidget.initialDateFrom ||
+        widget.initialDateTo != oldWidget.initialDateTo) {
+      _selectedPreset = widget.initialPreset;
+      if (widget.initialDateFrom != null && widget.initialDateFrom!.isNotEmpty) {
+        try {
+          _customFromJalali = JalaliUtils.fromIso(widget.initialDateFrom!);
+        } catch (_) {
+          _customFromJalali = null;
+        }
+      } else {
+        _customFromJalali = null;
+      }
+      if (widget.initialDateTo != null && widget.initialDateTo!.isNotEmpty) {
+        try {
+          _customToJalali = JalaliUtils.fromIso(widget.initialDateTo!);
+        } catch (_) {
+          _customToJalali = null;
+        }
+      } else {
+        _customToJalali = null;
+      }
+    }
+  }
+
   void _selectPreset(DateRangePreset preset) {
     setState(() => _selectedPreset = preset);
     String? dateFrom;
