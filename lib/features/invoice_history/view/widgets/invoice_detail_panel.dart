@@ -7,6 +7,8 @@ import '../../../../data/models/invoice_model.dart';
 import '../../../../data/models/invoice_item_model.dart';
 import '../../../../data/models/invoice_payment_model.dart';
 import '../../../../data/repositories/invoice_repository.dart';
+import '../../../../data/repositories/product_repository.dart';
+import '../../../../shared/widgets/privacy_tooltip.dart';
 import '../../../invoice/view/widgets/invoice_payments_dialog.dart';
 
 /// Expandable detail panel showing invoice items and payment history / credit status.
@@ -29,6 +31,7 @@ class InvoiceDetailPanel extends StatefulWidget {
 class _InvoiceDetailPanelState extends State<InvoiceDetailPanel> {
   List<InvoiceItemModel>? _items;
   List<InvoicePaymentModel>? _payments;
+  Map<int, ProductDetailInfo> _productDetails = {};
   bool _loading = true;
 
   @override
@@ -41,10 +44,16 @@ class _InvoiceDetailPanelState extends State<InvoiceDetailPanel> {
     final repo = InvoiceRepository();
     final items = await repo.getItemsByInvoiceId(widget.invoice.id!);
     final payments = await repo.getPaymentsByInvoiceId(widget.invoice.id!);
+
+    final productRepo = ProductRepository();
+    final productIds = items.map((e) => e.productId).whereType<int>().toSet().toList();
+    final productDetails = await productRepo.getProductsDetailInfo(productIds);
+
     if (mounted) {
       setState(() {
         _items = items;
         _payments = payments;
+        _productDetails = productDetails;
         _loading = false;
       });
     }
@@ -208,20 +217,84 @@ class _InvoiceDetailPanelState extends State<InvoiceDetailPanel> {
                   return TableRow(
                     decoration: BoxDecoration(color: rowColor),
                     children: [
+                      // 0: Row Index
                       _dataCell('${i + 1}'.toPersianDigits()),
-                      _dataCell(item.productName),
-                      _dataCell(item.quantity.formattedInt),
-                      _dataCell(item.unitPrice.formatted),
-                      _dataCell(item.discountCalculatedAmount.formatted),
-                      Padding(
-                        padding: const EdgeInsets.all(8),
-                        child: Tooltip(
-                          message: 'سود: ${item.profitAmount.formatted} تومان (${item.profitPercentage.toStringAsFixed(1).toPersianDigits()}٪)',
-                          child: Text(
-                            item.lineTotal.formatted,
-                            style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.accent, fontSize: 12),
-                          ),
+
+                      // 1: Product Name -> Product Category Tooltip
+                      Builder(builder: (_) {
+                        final detail = item.productId != null ? _productDetails[item.productId!] : null;
+                        final categoryText = (detail?.category != null && detail!.category!.trim().isNotEmpty)
+                            ? detail.category!
+                            : 'عمومی / بدون دسته‌بندی';
+                        final tooltipMsg = 'دسته‌بندی: $categoryText';
+                        return _tooltipCell(
+                          child: Text(item.productName, style: const TextStyle(fontSize: 12)),
+                          tooltipMessage: tooltipMsg,
+                        );
+                      }),
+
+                      // 2: Quantity -> Stock remaining & Total sold Tooltip
+                      Builder(builder: (_) {
+                        final detail = item.productId != null ? _productDetails[item.productId!] : null;
+                        final stockText = detail != null
+                            ? (detail.stock != null ? detail.stock!.formattedInt : 'نامحدود')
+                            : 'نامشخص';
+                        final soldText = detail != null
+                            ? detail.totalSold.formattedInt
+                            : item.quantity.formattedInt;
+                        final tooltipMsg = 'مانده در انبار: $stockText عدد\nکل فروخته شده: $soldText عدد';
+                        return _tooltipCell(
+                          child: Text(item.quantity.formattedInt, style: const TextStyle(fontSize: 12)),
+                          tooltipMessage: tooltipMsg,
+                        );
+                      }),
+
+                      // 3: Unit Price -> Current buy price + profit, and FIFO initial buy price
+                      Builder(builder: (_) {
+                        final detail = item.productId != null ? _productDetails[item.productId!] : null;
+                        final currBuy = detail?.currentBuyPrice ?? item.purchasePrice;
+                        final profitOnCurr = item.unitPrice - currBuy;
+                        final profitPctOnCurr = currBuy > 0 ? (profitOnCurr / currBuy) * 100.0 : 0.0;
+                        final initBuy = detail?.initialBuyPrice ?? item.purchasePrice;
+                        final tooltipMsg = 'قیمت خرید کنونی: ${currBuy.formatted} تومان\n'
+                            'سود (روی خرید کنونی): ${profitOnCurr.formatted} تومان (${profitPctOnCurr.toStringAsFixed(1).toPersianDigits()}٪)\n'
+                            'قیمت خرید اولیه: ${initBuy.formatted} تومان';
+                        return _tooltipCell(
+                          child: Text(item.unitPrice.formatted, style: const TextStyle(fontSize: 12)),
+                          tooltipMessage: tooltipMsg,
+                        );
+                      }),
+
+                      // 4: Discount -> Discount percentage on initial buy and current buy
+                      Builder(builder: (_) {
+                        final detail = item.productId != null ? _productDetails[item.productId!] : null;
+                        final currBuy = detail?.currentBuyPrice ?? item.purchasePrice;
+                        final initBuy = detail?.initialBuyPrice ?? item.purchasePrice;
+                        final discAmount = item.discountCalculatedAmount;
+                        String tooltipMsg;
+                        if (discAmount <= 0) {
+                          tooltipMsg = 'تخفیف: ۰ تومان (۰٪)';
+                        } else {
+                          final unitDisc = item.quantity > 0 ? discAmount / item.quantity : discAmount;
+                          final pctOnCurr = currBuy > 0 ? (unitDisc / currBuy) * 100.0 : 0.0;
+                          final pctOnInit = initBuy > 0 ? (unitDisc / initBuy) * 100.0 : 0.0;
+                          tooltipMsg = 'مبلغ تخفیف: ${discAmount.formatted} تومان\n'
+                              'درصد از خرید کنونی: ${pctOnCurr.toStringAsFixed(1).toPersianDigits()}٪\n'
+                              'درصد از خرید اولیه: ${pctOnInit.toStringAsFixed(1).toPersianDigits()}٪';
+                        }
+                        return _tooltipCell(
+                          child: Text(item.discountCalculatedAmount.formatted, style: const TextStyle(fontSize: 12)),
+                          tooltipMessage: tooltipMsg,
+                        );
+                      }),
+
+                      // 5: Line Total -> Profit with privacy delay
+                      _tooltipCell(
+                        child: Text(
+                          item.lineTotal.formatted,
+                          style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.accent, fontSize: 12),
                         ),
+                        tooltipMessage: 'سود: ${item.profitAmount.formatted} تومان (${item.profitPercentage.toStringAsFixed(1).toPersianDigits()}٪)',
                       ),
                     ],
                   );
@@ -370,5 +443,22 @@ class _InvoiceDetailPanelState extends State<InvoiceDetailPanel> {
       padding: const EdgeInsets.all(8),
       child: Text(text, style: style ?? const TextStyle(fontSize: 12)),
     );
+  }
+
+  Widget _tooltipCell({
+    required Widget child,
+    String? tooltipMessage,
+  }) {
+    final paddingChild = Padding(
+      padding: const EdgeInsets.all(8),
+      child: child,
+    );
+    if (tooltipMessage != null && tooltipMessage.isNotEmpty) {
+      return PrivacyTooltip(
+        message: tooltipMessage,
+        child: paddingChild,
+      );
+    }
+    return paddingChild;
   }
 }

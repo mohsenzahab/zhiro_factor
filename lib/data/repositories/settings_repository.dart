@@ -101,6 +101,63 @@ class SettingsRepository {
       await prefs.remove(_keyDashboardFilterCustomTo);
     }
   }
+
+  // Invoice history filter keys
+  static const String _keyInvoiceHistoryFilterPreset = 'invoice_history_filter_preset';
+  static const String _keyInvoiceHistoryFilterCategory = 'invoice_history_filter_category';
+  static const String _keyInvoiceHistoryFilterCustomFrom = 'invoice_history_filter_custom_from';
+  static const String _keyInvoiceHistoryFilterCustomTo = 'invoice_history_filter_custom_to';
+
+  /// Load saved invoice history filter preferences.
+  Future<DashboardFilterPreference> loadInvoiceHistoryFilter() async {
+    final prefs = await SharedPreferences.getInstance();
+    final presetName = prefs.getString(_keyInvoiceHistoryFilterPreset);
+    DateRangePreset preset = DateRangePreset.thisMonth;
+    if (presetName != null) {
+      for (final p in DateRangePreset.values) {
+        if (p.name == presetName) {
+          preset = p;
+          break;
+        }
+      }
+    }
+    final category = prefs.getString(_keyInvoiceHistoryFilterCategory);
+    final customFrom = prefs.getString(_keyInvoiceHistoryFilterCustomFrom);
+    final customTo = prefs.getString(_keyInvoiceHistoryFilterCustomTo);
+
+    return DashboardFilterPreference(
+      preset: preset,
+      customDateFrom: customFrom,
+      customDateTo: customTo,
+      category: category,
+    );
+  }
+
+  /// Save invoice history filter preferences.
+  Future<void> saveInvoiceHistoryFilter({
+    required DateRangePreset preset,
+    String? customDateFrom,
+    String? customDateTo,
+    String? category,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyInvoiceHistoryFilterPreset, preset.name);
+    if (category != null && category.isNotEmpty) {
+      await prefs.setString(_keyInvoiceHistoryFilterCategory, category);
+    } else {
+      await prefs.remove(_keyInvoiceHistoryFilterCategory);
+    }
+    if (customDateFrom != null && customDateFrom.isNotEmpty) {
+      await prefs.setString(_keyInvoiceHistoryFilterCustomFrom, customDateFrom);
+    } else {
+      await prefs.remove(_keyInvoiceHistoryFilterCustomFrom);
+    }
+    if (customDateTo != null && customDateTo.isNotEmpty) {
+      await prefs.setString(_keyInvoiceHistoryFilterCustomTo, customDateTo);
+    } else {
+      await prefs.remove(_keyInvoiceHistoryFilterCustomTo);
+    }
+  }
 }
 
 /// Preferences for dashboard date and category filters.

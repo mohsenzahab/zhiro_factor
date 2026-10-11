@@ -219,5 +219,131 @@ class ProductRepository {
       );
     }
   }
+
+  /// Batch fetch product detail info including stock, total sold,
+  /// current buy price, and FIFO initial buy price of oldest available inventory.
+  Future<Map<int, ProductDetailInfo>> getProductsDetailInfo(List<int> productIds) async {
+    if (productIds.isEmpty) return {};
+    final db = await _dbHelper.database;
+    final placeholders = List.filled(productIds.length, '?').join(',');
+
+    // 1. Fetch product master rows
+    final productRows = await db.rawQuery(
+      'SELECT id, category, stock, buy_price, current_buy_price FROM products WHERE id IN ($placeholders)',
+      productIds,
+    );
+
+    // 2. Fetch total sold per product across all invoices
+    final soldRows = await db.rawQuery(
+      'SELECT product_id, SUM(quantity) as total_sold FROM invoice_items WHERE product_id IN ($placeholders) GROUP BY product_id',
+      productIds,
+    );
+    final soldMap = <int, double>{};
+    for (final r in soldRows) {
+      final pid = r['product_id'] as int?;
+      if (pid != null) {
+        soldMap[pid] = (r['total_sold'] as num?)?.toDouble() ?? 0.0;
+      }
+    }
+
+    // 3. Fetch purchase history in chronological order (FIFO)
+    final purchaseRows = await db.rawQuery('''
+      SELECT pi.product_id, pi.quantity, pi.unit_price, p.date, p.id
+      FROM purchase_items pi
+      JOIN purchases p ON pi.purchase_id = p.id
+      WHERE pi.product_id IN ($placeholders)
+      ORDER BY p.date ASC, p.id ASC
+    ''', productIds);
+
+    final purchasesByProduct = <int, List<({double quantity, double unitPrice})>>{};
+    for (final r in purchaseRows) {
+      final pid = r['product_id'] as int?;
+      if (pid != null) {
+        purchasesByProduct.putIfAbsent(pid, () => []).add((
+          quantity: (r['quantity'] as num).toDouble(),
+          unitPrice: (r['unit_price'] as num).toDouble(),
+        ));
+      }
+    }
+
+    final result = <int, ProductDetailInfo>{};
+    for (final row in productRows) {
+      final pid = row['id'] as int;
+      final category = row['category'] as String?;
+      final stock = row['stock'] != null ? (row['stock'] as num).toDouble() : null;
+      final baseBuy = (row['buy_price'] as num?)?.toDouble() ?? 0.0;
+      final currentBuyRaw = (row['current_buy_price'] as num?)?.toDouble();
+      final currentBuy = (currentBuyRaw != null && currentBuyRaw > 0) ? currentBuyRaw : baseBuy;
+      final totalSold = soldMap[pid] ?? 0.0;
+
+      // FIFO calculation for oldest batch available in warehouse:
+      double initialBuy = baseBuy;
+      if (stock != null && stock > 0) {
+        final purchases = purchasesByProduct[pid] ?? [];
+        final double totalPurchased = purchases.fold(0.0, (sum, p) => sum + p.quantity);
+        final double initialStock = (stock + totalSold - totalPurchased).clamp(0.0, double.infinity);
+
+        double soldRemaining = totalSold;
+        bool batchFound = false;
+
+        // Check if initial stock still has units remaining
+        if (initialStock > 0) {
+          if (soldRemaining < initialStock) {
+            initialBuy = baseBuy;
+            batchFound = true;
+          } else {
+            soldRemaining -= initialStock;
+          }
+        }
+
+        // If initial stock was exhausted, check purchases chronologically
+        if (!batchFound) {
+          for (final p in purchases) {
+            if (soldRemaining < p.quantity) {
+              initialBuy = p.unitPrice;
+              batchFound = true;
+              break;
+            } else {
+              soldRemaining -= p.quantity;
+            }
+          }
+        }
+
+        if (!batchFound) {
+          initialBuy = currentBuy;
+        }
+      }
+
+      result[pid] = ProductDetailInfo(
+        productId: pid,
+        category: category,
+        stock: stock,
+        totalSold: totalSold,
+        currentBuyPrice: currentBuy,
+        initialBuyPrice: initialBuy,
+      );
+    }
+
+    return result;
+  }
+}
+
+/// Product details for tooltips and inventory inspection.
+class ProductDetailInfo {
+  final int productId;
+  final String? category;
+  final double? stock;
+  final double totalSold;
+  final double currentBuyPrice;
+  final double initialBuyPrice;
+
+  const ProductDetailInfo({
+    required this.productId,
+    this.category,
+    this.stock,
+    required this.totalSold,
+    required this.currentBuyPrice,
+    required this.initialBuyPrice,
+  });
 }
 

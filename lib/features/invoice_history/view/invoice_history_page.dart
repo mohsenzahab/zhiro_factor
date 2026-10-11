@@ -4,9 +4,11 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/number_extensions.dart';
 import '../../../core/utils/jalali_utils.dart';
-import '../../../shared/widgets/confirm_dialog.dart';
-import '../../../shared/widgets/empty_state.dart';
 import '../../../services/pdf_service.dart';
+import '../../../shared/widgets/confirm_dialog.dart';
+import '../../../shared/widgets/date_range_filter_bar.dart';
+import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/privacy_tooltip.dart';
 import '../cubit/invoice_history_cubit.dart';
 import '../cubit/invoice_history_state.dart';
 import '../../../data/models/invoice_model.dart';
@@ -23,7 +25,7 @@ class InvoiceHistoryPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => InvoiceHistoryCubit()..loadInvoices(),
+      create: (_) => InvoiceHistoryCubit()..loadInvoices(isInitial: true),
       child: _InvoiceHistoryView(onEditInvoice: onEditInvoice),
     );
   }
@@ -73,13 +75,68 @@ class _InvoiceHistoryViewState extends State<_InvoiceHistoryView> {
           // ── Filters ─────────────────────────────────────────
           BlocBuilder<InvoiceHistoryCubit, InvoiceHistoryState>(
             builder: (context, state) {
-              return InvoiceFilterBar(
-                statusFilter: state is InvoiceHistoryLoaded ? state.statusFilter : null,
-                onStatusChanged: (s) => context.read<InvoiceHistoryCubit>().setStatusFilter(s),
-                onSearchChanged: (q) => context.read<InvoiceHistoryCubit>().setCustomerQuery(q),
-                searchController: _searchCtrl,
-                onProductSearchChanged: (q) => context.read<InvoiceHistoryCubit>().setProductQuery(q),
-                productSearchController: _productSearchCtrl,
+              final loaded = state is InvoiceHistoryLoaded ? state : null;
+              final preset = loaded?.effectivePreset ?? DateRangePreset.thisMonth;
+              final dateFrom = loaded?.dateFrom;
+              final dateTo = loaded?.dateTo;
+              final categoryFilter = loaded?.categoryFilter;
+              final availableCategories = loaded?.availableCategories ?? const [];
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── Date Range Filter Bar ───────────────────────
+                  DateRangeFilterBar(
+                    initialPreset: preset,
+                    initialDateFrom: dateFrom,
+                    initialDateTo: dateTo,
+                    onRangeChanged: ({required preset, dateFrom, dateTo}) {
+                      context.read<InvoiceHistoryCubit>().setDateRangeFilter(
+                            preset: preset,
+                            dateFrom: dateFrom,
+                            dateTo: dateTo,
+                          );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+
+                  // ── Category Filter ────────────────────────────
+                  if (availableCategories.isNotEmpty) ...[
+                    Row(
+                      children: [
+                        const Icon(Icons.category_outlined, size: 18, color: AppColors.textMuted),
+                        const SizedBox(width: 8),
+                        const Text('دسته‌بندی:', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+                        const SizedBox(width: 8),
+                        _CategoryChip(
+                          label: 'همه',
+                          isSelected: categoryFilter == null,
+                          onTap: () => context.read<InvoiceHistoryCubit>().setCategoryFilter(null),
+                        ),
+                        const SizedBox(width: 6),
+                        ...availableCategories.map((cat) => Padding(
+                              padding: const EdgeInsets.only(left: 6),
+                              child: _CategoryChip(
+                                label: cat,
+                                isSelected: categoryFilter == cat,
+                                onTap: () => context.read<InvoiceHistoryCubit>().setCategoryFilter(cat),
+                              ),
+                            )),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+
+                  // ── Search & Status Filters ───────────────────
+                  InvoiceFilterBar(
+                    statusFilter: loaded?.statusFilter,
+                    onStatusChanged: (s) => context.read<InvoiceHistoryCubit>().setStatusFilter(s),
+                    onSearchChanged: (q) => context.read<InvoiceHistoryCubit>().setCustomerQuery(q),
+                    searchController: _searchCtrl,
+                    onProductSearchChanged: (q) => context.read<InvoiceHistoryCubit>().setProductQuery(q),
+                    productSearchController: _productSearchCtrl,
+                  ),
+                ],
               );
             },
           ),
@@ -195,7 +252,7 @@ class _InvoiceHistoryViewState extends State<_InvoiceHistoryView> {
                         // Net
                         SizedBox(
                           width: 120,
-                          child: Tooltip(
+                          child: PrivacyTooltip(
                             message: 'سود: ${inv.totalProfitAmount.formatted} تومان (${inv.totalProfitPercentage.toStringAsFixed(1).toPersianDigits()}٪)',
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -317,5 +374,45 @@ class _InvoiceHistoryViewState extends State<_InvoiceHistoryView> {
     } else {
       await PdfService.printInvoiceFromModel(invoice);
     }
+  }
+}
+
+class _CategoryChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _CategoryChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary.withValues(alpha: 0.15) : AppColors.cardDark,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : AppColors.dividerDark,
+            width: isSelected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            color: isSelected ? AppColors.primary : AppColors.textSecondary,
+          ),
+        ),
+      ),
+    );
   }
 }

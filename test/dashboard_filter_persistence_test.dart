@@ -75,4 +75,47 @@ void main() {
       expect(filter.category, isNull);
     });
   });
+
+  group('Invoice History Filter Persistence', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+    });
+
+    test('default invoice history filter when none saved', () async {
+      final repo = SettingsRepository.instance;
+      final filter = await repo.loadInvoiceHistoryFilter();
+
+      expect(filter.preset, DateRangePreset.thisMonth);
+      expect(filter.category, isNull);
+      expect(filter.customDateFrom, isNull);
+      expect(filter.customDateTo, isNull);
+    });
+
+    test('save and load invoice history filter with preset, category and custom dates', () async {
+      final repo = SettingsRepository.instance;
+
+      await repo.saveInvoiceHistoryFilter(
+        preset: DateRangePreset.today,
+        category: 'خدمات',
+      );
+
+      var filter = await repo.loadInvoiceHistoryFilter();
+      expect(filter.preset, DateRangePreset.today);
+      expect(filter.category, 'خدمات');
+
+      // Custom date range
+      await repo.saveInvoiceHistoryFilter(
+        preset: DateRangePreset.custom,
+        customDateFrom: '2026-10-01',
+        customDateTo: '2026-10-15',
+        category: null,
+      );
+
+      filter = await repo.loadInvoiceHistoryFilter();
+      expect(filter.preset, DateRangePreset.custom);
+      expect(filter.customDateFrom, '2026-10-01');
+      expect(filter.customDateTo, '2026-10-15');
+      expect(filter.category, isNull);
+    });
+  });
 }

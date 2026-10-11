@@ -13,6 +13,7 @@ class InvoiceRepository {
     String? customerQuery,
     String? productQuery,
     String? status,
+    String? category,
     String? dateFrom,
     String? dateTo,
   }) async {
@@ -43,6 +44,14 @@ class InvoiceRepository {
         AND ii.product_name LIKE ?
       )''';
       args.add('%$productQuery%');
+    }
+    if (category != null && category.isNotEmpty) {
+      sql += ''' AND EXISTS (
+        SELECT 1 FROM invoice_items ii
+        JOIN products p ON p.id = ii.product_id
+        WHERE ii.invoice_id = i.id AND p.category = ?
+      )''';
+      args.add(category);
     }
     if (status != null && status.isNotEmpty) {
       sql += ' AND i.status = ?';
