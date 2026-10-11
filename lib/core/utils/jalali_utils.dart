@@ -56,6 +56,24 @@ class JalaliUtils {
     return fromGregorian(DateTime.parse(isoString));
   }
 
+  /// Formats an ISO 8601 string as Jalali "YYYY/MM/DD".
+  static String formatIso(String isoString) {
+    try {
+      return format(fromIso(isoString));
+    } catch (_) {
+      return isoString;
+    }
+  }
+
+  /// Converts ISO 8601 string to Jalali safely.
+  static Jalali toJalali(String isoString) {
+    try {
+      return fromIso(isoString);
+    } catch (_) {
+      return now;
+    }
+  }
+
   /// Returns the Persian name of a Jalali month.
   static String _monthName(int month) {
     const months = [

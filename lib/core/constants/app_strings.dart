@@ -10,6 +10,7 @@ class AppStrings {
   static const String navNewInvoice = 'فاکتور جدید';
   static const String navInvoiceHistory = 'تاریخچه فاکتورها';
   static const String navProducts = 'کالاها و خدمات';
+  static const String navDemands = 'لیست نیازمندی‌ها';
   static const String navCustomers = 'مشتریان';
   static const String navSuppliers = 'تأمین‌کنندگان';
   static const String navDashboard = 'گزارشات و داشبورد';

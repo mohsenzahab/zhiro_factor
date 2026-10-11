@@ -10,6 +10,7 @@ enum NavPage {
   newPurchase,
   purchaseHistory,
   products,
+  demands,
   customers,
   suppliers,
   dashboard,
@@ -64,6 +65,12 @@ const _navItems = <_NavItem>[
     icon: Icons.inventory_2_outlined,
     activeIcon: Icons.inventory_2,
     label: AppStrings.navProducts,
+  ),
+  _NavItem(
+    page: NavPage.demands,
+    icon: Icons.checklist_rtl_outlined,
+    activeIcon: Icons.checklist_rtl,
+    label: AppStrings.navDemands,
   ),
   _NavItem(
     page: NavPage.customers,

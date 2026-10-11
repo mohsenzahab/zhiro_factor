@@ -9,7 +9,7 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._();
 
   static Database? _database;
-  static const int _version = 9;
+  static const int _version = 10;
   static const String _dbName = 'zhirofactor.db';
 
   /// Public accessor for the current database schema version.
@@ -265,6 +265,37 @@ class DatabaseHelper {
     ''');
     await db.execute('CREATE INDEX idx_purchase_items_purchase ON purchase_items(purchase_id)');
     await db.execute('CREATE INDEX idx_purchase_items_product ON purchase_items(product_id)');
+
+    // ── Demands Table (نیازمندی‌ها) ──────────────────────────────────
+    await db.execute('''
+      CREATE TABLE demands (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        category TEXT,
+        buy_price REAL,
+        sell_price REAL,
+        status TEXT NOT NULL DEFAULT 'تهیه نشده',
+        target_quantity REAL NOT NULL DEFAULT 1.0,
+        notes TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('CREATE INDEX idx_demands_status ON demands(status)');
+    await db.execute('CREATE INDEX idx_demands_category ON demands(category)');
+
+    // ── Demand Requests Table (تاریخ‌های درخواست مشتری) ─────────────
+    await db.execute('''
+      CREATE TABLE demand_requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        demand_id INTEGER NOT NULL,
+        request_date TEXT NOT NULL,
+        note TEXT,
+        FOREIGN KEY (demand_id) REFERENCES demands(id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute('CREATE INDEX idx_demand_requests_demand ON demand_requests(demand_id)');
+    await db.execute('CREATE INDEX idx_demand_requests_date ON demand_requests(request_date)');
   }
 
   Future<bool> _columnExists(Database db, String tableName, String columnName) async {
@@ -407,6 +438,37 @@ class DatabaseHelper {
       ''');
       await db.execute('CREATE INDEX IF NOT EXISTS idx_invoice_payments_invoice ON invoice_payments(invoice_id)');
       await db.execute('CREATE INDEX IF NOT EXISTS idx_invoice_payments_date ON invoice_payments(date)');
+    }
+    // Migration v9 → v10: add demands and demand_requests tables
+    if (oldVersion < 10) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS demands (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          title TEXT NOT NULL,
+          category TEXT,
+          buy_price REAL,
+          sell_price REAL,
+          status TEXT NOT NULL DEFAULT 'تهیه نشده',
+          target_quantity REAL NOT NULL DEFAULT 1.0,
+          notes TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      ''');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_demands_status ON demands(status)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_demands_category ON demands(category)');
+
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS demand_requests (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          demand_id INTEGER NOT NULL,
+          request_date TEXT NOT NULL,
+          note TEXT,
+          FOREIGN KEY (demand_id) REFERENCES demands(id) ON DELETE CASCADE
+        )
+      ''');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_demand_requests_demand ON demand_requests(demand_id)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_demand_requests_date ON demand_requests(request_date)');
     }
   }
 
