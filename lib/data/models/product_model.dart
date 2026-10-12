@@ -25,7 +25,7 @@ class ProductModel extends Equatable {
     this.category,
     required this.buyPrice,
     this.currentBuyPrice,
-    double? sellPrice,
+    this.sellPrice,
     required this.unit,
     this.stock,
     this.createdAt,
@@ -33,10 +33,10 @@ class ProductModel extends Equatable {
     this.supplier,
     this.isTemporary = false,
     this.totalSold = 0.0,
-  }) : sellPrice = sellPrice?.roundTo5000;
+  });
 
   /// The price used in invoices: sell price if set, otherwise buy price.
-  double get effectivePrice => (sellPrice ?? buyPrice).roundTo5000;
+  double get effectivePrice => sellPrice ?? buyPrice;
 
   /// The active base buy price (current buy price if set and > 0, otherwise initial buy price).
   double get effectiveBuyPrice => (currentBuyPrice != null && currentBuyPrice! > 0) ? currentBuyPrice! : buyPrice;
@@ -71,7 +71,7 @@ class ProductModel extends Equatable {
       category: map['category'] as String?,
       buyPrice: (map['buy_price'] as num).toDouble(),
       currentBuyPrice: map['current_buy_price'] != null ? (map['current_buy_price'] as num).toDouble() : null,
-      sellPrice: map['sell_price'] != null ? (map['sell_price'] as num).toDouble().roundTo5000 : null,
+      sellPrice: map['sell_price'] != null ? (map['sell_price'] as num).toDouble() : null,
       unit: map['unit'] as String,
       stock: (map['stock'] as num?)?.toDouble(),
       createdAt: map['created_at'] as String?,
@@ -93,7 +93,7 @@ class ProductModel extends Equatable {
       'category': cleanCategory,
       'buy_price': buyPrice,
       'current_buy_price': currentBuyPrice,
-      'sell_price': sellPrice?.roundTo5000,
+      'sell_price': sellPrice,
       'unit': unit,
       'stock': isInfiniteStock ? null : stock,
       'created_at': createdAt ?? DateTime.now().toIso8601String(),
@@ -128,7 +128,7 @@ class ProductModel extends Equatable {
       category: category ?? this.category,
       buyPrice: buyPrice ?? this.buyPrice,
       currentBuyPrice: currentBuyPrice ?? this.currentBuyPrice,
-      sellPrice: clearSellPrice ? null : (sellPrice != null ? sellPrice.roundTo5000 : this.sellPrice?.roundTo5000),
+      sellPrice: clearSellPrice ? null : (sellPrice ?? this.sellPrice),
       unit: unit ?? this.unit,
       stock: clearStock ? null : (stock ?? this.stock),
       createdAt: createdAt ?? this.createdAt,

@@ -25,15 +25,14 @@ class DemandModel extends Equatable {
     required this.title,
     this.category,
     this.buyPrice,
-    double? sellPrice,
+    this.sellPrice,
     this.status = statusPending,
     this.targetQuantity = 1.0,
     this.notes,
     this.requestDates = const [],
     String? createdAt,
     String? updatedAt,
-  })  : sellPrice = sellPrice?.roundTo5000,
-        createdAt = createdAt ?? DateTime.now().toIso8601String(),
+  })  : createdAt = createdAt ?? DateTime.now().toIso8601String(),
         updatedAt = updatedAt ?? DateTime.now().toIso8601String();
 
   /// Total number of customer requests recorded for this item.

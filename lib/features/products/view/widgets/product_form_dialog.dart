@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import '../../../../core/constants/app_strings.dart';
@@ -59,6 +60,13 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
   late final TextEditingController _sellPriceCtrl;
   late final TextEditingController _stockCtrl;
   late final TextEditingController _supplierCtrl;
+
+  late final FocusNode _profitMarginFocusNode;
+  late final FocusNode _sellPriceFocusNode;
+  late final FocusNode _buyPriceFocusNode;
+  late final FocusNode _currentBuyPriceFocusNode;
+
+  Timer? _profitMarginDebounceTimer;
   late String _selectedUnit;
   String? _buyDate;
   bool _isTemporary = false;
@@ -68,6 +76,23 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
 
   bool get _isEditing => widget.product != null;
 
+  String _formatProfitPercent(double pct) {
+    if ((pct - pct.roundToDouble()).abs() < 0.005) {
+      return pct.round().toString();
+    }
+    final fixed1 = pct.toStringAsFixed(1);
+    if (fixed1.endsWith('.0')) {
+      return pct.round().toString();
+    }
+    return fixed1;
+  }
+
+  String _formatPriceValue(double? val) {
+    if (val == null) return '';
+    if (val % 1 == 0) return val.toInt().toString().toPersianDigits();
+    return val.toString().toPersianDigits();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -75,9 +100,9 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
     _codeCtrl = TextEditingController(text: p?.code ?? widget.nextCode ?? '');
     _nameCtrl = TextEditingController(text: p?.name ?? widget.initialName ?? '');
     _categoryCtrl = TextEditingController(text: p?.category ?? '');
-    _buyPriceCtrl = TextEditingController(text: p != null ? p.buyPrice.round().toString().toPersianDigits() : '');
+    _buyPriceCtrl = TextEditingController(text: p != null ? _formatPriceValue(p.buyPrice) : '');
     _currentBuyPriceCtrl = TextEditingController(
-      text: p?.currentBuyPrice != null ? p!.currentBuyPrice!.round().toString().toPersianDigits() : '',
+      text: p?.currentBuyPrice != null ? _formatPriceValue(p!.currentBuyPrice) : '',
     );
 
     // Initial profit margin percentage based on current buy price (or buy price)
@@ -88,17 +113,17 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
           : p.buyPrice;
       if (basePrice > 0) {
         final pct = ((p.sellPrice! - basePrice) / basePrice) * 100.0;
-        initialProfitMargin = pct % 1 == 0 ? pct.toStringAsFixed(0) : pct.toStringAsFixed(1);
+        initialProfitMargin = _formatProfitPercent(pct);
       }
     }
     _profitMarginCtrl = TextEditingController(text: initialProfitMargin.toPersianDigits());
     _sellPriceCtrl = TextEditingController(
-      text: p?.sellPrice != null ? p!.sellPrice!.round().toString().toPersianDigits() : '',
+      text: p?.sellPrice != null ? _formatPriceValue(p!.sellPrice) : '',
     );
     _isInfiniteStock = p?.isInfiniteStock ?? false;
     _stockCtrl = TextEditingController(
       text: (p != null && !p.isInfiniteStock && p.stock != null)
-          ? p.stock!.round().toString().toPersianDigits()
+          ? (p.stock! % 1 == 0 ? p.stock!.toInt().toString().toPersianDigits() : p.stock!.toString().toPersianDigits())
           : (_isInfiniteStock ? '' : '۰'),
     );
     _supplierCtrl = TextEditingController(text: p?.supplier ?? '');
@@ -107,10 +132,33 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
     _isTemporary = p?.isTemporary ?? false;
     _loadCategories();
 
+    _profitMarginFocusNode = FocusNode();
+    _sellPriceFocusNode = FocusNode();
+    _buyPriceFocusNode = FocusNode();
+    _currentBuyPriceFocusNode = FocusNode();
+
+    _profitMarginFocusNode.addListener(_onProfitMarginFocusChanged);
+    _buyPriceFocusNode.addListener(_onBuyPriceFocusChanged);
+    _currentBuyPriceFocusNode.addListener(_onBuyPriceFocusChanged);
+
     _currentBuyPriceCtrl.addListener(_onBuyPriceOrCurrentBuyPriceChanged);
     _buyPriceCtrl.addListener(_onBuyPriceOrCurrentBuyPriceChanged);
     _profitMarginCtrl.addListener(_onProfitMarginChanged);
     _sellPriceCtrl.addListener(_onSellPriceChanged);
+  }
+
+  void _onProfitMarginFocusChanged() {
+    if (!_profitMarginFocusNode.hasFocus) {
+      _profitMarginDebounceTimer?.cancel();
+      _syncProfitMarginFromRoundedSellPrice();
+    }
+  }
+
+  void _onBuyPriceFocusChanged() {
+    if (!_buyPriceFocusNode.hasFocus && !_currentBuyPriceFocusNode.hasFocus) {
+      _profitMarginDebounceTimer?.cancel();
+      _syncProfitMarginFromRoundedSellPrice();
+    }
   }
 
   Future<void> _loadCategories() async {
@@ -124,15 +172,40 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
     return _buyPriceCtrl.text.tryParseFormatted() ?? 0;
   }
 
+  void _syncProfitMarginFromRoundedSellPrice() {
+    if (_isAutoCalculating) return;
+    final sell = _sellPriceCtrl.text.tryParseFormatted();
+    final basePrice = _getBaseBuyPrice();
+    if (sell != null && basePrice > 0) {
+      final exactPct = ((sell - basePrice) / basePrice) * 100.0;
+      final formatted = _formatProfitPercent(exactPct).toPersianDigits();
+      if (_profitMarginCtrl.text != formatted) {
+        _isAutoCalculating = true;
+        _profitMarginCtrl.text = formatted;
+        _profitMarginCtrl.selection = TextSelection.collapsed(offset: formatted.length);
+        _isAutoCalculating = false;
+        if (mounted) setState(() {});
+      }
+    }
+  }
+
   void _onBuyPriceOrCurrentBuyPriceChanged() {
     if (_isAutoCalculating) return;
     final pct = _profitMarginCtrl.text.tryParseFormatted();
     final basePrice = _getBaseBuyPrice();
     if (pct != null && basePrice > 0) {
       _isAutoCalculating = true;
-      final roundedSell = (basePrice * (1 + pct / 100.0)).roundTo5000;
-      _sellPriceCtrl.text = roundedSell.round().toString().toPersianDigits();
+      final rawSell = basePrice * (1 + pct / 100.0);
+      final roundedSell = rawSell.roundTo5000;
+      _sellPriceCtrl.text = _formatPriceValue(roundedSell);
       _isAutoCalculating = false;
+
+      _profitMarginDebounceTimer?.cancel();
+      _profitMarginDebounceTimer = Timer(const Duration(milliseconds: 700), () {
+        if (mounted) {
+          _syncProfitMarginFromRoundedSellPrice();
+        }
+      });
     }
   }
 
@@ -142,31 +215,56 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
     final basePrice = _getBaseBuyPrice();
     if (pct != null && basePrice > 0) {
       _isAutoCalculating = true;
-      final roundedSell = (basePrice * (1 + pct / 100.0)).roundTo5000;
-      _sellPriceCtrl.text = roundedSell.round().toString().toPersianDigits();
+      // 1. Calculate raw sell price from profit margin percentage
+      final rawSell = basePrice * (1 + pct / 100.0);
+      // 2. Round sell price to nearest 5000 only because it was determined by percentage
+      final roundedSell = rawSell.roundTo5000;
+      _sellPriceCtrl.text = _formatPriceValue(roundedSell);
       _isAutoCalculating = false;
+
+      // 3. User request:
+      // "زمانی که در فرم کالا یا خدمت، پس از تعیین قیمت خرید، درصد سود تعیین می شود
+      // و قیمت فروش رند می شود، قیمت رندشده دوباره باید رو در صد سود اعمال شود
+      // و در صد سود دوباره با توجه به قیمت فروش رند شده تعیین شود."
+      _profitMarginDebounceTimer?.cancel();
+      _profitMarginDebounceTimer = Timer(const Duration(milliseconds: 700), () {
+        if (mounted) {
+          _syncProfitMarginFromRoundedSellPrice();
+        }
+      });
     }
   }
 
   void _onSellPriceChanged() {
     if (_isAutoCalculating) return;
+    _profitMarginDebounceTimer?.cancel();
     final sell = _sellPriceCtrl.text.tryParseFormatted();
     final basePrice = _getBaseBuyPrice();
     if (sell != null && basePrice > 0) {
       _isAutoCalculating = true;
-      final pct = ((sell - basePrice) / basePrice) * 100.0;
-      final s = pct % 1 == 0 ? pct.toStringAsFixed(0) : pct.toStringAsFixed(1);
-      _profitMarginCtrl.text = s.toPersianDigits();
+      // Directly entered sell price is NOT rounded!
+      // Calculate exact profit margin from the unrounded price.
+      final exactPct = ((sell - basePrice) / basePrice) * 100.0;
+      _profitMarginCtrl.text = _formatProfitPercent(exactPct).toPersianDigits();
       _isAutoCalculating = false;
+      if (mounted) setState(() {});
     }
   }
 
   @override
   void dispose() {
+    _profitMarginDebounceTimer?.cancel();
     _currentBuyPriceCtrl.removeListener(_onBuyPriceOrCurrentBuyPriceChanged);
     _buyPriceCtrl.removeListener(_onBuyPriceOrCurrentBuyPriceChanged);
     _profitMarginCtrl.removeListener(_onProfitMarginChanged);
     _sellPriceCtrl.removeListener(_onSellPriceChanged);
+    _profitMarginFocusNode.removeListener(_onProfitMarginFocusChanged);
+    _buyPriceFocusNode.removeListener(_onBuyPriceFocusChanged);
+    _currentBuyPriceFocusNode.removeListener(_onBuyPriceFocusChanged);
+    _profitMarginFocusNode.dispose();
+    _sellPriceFocusNode.dispose();
+    _buyPriceFocusNode.dispose();
+    _currentBuyPriceFocusNode.dispose();
     _codeCtrl.dispose();
     _nameCtrl.dispose();
     _categoryCtrl.dispose();
@@ -180,6 +278,9 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
   }
 
   Future<void> _submit() async {
+    _profitMarginDebounceTimer?.cancel();
+    _syncProfitMarginFromRoundedSellPrice();
+
     if (!_formKey.currentState!.validate()) return;
 
     final codeText = _codeCtrl.text.trim();
@@ -205,8 +306,9 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
     final curBuyVal = _currentBuyPriceCtrl.text.tryParseFormatted();
     final currentBuyPrice = curBuyVal != null && curBuyVal > 0 ? curBuyVal : buyPrice;
     final sellPriceRaw = _sellPriceCtrl.text.tryParseFormatted();
-    // Always round sell price to nearest 5000
-    final sellPrice = sellPriceRaw?.roundTo5000;
+    // Do NOT round sellPrice here. It is only rounded if calculated via percentage,
+    // which has already been applied into _sellPriceCtrl. Direct sell prices stay untouched!
+    final sellPrice = sellPriceRaw;
 
     final product = ProductModel(
       id: widget.product?.id,
@@ -336,6 +438,7 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                       Expanded(
                         child: TextFormField(
                           controller: _buyPriceCtrl,
+                          focusNode: _buyPriceFocusNode,
                           decoration: const InputDecoration(
                             labelText: AppStrings.productBuyPrice,
                             suffixText: AppStrings.toman,
@@ -352,6 +455,7 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                       Expanded(
                         child: TextFormField(
                           controller: _currentBuyPriceCtrl,
+                          focusNode: _currentBuyPriceFocusNode,
                           decoration: const InputDecoration(
                             labelText: AppStrings.productCurrentBuyPrice,
                             suffixText: AppStrings.toman,
@@ -374,12 +478,14 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                       Expanded(
                         child: TextFormField(
                           controller: _profitMarginCtrl,
+                          focusNode: _profitMarginFocusNode,
                           decoration: const InputDecoration(
                             labelText: AppStrings.profitMargin,
                             suffixText: '٪',
                             hintText: 'مثلاً ۲۰',
                           ),
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          onFieldSubmitted: (_) => _syncProfitMarginFromRoundedSellPrice(),
                           validator: (v) {
                             if (v != null && v.trim().isNotEmpty) {
                               if (v.tryParseFormatted() == null) return AppStrings.invalidNumber;
@@ -392,10 +498,10 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                       Expanded(
                         child: TextFormField(
                           controller: _sellPriceCtrl,
+                          focusNode: _sellPriceFocusNode,
                           decoration: const InputDecoration(
                             labelText: AppStrings.productSellPrice,
                             suffixText: AppStrings.toman,
-                            hintText: 'گرد به عدد صحیح',
                           ),
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           validator: (v) {

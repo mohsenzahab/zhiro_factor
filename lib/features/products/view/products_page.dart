@@ -514,15 +514,19 @@ class _ProductsViewState extends State<_ProductsView> {
                     DataCell(
                       _EditableTableCell(
                         displayValue: p.sellPrice != null ? p.sellPrice!.toman : '-',
-                        rawValue: p.sellPrice != null ? p.sellPrice!.round().toString().toPersianDigits() : '',
+                        rawValue: p.sellPrice != null
+                            ? (p.sellPrice! % 1 == 0
+                                ? p.sellPrice!.toInt().toString().toPersianDigits()
+                                : p.sellPrice!.toString().toPersianDigits())
+                            : '',
                         isNumber: true,
                         minWidth: 75,
-                        tooltip: 'کلیک برای ویرایش قیمت فروش (رند به ۵۰۰۰)',
+                        tooltip: 'کلیک برای ویرایش قیمت فروش',
                         onSave: (val) {
                           final parsed = val.tryParseFormatted();
                           if (parsed != null && parsed >= 0) {
                             context.read<ProductCubit>().updateProduct(
-                                  p.copyWith(sellPrice: parsed.roundTo5000),
+                                  p.copyWith(sellPrice: parsed),
                                 );
                           }
                         },
