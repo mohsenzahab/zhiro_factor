@@ -1,14 +1,22 @@
+import 'package:sqflite_common/sqlite_api.dart';
 import '../../core/database/database_helper.dart';
 import '../../core/extensions/number_extensions.dart';
 import '../models/product_model.dart';
 
 /// Repository for Product CRUD operations.
 class ProductRepository {
-  final DatabaseHelper _dbHelper = DatabaseHelper.instance;
+  final DatabaseHelper _dbHelper;
+  final Database? _overrideDb;
+
+  ProductRepository({DatabaseHelper? dbHelper, Database? db})
+      : _dbHelper = dbHelper ?? DatabaseHelper.instance,
+        _overrideDb = db;
+
+  Future<Database> get _database async => _overrideDb ?? await _dbHelper.database;
 
   /// Fetch all products with sold quantity joined, optionally filtered by search query.
   Future<List<ProductModel>> getAll({String? query}) async {
-    final db = await _dbHelper.database;
+    final db = await _database;
     String sql = '''
       SELECT p.*, COALESCE(s.total_sold, 0.0) as total_sold
       FROM products p
@@ -40,7 +48,7 @@ class ProductRepository {
 
   /// Fetch a single product by ID with sold quantity joined.
   Future<ProductModel?> getById(int id) async {
-    final db = await _dbHelper.database;
+    final db = await _database;
     final maps = await db.rawQuery('''
       SELECT p.*, COALESCE(s.total_sold, 0.0) as total_sold
       FROM products p
@@ -57,13 +65,13 @@ class ProductRepository {
 
   /// Insert a new product. Returns the new row ID.
   Future<int> insert(ProductModel product) async {
-    final db = await _dbHelper.database;
+    final db = await _database;
     return await db.insert('products', product.toMap());
   }
 
   /// Update an existing product. Returns rows affected.
   Future<int> update(ProductModel product) async {
-    final db = await _dbHelper.database;
+    final db = await _database;
     final map = product.toMap();
     map.remove('id'); // Do not update primary key
     return await db.update(
@@ -78,7 +86,7 @@ class ProductRepository {
   Future<bool> isCodeTaken(String code, {int? excludeId}) async {
     final trimmed = code.trim();
     if (trimmed.isEmpty) return false;
-    final db = await _dbHelper.database;
+    final db = await _database;
     final result = await db.rawQuery(
       'SELECT id FROM products WHERE code = ? AND (? IS NULL OR id != ?)',
       [trimmed, excludeId, excludeId],
@@ -88,7 +96,7 @@ class ProductRepository {
 
   /// Delete a product by ID. Safely sets invoice_items.product_id to NULL first.
   Future<int> delete(int id) async {
-    final db = await _dbHelper.database;
+    final db = await _database;
     return await db.transaction((txn) async {
       await txn.rawUpdate(
         'UPDATE invoice_items SET product_id = NULL WHERE product_id = ?',
@@ -105,7 +113,7 @@ class ProductRepository {
   /// Delete multiple products by IDs safely within a transaction.
   Future<int> deleteMany(List<int> ids) async {
     if (ids.isEmpty) return 0;
-    final db = await _dbHelper.database;
+    final db = await _database;
     final placeholders = List.filled(ids.length, '?').join(',');
     return await db.transaction((txn) async {
       await txn.rawUpdate(
@@ -126,7 +134,7 @@ class ProductRepository {
   /// Move multiple products to a new category (or uncategorized if null/empty).
   Future<int> updateCategoryForIds(List<int> ids, String? category) async {
     if (ids.isEmpty) return 0;
-    final db = await _dbHelper.database;
+    final db = await _database;
     final cleanCat = (category != null && category.trim().isNotEmpty) ? category.trim() : null;
     final placeholders = List.filled(ids.length, '?').join(',');
     return await db.rawUpdate(
@@ -138,7 +146,7 @@ class ProductRepository {
   /// Adjust stock for a product (positive = add, negative = subtract).
   /// Preserves null (infinite) stock.
   Future<void> adjustStock(int productId, double delta) async {
-    final db = await _dbHelper.database;
+    final db = await _database;
     await db.rawUpdate(
       'UPDATE products SET stock = stock + ? WHERE id = ? AND stock IS NOT NULL',
       [delta, productId],
@@ -147,7 +155,7 @@ class ProductRepository {
 
   /// Get the next available product code.
   Future<String> nextCode() async {
-    final db = await _dbHelper.database;
+    final db = await _database;
     final result = await db.rawQuery(
       "SELECT code FROM products WHERE code LIKE 'P%' ORDER BY code DESC LIMIT 1",
     );
@@ -159,7 +167,7 @@ class ProductRepository {
 
   /// Get all distinct non-null categories.
   Future<List<String>> getDistinctCategories() async {
-    final db = await _dbHelper.database;
+    final db = await _database;
     final result = await db.rawQuery(
       "SELECT DISTINCT category FROM products WHERE category IS NOT NULL AND category != '' ORDER BY category ASC",
     );
@@ -168,7 +176,7 @@ class ProductRepository {
 
   /// Bulk import products. Returns the count of successfully imported rows.
   Future<int> importProducts(List<ProductModel> products) async {
-    final db = await _dbHelper.database;
+    final db = await _database;
     int count = 0;
     await db.transaction((txn) async {
       for (final p in products) {
@@ -190,7 +198,7 @@ class ProductRepository {
     String? category,
     List<int>? productIds,
   }) async {
-    final db = await _dbHelper.database;
+    final db = await _database;
     const basePriceExpr = '(CASE WHEN current_buy_price IS NOT NULL AND current_buy_price > 0 THEN current_buy_price ELSE buy_price END)';
     const roundedExpr = '(CASE WHEN $basePriceExpr <= 0 THEN 0 ELSE MAX(5000, ROUND(($basePriceExpr * (1 + ? / 100.0)) / 5000.0) * 5000) END)';
 
@@ -220,11 +228,102 @@ class ProductRepository {
     }
   }
 
+  /// Batch apply a price adjustment percentage (positive or negative) to products.
+  ///
+  /// For each product:
+  /// 1. The base buy price is current_buy_price if set and > 0, otherwise buy_price.
+  /// 2. New current_buy_price = round(baseBuyPrice * (1 + percentage / 100)).
+  ///    (If the product previously did not have a current_buy_price, this saves the adjusted
+  ///     price into current_buy_price while preserving the original buy_price).
+  /// 3. If sell_price is set and > 0 and baseBuyPrice > 0, the sell price is recalculated
+  ///    using the previously established profit margin percentage relative to the new current buy price:
+  ///    newSellPrice = (newCurrentBuyPrice * (sell_price / baseBuyPrice)).roundTo5000.
+  ///
+  /// Target scope:
+  /// - [productIds] if not empty -> specific products.
+  /// - [category] == '__uncategorized__' -> uncategorized products.
+  /// - [category] != null -> products belonging to that category.
+  /// - otherwise -> all products.
+  Future<int> bulkApplyPriceAdjustment(
+    double percentage, {
+    String? category,
+    List<int>? productIds,
+  }) async {
+    final db = await _database;
+
+    String? whereClause;
+    List<dynamic> whereArgs = [];
+
+    if (productIds != null && productIds.isNotEmpty) {
+      final placeholders = List.filled(productIds.length, '?').join(',');
+      whereClause = 'id IN ($placeholders)';
+      whereArgs = productIds;
+    } else if (category == '__uncategorized__') {
+      whereClause = "category IS NULL OR category = ''";
+    } else if (category != null) {
+      whereClause = 'category = ?';
+      whereArgs = [category];
+    }
+
+    final rows = await db.query(
+      'products',
+      columns: ['id', 'buy_price', 'current_buy_price', 'sell_price'],
+      where: whereClause,
+      whereArgs: whereArgs.isNotEmpty ? whereArgs : null,
+    );
+
+    if (rows.isEmpty) return 0;
+
+    final batch = db.batch();
+    int count = 0;
+
+    for (final row in rows) {
+      final id = row['id'] as int;
+      final buyPrice = (row['buy_price'] as num?)?.toDouble() ?? 0.0;
+      final currentBuyPrice = (row['current_buy_price'] as num?)?.toDouble();
+      final sellPrice = (row['sell_price'] as num?)?.toDouble();
+
+      final baseBuyPrice = (currentBuyPrice != null && currentBuyPrice > 0)
+          ? currentBuyPrice
+          : buyPrice;
+
+      if (baseBuyPrice <= 0) continue;
+
+      // 1. Calculate new current buy price
+      final rawNewCurrentBuy = baseBuyPrice * (1.0 + percentage / 100.0);
+      final newCurrentBuy = rawNewCurrentBuy.roundToDouble();
+
+      // 2. Recalculate sell price with previously established profit margin percentage
+      double? newSellPrice = sellPrice;
+      if (sellPrice != null && sellPrice > 0) {
+        final profitMarginRatio = sellPrice / baseBuyPrice;
+        final rawNewSell = newCurrentBuy * profitMarginRatio;
+        newSellPrice = rawNewSell.roundTo5000;
+      }
+
+      batch.update(
+        'products',
+        {
+          'current_buy_price': newCurrentBuy,
+          'sell_price': newSellPrice,
+        },
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+      count++;
+    }
+
+    if (count > 0) {
+      await batch.commit(noResult: true);
+    }
+    return count;
+  }
+
   /// Batch fetch product detail info including stock, total sold,
   /// current buy price, and FIFO initial buy price of oldest available inventory.
   Future<Map<int, ProductDetailInfo>> getProductsDetailInfo(List<int> productIds) async {
     if (productIds.isEmpty) return {};
-    final db = await _dbHelper.database;
+    final db = await _database;
     final placeholders = List.filled(productIds.length, '?').join(',');
 
     // 1. Fetch product master rows

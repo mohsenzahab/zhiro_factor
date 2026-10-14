@@ -41,6 +41,9 @@ class AppStrings {
   static const String profit = 'سود';
   static const String soldCount = 'فروش رفته';
   static const String applyProfitMargin = 'اعمال درصد سود';
+  static const String applyPriceAdjustment = 'اعمال درصد افزایش قیمت';
+  static const String priceAdjustmentPercentage = 'درصد تغییر قیمت';
+  static const String priceAdjustmentHint = 'مثلاً ۱۰ برای ۱۰٪ افزایش یا -۵ برای ۵٪ کاهش';
   static const String profitMarginHint = 'درصد سود نسبت به قیمت خرید';
   static const String profitMarginApplied = 'درصد سود روی همه کالاها اعمال شد';
   static const String batchActions = 'عملیات گروهی';

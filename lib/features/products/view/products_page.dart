@@ -81,6 +81,7 @@ class _ProductsViewState extends State<_ProductsView> {
               const Spacer(),
               SearchField(
                 hintText: AppStrings.searchProduct,
+                width: 220,
                 controller: _searchCtrl,
                 onChanged: (q) {
                   if (_verticalScrollCtrl.hasClients) {
@@ -143,6 +144,18 @@ class _ProductsViewState extends State<_ProductsView> {
                       : (_selectedCategory == null
                           ? AppStrings.applyProfitMargin
                           : '${AppStrings.applyProfitMargin} ($_currentCategoryDisplayName)'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                onPressed: () => _applyPriceAdjustment(context),
+                icon: const Icon(Icons.trending_up, size: 18),
+                label: Text(
+                  _selectedIds.isNotEmpty
+                      ? '${AppStrings.applyPriceAdjustment} (${_selectedIds.length.formattedInt} انتخاب‌شده)'
+                      : (_selectedCategory == null
+                          ? AppStrings.applyPriceAdjustment
+                          : '${AppStrings.applyPriceAdjustment} ($_currentCategoryDisplayName)'),
                 ),
               ),
               const SizedBox(width: 8),
@@ -738,6 +751,13 @@ class _ProductsViewState extends State<_ProductsView> {
             style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
           ),
           const Spacer(),
+          // Apply price adjustment to selected
+          FilledButton.tonalIcon(
+            onPressed: () => _applyPriceAdjustment(context),
+            icon: const Icon(Icons.trending_up, size: 18),
+            label: const Text(AppStrings.applyPriceAdjustment),
+          ),
+          const SizedBox(width: 8),
           // Apply profit margin to selected
           FilledButton.tonalIcon(
             onPressed: () => _applyProfitMargin(context),
@@ -1230,6 +1250,165 @@ class _ProductsViewState extends State<_ProductsView> {
             : (targetCategory == null
                 ? 'درصد سود روی همه کالاها ($updatedCount مورد) اعمال شد'
                 : 'درصد سود روی کالاهای «$categoryName» ($updatedCount مورد) اعمال شد');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg)),
+        );
+      }
+    }
+  }
+
+  Future<void> _applyPriceAdjustment(BuildContext context) async {
+    final controller = TextEditingController();
+    final targetCategory = _selectedCategory;
+    final categoryName = _currentCategoryDisplayName;
+    final hasSelection = _selectedIds.isNotEmpty;
+    final selectedCount = _selectedIds.length;
+
+    final result = await showDialog<double>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: Row(
+            children: [
+              const Icon(Icons.trending_up, color: AppColors.primary, size: 22),
+              const SizedBox(width: 8),
+              const Text(AppStrings.applyPriceAdjustment),
+            ],
+          ),
+          content: SizedBox(
+            width: 440,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        hasSelection ? Icons.checklist_rtl_outlined : Icons.category_outlined,
+                        size: 16,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        hasSelection ? 'هدف تغییر قیمت: ' : 'دسته‌بندی هدف: ',
+                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      ),
+                      Expanded(
+                        child: Text(
+                          hasSelection
+                              ? '$selectedCount کالای انتخاب‌شده (${targetCategory != null ? categoryName : 'از کل کالاها'})'
+                              : categoryName,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.info_outline, size: 16, color: Colors.amber),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'قیمت خرید کنونی بر اساس درصد وارد شده افزایش یا کاهش می‌یابد. برای کالاهایی که قیمت کنونی ندارند، از قیمت خرید اولیه استفاده و در قیمت خرید کنونی ذخیره می‌شود. سپس درصد سود قبلی دوباره بر روی قیمت جدید محاسبه و رند می‌شود.',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: Theme.of(ctx).textTheme.bodyMedium?.color?.withValues(alpha: 0.85),
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  hasSelection
+                      ? 'درصد تغییر قیمت مورد نظر را برای $selectedCount کالای انتخاب‌شده وارد کنید:'
+                      : (targetCategory == null
+                          ? 'درصد تغییر قیمت مورد نظر را برای همه کالاها وارد کنید:'
+                          : 'درصد تغییر قیمت مورد نظر را برای کالاهای دسته‌بندی «$categoryName» وارد کنید:'),
+                  style: const TextStyle(fontSize: 13),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: controller,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    labelText: AppStrings.priceAdjustmentPercentage,
+                    hintText: AppStrings.priceAdjustmentHint,
+                    suffixText: '٪',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text(AppStrings.cancel),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final val = controller.text.tryParseFormatted();
+                if (val != null) {
+                  if (val <= -100) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      const SnackBar(content: Text('درصد کاهش قیمت باید بزرگتر از ۱۰۰- باشد')),
+                    );
+                    return;
+                  }
+                  Navigator.of(ctx).pop(val);
+                }
+              },
+              child: const Text(AppStrings.confirm),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result != null && context.mounted) {
+      final selectedList = hasSelection ? _selectedIds.toList() : null;
+      final updatedCount = await context.read<ProductCubit>().applyPriceAdjustment(
+        result,
+        category: targetCategory,
+        productIds: selectedList,
+      );
+      if (context.mounted) {
+        if (hasSelection) {
+          setState(() => _selectedIds.clear());
+        }
+        final sign = result > 0 ? '+' : '';
+        final pctStr = '$sign${result.percentDisplay}';
+        final msg = hasSelection
+            ? 'تغییر قیمت ($pctStr) روی $selectedCount کالای انتخاب‌شده ($updatedCount مورد) اعمال شد'
+            : (targetCategory == null
+                ? 'تغییر قیمت ($pctStr) روی همه کالاها ($updatedCount مورد) اعمال شد'
+                : 'تغییر قیمت ($pctStr) روی کالاهای «$categoryName» ($updatedCount مورد) اعمال شد');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(msg)),
         );

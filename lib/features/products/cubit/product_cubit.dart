@@ -119,4 +119,31 @@ class ProductCubit extends Cubit<ProductState> {
       return 0;
     }
   }
+
+  /// Batch apply price adjustment percentage (positive or negative) to products.
+  ///
+  /// Recalculates current_buy_price (falling back to buy_price) and subsequently
+  /// recalculates sell_price with the established profit margin percentage, rounded to 5000.
+  /// If [productIds] is provided, only updates those specific products.
+  /// Otherwise filters by [category] if provided, or all products if null.
+  Future<int> applyPriceAdjustment(
+    double percentage, {
+    String? category,
+    List<int>? productIds,
+  }) async {
+    try {
+      final updatedCount = await _repository.bulkApplyPriceAdjustment(
+        percentage,
+        category: category,
+        productIds: productIds,
+      );
+      final currentQuery = _getCurrentQuery();
+      final products = await _repository.getAll(query: currentQuery);
+      emit(ProductLoaded(products: products, searchQuery: currentQuery ?? ''));
+      return updatedCount;
+    } catch (e) {
+      emit(ProductError(e.toString()));
+      return 0;
+    }
+  }
 }
