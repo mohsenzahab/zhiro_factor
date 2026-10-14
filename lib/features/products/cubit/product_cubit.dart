@@ -4,12 +4,25 @@ import '../../../data/repositories/product_repository.dart';
 import 'product_state.dart';
 
 class ProductCubit extends Cubit<ProductState> {
-  final ProductRepository _repository = ProductRepository();
+  final ProductRepository _repository;
 
-  ProductCubit() : super(ProductInitial());
+  ProductCubit({ProductRepository? repository})
+      : _repository = repository ?? ProductRepository(),
+        super(ProductInitial());
 
-  Future<void> loadProducts({String? query}) async {
-    emit(ProductLoading());
+  String? _getCurrentQuery() {
+    if (state is ProductLoaded) {
+      final q = (state as ProductLoaded).searchQuery.trim();
+      if (q.isNotEmpty) return q;
+    }
+    return null;
+  }
+
+  Future<void> loadProducts({String? query, bool? silent}) async {
+    final shouldBeSilent = silent ?? (state is ProductLoaded);
+    if (!shouldBeSilent) {
+      emit(ProductLoading());
+    }
     try {
       final products = await _repository.getAll(query: query);
       emit(ProductLoaded(products: products, searchQuery: query ?? ''));
@@ -21,7 +34,9 @@ class ProductCubit extends Cubit<ProductState> {
   Future<void> addProduct(ProductModel product) async {
     try {
       await _repository.insert(product);
-      await loadProducts();
+      final currentQuery = _getCurrentQuery();
+      final products = await _repository.getAll(query: currentQuery);
+      emit(ProductLoaded(products: products, searchQuery: currentQuery ?? ''));
     } catch (e) {
       emit(ProductError(e.toString()));
     }
@@ -30,7 +45,9 @@ class ProductCubit extends Cubit<ProductState> {
   Future<void> updateProduct(ProductModel product) async {
     try {
       await _repository.update(product);
-      await loadProducts();
+      final currentQuery = _getCurrentQuery();
+      final products = await _repository.getAll(query: currentQuery);
+      emit(ProductLoaded(products: products, searchQuery: currentQuery ?? ''));
     } catch (e) {
       emit(ProductError(e.toString()));
     }
@@ -39,8 +56,9 @@ class ProductCubit extends Cubit<ProductState> {
   Future<void> deleteProduct(int id) async {
     try {
       await _repository.delete(id);
-      final currentQuery = state is ProductLoaded ? (state as ProductLoaded).searchQuery : null;
-      await loadProducts(query: currentQuery);
+      final currentQuery = _getCurrentQuery();
+      final products = await _repository.getAll(query: currentQuery);
+      emit(ProductLoaded(products: products, searchQuery: currentQuery ?? ''));
     } catch (e) {
       emit(ProductError(e.toString()));
     }
@@ -50,8 +68,9 @@ class ProductCubit extends Cubit<ProductState> {
   Future<int> deleteProducts(List<int> ids) async {
     try {
       final count = await _repository.deleteMany(ids);
-      final currentQuery = state is ProductLoaded ? (state as ProductLoaded).searchQuery : null;
-      await loadProducts(query: currentQuery);
+      final currentQuery = _getCurrentQuery();
+      final products = await _repository.getAll(query: currentQuery);
+      emit(ProductLoaded(products: products, searchQuery: currentQuery ?? ''));
       return count;
     } catch (e) {
       emit(ProductError(e.toString()));
@@ -63,8 +82,9 @@ class ProductCubit extends Cubit<ProductState> {
   Future<int> moveProductsCategory(List<int> ids, String? newCategory) async {
     try {
       final count = await _repository.updateCategoryForIds(ids, newCategory);
-      final currentQuery = state is ProductLoaded ? (state as ProductLoaded).searchQuery : null;
-      await loadProducts(query: currentQuery);
+      final currentQuery = _getCurrentQuery();
+      final products = await _repository.getAll(query: currentQuery);
+      emit(ProductLoaded(products: products, searchQuery: currentQuery ?? ''));
       return count;
     } catch (e) {
       emit(ProductError(e.toString()));
@@ -90,8 +110,9 @@ class ProductCubit extends Cubit<ProductState> {
         category: category,
         productIds: productIds,
       );
-      final currentQuery = state is ProductLoaded ? (state as ProductLoaded).searchQuery : null;
-      await loadProducts(query: currentQuery);
+      final currentQuery = _getCurrentQuery();
+      final products = await _repository.getAll(query: currentQuery);
+      emit(ProductLoaded(products: products, searchQuery: currentQuery ?? ''));
       return updatedCount;
     } catch (e) {
       emit(ProductError(e.toString()));

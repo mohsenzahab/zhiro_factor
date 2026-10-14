@@ -42,11 +42,22 @@ class _ProductsView extends StatefulWidget {
 
 class _ProductsViewState extends State<_ProductsView> {
   final _searchCtrl = TextEditingController();
+  late final ScrollController _verticalScrollCtrl;
+  late final ScrollController _horizontalScrollCtrl;
   final Set<int> _selectedIds = {};
   String? _selectedCategory;
 
   @override
+  void initState() {
+    super.initState();
+    _verticalScrollCtrl = ScrollController();
+    _horizontalScrollCtrl = ScrollController();
+  }
+
+  @override
   void dispose() {
+    _verticalScrollCtrl.dispose();
+    _horizontalScrollCtrl.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -71,7 +82,12 @@ class _ProductsViewState extends State<_ProductsView> {
               SearchField(
                 hintText: AppStrings.searchProduct,
                 controller: _searchCtrl,
-                onChanged: (q) => context.read<ProductCubit>().loadProducts(query: q),
+                onChanged: (q) {
+                  if (_verticalScrollCtrl.hasClients) {
+                    _verticalScrollCtrl.jumpTo(0);
+                  }
+                  context.read<ProductCubit>().loadProducts(query: q);
+                },
               ),
               const SizedBox(width: 8),
               PopupMenuButton<String>(
@@ -353,12 +369,19 @@ class _ProductsViewState extends State<_ProductsView> {
       ),
       clipBehavior: Clip.antiAlias,
       child: Scrollbar(
+        controller: _horizontalScrollCtrl,
         thumbVisibility: true,
         child: SingleChildScrollView(
+          controller: _horizontalScrollCtrl,
           scrollDirection: Axis.horizontal,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.vertical,
-            child: DataTable(
+          child: Scrollbar(
+            controller: _verticalScrollCtrl,
+            thumbVisibility: true,
+            child: SingleChildScrollView(
+              controller: _verticalScrollCtrl,
+              scrollDirection: Axis.vertical,
+              key: const PageStorageKey('products_table_vertical_scroll'),
+              child: DataTable(
               showCheckboxColumn: true,
               headingRowHeight: 48,
               dataRowMinHeight: 44,
@@ -680,8 +703,9 @@ class _ProductsViewState extends State<_ProductsView> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildBatchActionBar(BuildContext context, List<ProductModel> allProducts) {
     return Container(
