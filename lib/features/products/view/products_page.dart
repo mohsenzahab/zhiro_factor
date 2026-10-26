@@ -53,6 +53,84 @@ class _ProductsViewState extends State<_ProductsView> {
   late final ScrollController _horizontalScrollCtrl;
   final Set<int> _selectedIds = {};
   String? _selectedCategory;
+  int? _sortColumnIndex = 1;
+  bool _sortAscending = true;
+
+  void _onSort(int columnIndex, bool ascending) {
+    setState(() {
+      _sortColumnIndex = columnIndex;
+      _sortAscending = ascending;
+    });
+  }
+
+  void _sortProducts(List<ProductModel> list) {
+    if (_sortColumnIndex == null) return;
+    list.sort((a, b) {
+      int cmp = 0;
+      switch (_sortColumnIndex) {
+        case 0: // Code
+          final aCode = a.code?.trim() ?? '';
+          final bCode = b.code?.trim() ?? '';
+          final aNum = num.tryParse(aCode);
+          final bNum = num.tryParse(bCode);
+          if (aNum != null && bNum != null) {
+            cmp = aNum.compareTo(bNum);
+          } else {
+            cmp = aCode.compareTo(bCode);
+          }
+          break;
+        case 1: // Name
+          cmp = a.name.trim().compareTo(b.name.trim());
+          break;
+        case 2: // Category
+          final aCat = a.category?.trim() ?? '';
+          final bCat = b.category?.trim() ?? '';
+          cmp = aCat.compareTo(bCat);
+          break;
+        case 3: // Supplier
+          final aSup = a.supplier?.trim() ?? '';
+          final bSup = b.supplier?.trim() ?? '';
+          cmp = aSup.compareTo(bSup);
+          break;
+        case 4: // Buy price
+          cmp = a.buyPrice.compareTo(b.buyPrice);
+          break;
+        case 5: // Current buy price
+          final aPrice = a.currentBuyPrice ?? a.buyPrice;
+          final bPrice = b.currentBuyPrice ?? b.buyPrice;
+          cmp = aPrice.compareTo(bPrice);
+          break;
+        case 6: // Sell price
+          final aSell = a.sellPrice ?? 0.0;
+          final bSell = b.sellPrice ?? 0.0;
+          cmp = aSell.compareTo(bSell);
+          break;
+        case 7: // Profit amount
+          cmp = a.profitAmount.compareTo(b.profitAmount);
+          break;
+        case 8: // Profit margin
+          cmp = a.profitPercent.compareTo(b.profitPercent);
+          break;
+        case 9: // Unit
+          cmp = a.unit.trim().compareTo(b.unit.trim());
+          break;
+        case 10: // Stock
+          final aStock = a.isInfiniteStock ? double.infinity : (a.stock ?? 0.0);
+          final bStock = b.isInfiniteStock ? double.infinity : (b.stock ?? 0.0);
+          cmp = aStock.compareTo(bStock);
+          break;
+        case 11: // Total sold
+          cmp = a.totalSold.compareTo(b.totalSold);
+          break;
+        default:
+          cmp = 0;
+      }
+      if (cmp == 0 && _sortColumnIndex != 1) {
+        cmp = a.name.trim().compareTo(b.name.trim());
+      }
+      return _sortAscending ? cmp : -cmp;
+    });
+  }
 
   @override
   void initState() {
@@ -203,6 +281,8 @@ class _ProductsViewState extends State<_ProductsView> {
                     }
                     return p.category?.trim() == _selectedCategory;
                   }).toList();
+
+                  _sortProducts(displayedProducts);
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -402,6 +482,8 @@ class _ProductsViewState extends State<_ProductsView> {
               scrollDirection: Axis.vertical,
               key: const PageStorageKey('products_table_vertical_scroll'),
               child: DataTable(
+              sortColumnIndex: _sortColumnIndex,
+              sortAscending: _sortAscending,
               showCheckboxColumn: true,
               headingRowHeight: 48,
               dataRowMinHeight: 44,
@@ -422,25 +504,74 @@ class _ProductsViewState extends State<_ProductsView> {
                   }
                 });
               },
-              columns: const [
-                DataColumn(label: Text(AppStrings.productCode)),
-                DataColumn(label: Text(AppStrings.productName)),
-                DataColumn(label: Text(AppStrings.productCategory)),
-                DataColumn(label: Text(AppStrings.productSupplier)),
-                DataColumn(label: Text(AppStrings.productBuyPrice)),
-                DataColumn(label: Text(AppStrings.productCurrentBuyPrice)),
-                DataColumn(label: Text(AppStrings.productSellPrice)),
-                DataColumn(label: Text(AppStrings.profitAmount)),
-                DataColumn(label: Text(AppStrings.profitMargin)),
-                DataColumn(label: Text(AppStrings.productUnit)),
-                DataColumn(label: Text(AppStrings.productStock)),
-                DataColumn(label: Text(AppStrings.soldCount)),
-                DataColumn(label: Text('')), // Actions
+              columns: [
+                DataColumn(
+                  label: const Text(AppStrings.productCode),
+                  tooltip: 'مرتب‌سازی بر اساس کد کالا',
+                  onSort: _onSort,
+                ),
+                DataColumn(
+                  label: const Text(AppStrings.productName),
+                  tooltip: 'مرتب‌سازی بر اساس نام کالا',
+                  onSort: _onSort,
+                ),
+                DataColumn(
+                  label: const Text(AppStrings.productCategory),
+                  tooltip: 'مرتب‌سازی بر اساس دسته‌بندی',
+                  onSort: _onSort,
+                ),
+                DataColumn(
+                  label: const Text(AppStrings.productSupplier),
+                  tooltip: 'مرتب‌سازی بر اساس تأمین‌کننده',
+                  onSort: _onSort,
+                ),
+                DataColumn(
+                  label: const Text(AppStrings.productBuyPrice),
+                  tooltip: 'مرتب‌سازی بر اساس قیمت خرید اولیه',
+                  onSort: _onSort,
+                ),
+                DataColumn(
+                  label: const Text(AppStrings.productCurrentBuyPrice),
+                  tooltip: 'مرتب‌سازی بر اساس آخرین قیمت خرید',
+                  onSort: _onSort,
+                ),
+                DataColumn(
+                  label: const Text(AppStrings.productSellPrice),
+                  tooltip: 'مرتب‌سازی بر اساس قیمت فروش',
+                  onSort: _onSort,
+                ),
+                DataColumn(
+                  label: const Text(AppStrings.profitAmount),
+                  tooltip: 'مرتب‌سازی بر اساس مبلغ سود',
+                  onSort: _onSort,
+                ),
+                DataColumn(
+                  label: const Text(AppStrings.profitMargin),
+                  tooltip: 'مرتب‌سازی بر اساس درصد سود',
+                  onSort: _onSort,
+                ),
+                DataColumn(
+                  label: const Text(AppStrings.productUnit),
+                  tooltip: 'مرتب‌سازی بر اساس واحد شمارش',
+                  onSort: _onSort,
+                ),
+                DataColumn(
+                  label: const Text(AppStrings.productStock),
+                  tooltip: 'مرتب‌سازی بر اساس موجودی انبار',
+                  onSort: _onSort,
+                ),
+                DataColumn(
+                  label: const Text(AppStrings.soldCount),
+                  tooltip: 'مرتب‌سازی بر اساس تعداد فروش',
+                  onSort: _onSort,
+                ),
+                const DataColumn(label: Text('')), // Actions
               ],
               rows: List.generate(products.length, (index) {
                 final p = products[index];
                 final isSelected = p.id != null && _selectedIds.contains(p.id);
                 return DataRow(
+                  key: ValueKey(p.id ?? index),
                   selected: isSelected,
                   onSelectChanged: (selected) {
                     if (p.id == null) return;
