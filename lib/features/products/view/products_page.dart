@@ -15,6 +15,7 @@ import '../cubit/product_cubit.dart';
 import '../cubit/product_state.dart';
 import 'widgets/product_form_dialog.dart';
 import 'widgets/import_mapping_dialog.dart';
+import 'widgets/price_history_dialog.dart';
 
 /// Products management page with CRUD data table.
 class ProductsPage extends StatelessWidget {
@@ -163,91 +164,110 @@ class _ProductsViewState extends State<_ProductsView> {
                 AppStrings.navProducts,
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
-              const Spacer(),
-              SearchField(
-                hintText: AppStrings.searchProduct,
-                width: 220,
-                controller: _searchCtrl,
-                onChanged: (q) {
-                  if (_verticalScrollCtrl.hasClients) {
-                    _verticalScrollCtrl.jumpTo(0);
-                  }
-                  context.read<ProductCubit>().loadProducts(query: q);
-                },
-              ),
-              const SizedBox(width: 8),
-              PopupMenuButton<String>(
-                icon: const Icon(Icons.file_upload_outlined, color: AppColors.accent),
-                tooltip: AppStrings.importProducts,
-                onSelected: (value) {
-                  if (value == 'csv') _importCsv(context);
-                  if (value == 'excel') _importExcel(context);
-                },
-                itemBuilder: (_) => [
-                  const PopupMenuItem(value: 'csv', child: Text(AppStrings.importFromCsv)),
-                  const PopupMenuItem(value: 'excel', child: Text(AppStrings.importFromExcel)),
-                ],
-              ),
-              const SizedBox(width: 8),
-              PopupMenuButton<String>(
-                icon: const Icon(Icons.file_download_outlined, color: AppColors.primary),
-                tooltip: AppStrings.exportProducts,
-                onSelected: (value) {
-                  if (value == 'excel') _exportExcel(context);
-                  if (value == 'csv') _exportCsv(context);
-                },
-                itemBuilder: (_) => [
-                  const PopupMenuItem(
-                    value: 'excel',
+              const SizedBox(width: 16),
+              Expanded(
+                child: Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
                     child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.table_chart_outlined, size: 18, color: Colors.green),
-                        SizedBox(width: 8),
-                        Text(AppStrings.exportProductsExcel),
+                        SearchField(
+                          hintText: AppStrings.searchProduct,
+                          width: 220,
+                          controller: _searchCtrl,
+                          onChanged: (q) {
+                            if (_verticalScrollCtrl.hasClients) {
+                              _verticalScrollCtrl.jumpTo(0);
+                            }
+                            context.read<ProductCubit>().loadProducts(query: q);
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        PopupMenuButton<String>(
+                          icon: const Icon(Icons.file_upload_outlined, color: AppColors.accent),
+                          tooltip: AppStrings.importProducts,
+                          onSelected: (value) {
+                            if (value == 'csv') _importCsv(context);
+                            if (value == 'excel') _importExcel(context);
+                          },
+                          itemBuilder: (_) => [
+                            const PopupMenuItem(value: 'csv', child: Text(AppStrings.importFromCsv)),
+                            const PopupMenuItem(value: 'excel', child: Text(AppStrings.importFromExcel)),
+                          ],
+                        ),
+                        const SizedBox(width: 8),
+                        PopupMenuButton<String>(
+                          icon: const Icon(Icons.file_download_outlined, color: AppColors.primary),
+                          tooltip: AppStrings.exportProducts,
+                          onSelected: (value) {
+                            if (value == 'excel') _exportExcel(context);
+                            if (value == 'csv') _exportCsv(context);
+                          },
+                          itemBuilder: (_) => [
+                            const PopupMenuItem(
+                              value: 'excel',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.table_chart_outlined, size: 18, color: Colors.green),
+                                  SizedBox(width: 8),
+                                  Text(AppStrings.exportProductsExcel),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuItem(
+                              value: 'csv',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.description_outlined, size: 18, color: Colors.blueGrey),
+                                  SizedBox(width: 8),
+                                  Text(AppStrings.exportProductsCsv),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          onPressed: () => _applyProfitMargin(context),
+                          icon: const Icon(Icons.percent, size: 18),
+                          label: Text(
+                            _selectedIds.isNotEmpty
+                                ? '${AppStrings.applyProfitMargin} (${_selectedIds.length.formattedInt} انتخاب‌شده)'
+                                : (_selectedCategory == null
+                                    ? AppStrings.applyProfitMargin
+                                    : '${AppStrings.applyProfitMargin} ($_currentCategoryDisplayName)'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          onPressed: () => _applyPriceAdjustment(context),
+                          icon: const Icon(Icons.trending_up, size: 18),
+                          label: Text(
+                            _selectedIds.isNotEmpty
+                                ? '${AppStrings.applyPriceAdjustment} (${_selectedIds.length.formattedInt} انتخاب‌شده)'
+                                : (_selectedCategory == null
+                                    ? AppStrings.applyPriceAdjustment
+                                    : '${AppStrings.applyPriceAdjustment} ($_currentCategoryDisplayName)'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          onPressed: () => PriceHistoryDialog.show(context),
+                          icon: const Icon(Icons.history_rounded, size: 18),
+                          label: const Text(AppStrings.priceChangeHistory),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton.icon(
+                          onPressed: () => _addProduct(context),
+                          icon: const Icon(Icons.add, size: 20),
+                          label: const Text(AppStrings.addProduct),
+                        ),
                       ],
                     ),
                   ),
-                  const PopupMenuItem(
-                    value: 'csv',
-                    child: Row(
-                      children: [
-                        Icon(Icons.description_outlined, size: 18, color: Colors.blueGrey),
-                        SizedBox(width: 8),
-                        Text(AppStrings.exportProductsCsv),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 8),
-              OutlinedButton.icon(
-                onPressed: () => _applyProfitMargin(context),
-                icon: const Icon(Icons.percent, size: 18),
-                label: Text(
-                  _selectedIds.isNotEmpty
-                      ? '${AppStrings.applyProfitMargin} (${_selectedIds.length.formattedInt} انتخاب‌شده)'
-                      : (_selectedCategory == null
-                          ? AppStrings.applyProfitMargin
-                          : '${AppStrings.applyProfitMargin} ($_currentCategoryDisplayName)'),
                 ),
-              ),
-              const SizedBox(width: 8),
-              OutlinedButton.icon(
-                onPressed: () => _applyPriceAdjustment(context),
-                icon: const Icon(Icons.trending_up, size: 18),
-                label: Text(
-                  _selectedIds.isNotEmpty
-                      ? '${AppStrings.applyPriceAdjustment} (${_selectedIds.length.formattedInt} انتخاب‌شده)'
-                      : (_selectedCategory == null
-                          ? AppStrings.applyPriceAdjustment
-                          : '${AppStrings.applyPriceAdjustment} ($_currentCategoryDisplayName)'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton.icon(
-                onPressed: () => _addProduct(context),
-                icon: const Icon(Icons.add, size: 20),
-                label: const Text(AppStrings.addProduct),
               ),
             ],
           ),
@@ -848,6 +868,16 @@ class _ProductsViewState extends State<_ProductsView> {
                             tooltip: 'تاریخچه خرید کالا',
                             onPressed: () => widget.onViewProductPurchases!(p.id!),
                           ),
+                        IconButton(
+                          icon: const Icon(Icons.auto_graph_rounded, size: 18),
+                          color: AppColors.primary,
+                          tooltip: AppStrings.priceChangeHistory,
+                          onPressed: () => PriceHistoryDialog.show(
+                            context,
+                            productId: p.id,
+                            productName: p.name,
+                          ),
+                        ),
                         IconButton(
                           icon: const Icon(Icons.edit_outlined, size: 18),
                           color: AppColors.info,

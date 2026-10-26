@@ -9,7 +9,7 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._();
 
   static Database? _database;
-  static const int _version = 10;
+  static const int _version = 11;
   static const String _dbName = 'zhirofactor.db';
 
   /// Public accessor for the current database schema version.
@@ -296,6 +296,23 @@ class DatabaseHelper {
     ''');
     await db.execute('CREATE INDEX idx_demand_requests_demand ON demand_requests(demand_id)');
     await db.execute('CREATE INDEX idx_demand_requests_date ON demand_requests(request_date)');
+
+    // ── Price Change History Table (تاریخچه تغییرات قیمت کالا) ────
+    await db.execute('''
+      CREATE TABLE price_change_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id INTEGER NOT NULL,
+        old_price REAL NOT NULL,
+        new_price REAL NOT NULL,
+        change_amount REAL NOT NULL,
+        change_type TEXT NOT NULL,
+        change_source TEXT,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute('CREATE INDEX idx_price_history_product ON price_change_history(product_id)');
+    await db.execute('CREATE INDEX idx_price_history_date ON price_change_history(created_at)');
   }
 
   Future<bool> _columnExists(Database db, String tableName, String columnName) async {
@@ -469,6 +486,24 @@ class DatabaseHelper {
       ''');
       await db.execute('CREATE INDEX IF NOT EXISTS idx_demand_requests_demand ON demand_requests(demand_id)');
       await db.execute('CREATE INDEX IF NOT EXISTS idx_demand_requests_date ON demand_requests(request_date)');
+    }
+    // Migration v10 → v11: add price_change_history table
+    if (oldVersion < 11) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS price_change_history (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          product_id INTEGER NOT NULL,
+          old_price REAL NOT NULL,
+          new_price REAL NOT NULL,
+          change_amount REAL NOT NULL,
+          change_type TEXT NOT NULL,
+          change_source TEXT,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+        )
+      ''');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_price_history_product ON price_change_history(product_id)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_price_history_date ON price_change_history(created_at)');
     }
   }
 

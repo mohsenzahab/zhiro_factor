@@ -295,4 +295,25 @@ class AppStrings {
     purchaseStatusSettled,
     purchaseStatusCancelled,
   ];
+
+  // ─── Price Change History (تاریخچه تغییرات قیمت) ────────────────────
+  static const String priceChangeHistory = 'تاریخچه تغییرات قیمت';
+  static const String priceChangeHistorySubtitle = 'سوابق افزایش و کاهش قیمت خرید کالاها';
+  static const String oldPrice = 'قیمت قبلی';
+  static const String newPrice = 'قیمت جدید';
+  static const String priceChangeAmount = 'میزان تغییر';
+  static const String priceChangePercent = 'درصد تغییر';
+  static const String changeType = 'نوع تغییر';
+  static const String changeSource = 'منبع / شرح';
+  static const String changeDate = 'تاریخ ثبت';
+  static const String allChanges = 'همه تغییرات';
+  static const String manualChange = 'ویرایش دستی';
+  static const String batchAdjustmentChange = 'تغییر گروهی';
+  static const String purchaseChange = 'فاکتور خرید';
+  static const String noPriceChangeHistory = 'هیچ سابقه‌ای از تغییر قیمت ثبت نشده است';
+  static const String totalPriceChanges = 'تعداد تغییرات';
+  static const String averageChangePercent = 'میانگین درصد تغییر';
+  static const String maxIncrease = 'بیشترین افزایش';
+  static const String maxDecrease = 'بیشترین کاهش';
+  static const String priceHistoryForProduct = 'تاریخچه تغییرات قیمت کالا';
 }

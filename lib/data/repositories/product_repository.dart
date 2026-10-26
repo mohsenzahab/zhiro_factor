@@ -14,7 +14,7 @@ class ProductRepository {
 
   Future<Database> get _database async => _overrideDb ?? await _dbHelper.database;
 
-  Future<bool> _tableExists(Database db, String tableName) async {
+  Future<bool> _tableExists(DatabaseExecutor db, String tableName) async {
     final res = await db.rawQuery(
       "SELECT 1 FROM sqlite_master WHERE type='table' AND name = ?",
       [tableName],
@@ -164,6 +164,36 @@ class ProductRepository {
   /// Update an existing product. Returns rows affected.
   Future<int> update(ProductModel product) async {
     final db = await _database;
+
+    // Detect and log buy price modification in price_change_history
+    if (product.id != null && await _tableExists(db, 'price_change_history')) {
+      final existingRows = await db.query(
+        'products',
+        columns: ['buy_price', 'current_buy_price'],
+        where: 'id = ?',
+        whereArgs: [product.id],
+      );
+      if (existingRows.isNotEmpty) {
+        final oldRow = existingRows.first;
+        final oldBuy = (oldRow['buy_price'] as num?)?.toDouble() ?? 0.0;
+        final oldCurBuy = (oldRow['current_buy_price'] as num?)?.toDouble();
+        final oldEffective = (oldCurBuy != null && oldCurBuy > 0) ? oldCurBuy : oldBuy;
+        final newEffective = product.effectiveBuyPrice;
+
+        if (oldEffective > 0 && (newEffective - oldEffective).abs() > 0.001) {
+          await db.insert('price_change_history', {
+            'product_id': product.id,
+            'old_price': oldEffective,
+            'new_price': newEffective,
+            'change_amount': newEffective - oldEffective,
+            'change_type': 'manual',
+            'change_source': 'ویرایش دستی',
+            'created_at': DateTime.now().toIso8601String(),
+          });
+        }
+      }
+    }
+
     final map = product.toMap();
     map.remove('id'); // Do not update primary key
     return await db.update(
@@ -198,6 +228,9 @@ class ProductRepository {
         'UPDATE purchase_items SET product_id = NULL WHERE product_id = ?',
         [id],
       );
+      if (await _tableExists(txn, 'price_change_history')) {
+        await txn.delete('price_change_history', where: 'product_id = ?', whereArgs: [id]);
+      }
       return await txn.delete('products', where: 'id = ?', whereArgs: [id]);
     });
   }
@@ -216,6 +249,12 @@ class ProductRepository {
         'UPDATE purchase_items SET product_id = NULL WHERE product_id IN ($placeholders)',
         ids,
       );
+      if (await _tableExists(txn, 'price_change_history')) {
+        await txn.rawDelete(
+          'DELETE FROM price_change_history WHERE product_id IN ($placeholders)',
+          ids,
+        );
+      }
       return await txn.rawDelete(
         'DELETE FROM products WHERE id IN ($placeholders)',
         ids,
@@ -389,6 +428,7 @@ class ProductRepository {
 
     final batch = db.batch();
     int count = 0;
+    final hasHistoryTable = await _tableExists(db, 'price_change_history');
 
     for (final row in rows) {
       final id = row['id'] as int;
@@ -423,6 +463,24 @@ class ProductRepository {
         where: 'id = ?',
         whereArgs: [id],
       );
+
+      // Record in price_change_history if table exists
+      if (hasHistoryTable && (newCurrentBuy - baseBuyPrice).abs() > 0.001) {
+        final changeAmt = newCurrentBuy - baseBuyPrice;
+        final source = percentage >= 0
+            ? 'افزایش ${percentage.formatted}٪ گروهی'
+            : 'کاهش ${percentage.abs().formatted}٪ گروهی';
+        batch.insert('price_change_history', {
+          'product_id': id,
+          'old_price': baseBuyPrice,
+          'new_price': newCurrentBuy,
+          'change_amount': changeAmt,
+          'change_type': 'batch_adjustment',
+          'change_source': source,
+          'created_at': DateTime.now().toIso8601String(),
+        });
+      }
+
       count++;
     }
 

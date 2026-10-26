@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:excel_plus/excel_plus.dart';
 import 'package:file_picker/file_picker.dart';
 import '../data/models/product_model.dart';
+import '../data/models/price_change_model.dart';
 
 /// Service for exporting data to Excel and CSV files.
 class ExportService {
@@ -180,6 +181,86 @@ class ExportService {
 
     final bytes = utf8.encode(buffer.toString());
     await _saveFile(bytes, 'گزارش_فروش.csv', ['csv']);
+  }
+
+  /// Export price change history to Excel (.xlsx).
+  static Future<void> exportPriceHistoryExcel(List<PriceChangeModel> history) async {
+    if (history.isEmpty) throw Exception('داده‌ای برای خروجی وجود ندارد');
+
+    final excel = Excel.createExcel();
+    final sheet = excel['تاریخچه تغییرات قیمت'];
+
+    // Header row
+    sheet.appendRow([
+      TextCellValue('ردیف'),
+      TextCellValue('کد کالا'),
+      TextCellValue('نام کالا'),
+      TextCellValue('دسته‌بندی'),
+      TextCellValue('قیمت قبلی (تومان)'),
+      TextCellValue('قیمت جدید (تومان)'),
+      TextCellValue('میزان تغییر (تومان)'),
+      TextCellValue('درصد تغییر'),
+      TextCellValue('نوع تغییر'),
+      TextCellValue('منبع / شرح'),
+      TextCellValue('تاریخ'),
+    ]);
+
+    // Data rows
+    for (var i = 0; i < history.length; i++) {
+      final h = history[i];
+      sheet.appendRow([
+        IntCellValue(i + 1),
+        TextCellValue(h.productCode ?? ''),
+        TextCellValue(h.productName ?? ''),
+        TextCellValue(h.category ?? ''),
+        DoubleCellValue(h.oldPrice),
+        DoubleCellValue(h.newPrice),
+        DoubleCellValue(h.changeAmount),
+        DoubleCellValue(double.parse(h.changePercent.toStringAsFixed(1))),
+        TextCellValue(h.changeTypeDisplay),
+        TextCellValue(h.changeSource ?? ''),
+        TextCellValue(h.createdAtJalaliWithTime),
+      ]);
+    }
+
+    if (excel.sheets.containsKey('Sheet1')) {
+      excel.delete('Sheet1');
+    }
+
+    final bytes = excel.encode();
+    if (bytes == null) throw Exception('خطا در ساخت فایل اکسل');
+
+    await _saveFile(bytes, 'تاریخچه_تغییرات_قیمت.xlsx', ['xlsx']);
+  }
+
+  /// Export price change history to CSV.
+  static Future<void> exportPriceHistoryCsv(List<PriceChangeModel> history) async {
+    if (history.isEmpty) throw Exception('داده‌ای برای خروجی وجود ندارد');
+
+    final buffer = StringBuffer();
+    buffer.write('\uFEFF'); // BOM
+
+    buffer.writeln('ردیف,کد کالا,نام کالا,دسته‌بندی,قیمت قبلی,قیمت جدید,میزان تغییر,درصد تغییر,نوع تغییر,منبع,تاریخ');
+
+    for (var i = 0; i < history.length; i++) {
+      final h = history[i];
+      buffer.writeln([
+        i + 1,
+        _csvEscape(h.productCode ?? ''),
+        _csvEscape(h.productName ?? ''),
+        _csvEscape(h.category ?? ''),
+        h.oldPrice,
+        h.newPrice,
+        h.changeAmount,
+        h.changePercent.toStringAsFixed(1),
+        _csvEscape(h.changeTypeDisplay),
+        _csvEscape(h.changeSource ?? ''),
+        _csvEscape(h.createdAtJalaliWithTime),
+      ].join(','));
+    }
+
+    final bytes = utf8.encode(buffer.toString());
+    await _saveFile(bytes, 'تاریخچه_تغییرات_قیمت.csv', ['csv']);
   }
 
   static String _csvEscape(String value) {

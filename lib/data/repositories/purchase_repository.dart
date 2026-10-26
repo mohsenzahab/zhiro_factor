@@ -1,3 +1,4 @@
+import 'package:sqflite_common/sqlite_api.dart';
 import '../../core/database/database_helper.dart';
 import '../../core/extensions/number_extensions.dart';
 import '../models/purchase_model.dart';
@@ -6,6 +7,14 @@ import '../models/purchase_item_model.dart';
 /// Repository for Purchase CRUD with transactional item management and stock updates.
 class PurchaseRepository {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
+
+  Future<bool> _tableExists(DatabaseExecutor db, String tableName) async {
+    final res = await db.rawQuery(
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = ?",
+      [tableName],
+    );
+    return res.isNotEmpty;
+  }
 
   /// Fetch all purchases with supplier name join, optionally filtered.
   Future<List<PurchaseModel>> getAll({
@@ -127,6 +136,33 @@ class PurchaseRepository {
             'UPDATE products SET stock = COALESCE(stock, 0) + ? WHERE id = ?',
             [item.quantity, item.productId],
           );
+
+          // Check if buy price changed and record in price_change_history
+          if (item.unitPrice > 0 && await _tableExists(txn, 'price_change_history')) {
+            final pRows = await txn.query(
+              'products',
+              columns: ['buy_price', 'current_buy_price'],
+              where: 'id = ?',
+              whereArgs: [item.productId],
+            );
+            if (pRows.isNotEmpty) {
+              final oldBuy = (pRows.first['buy_price'] as num?)?.toDouble() ?? 0.0;
+              final oldCur = (pRows.first['current_buy_price'] as num?)?.toDouble();
+              final oldEffective = (oldCur != null && oldCur > 0) ? oldCur : oldBuy;
+              if (oldEffective > 0 && (item.unitPrice - oldEffective).abs() > 0.001) {
+                await txn.insert('price_change_history', {
+                  'product_id': item.productId,
+                  'old_price': oldEffective,
+                  'new_price': item.unitPrice,
+                  'change_amount': item.unitPrice - oldEffective,
+                  'change_type': 'purchase',
+                  'change_source': 'فاکتور خرید ${purchase.purchaseNumber}',
+                  'created_at': DateTime.now().toIso8601String(),
+                });
+              }
+            }
+          }
+
           // Update current_buy_price to the latest purchase price
           await txn.rawUpdate(
             'UPDATE products SET current_buy_price = ? WHERE id = ?',
@@ -187,6 +223,33 @@ class PurchaseRepository {
             'UPDATE products SET stock = COALESCE(stock, 0) + ? WHERE id = ?',
             [item.quantity, item.productId],
           );
+
+          // Check if buy price changed and record in price_change_history
+          if (item.unitPrice > 0 && await _tableExists(txn, 'price_change_history')) {
+            final pRows = await txn.query(
+              'products',
+              columns: ['buy_price', 'current_buy_price'],
+              where: 'id = ?',
+              whereArgs: [item.productId],
+            );
+            if (pRows.isNotEmpty) {
+              final oldBuy = (pRows.first['buy_price'] as num?)?.toDouble() ?? 0.0;
+              final oldCur = (pRows.first['current_buy_price'] as num?)?.toDouble();
+              final oldEffective = (oldCur != null && oldCur > 0) ? oldCur : oldBuy;
+              if (oldEffective > 0 && (item.unitPrice - oldEffective).abs() > 0.001) {
+                await txn.insert('price_change_history', {
+                  'product_id': item.productId,
+                  'old_price': oldEffective,
+                  'new_price': item.unitPrice,
+                  'change_amount': item.unitPrice - oldEffective,
+                  'change_type': 'purchase',
+                  'change_source': 'فاکتور خرید ${purchase.purchaseNumber}',
+                  'created_at': DateTime.now().toIso8601String(),
+                });
+              }
+            }
+          }
+
           // Update current_buy_price to the latest purchase price
           await txn.rawUpdate(
             'UPDATE products SET current_buy_price = ? WHERE id = ?',
