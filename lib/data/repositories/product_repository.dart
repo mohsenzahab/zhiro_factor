@@ -14,12 +14,60 @@ class ProductRepository {
 
   Future<Database> get _database async => _overrideDb ?? await _dbHelper.database;
 
+  Future<bool> _tableExists(Database db, String tableName) async {
+    final res = await db.rawQuery(
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = ?",
+      [tableName],
+    );
+    return res.isNotEmpty;
+  }
+
   /// Fetch all products with sold quantity joined, optionally filtered by search query.
+  /// Resolves the supplier title (from products.supplier, suppliers table, or latest purchase).
   Future<List<ProductModel>> getAll({String? query}) async {
     final db = await _database;
-    String sql = '''
-      SELECT p.*, COALESCE(s.total_sold, 0.0) as total_sold
+    final hasSuppliers = await _tableExists(db, 'suppliers');
+    final hasPurchases = hasSuppliers &&
+        await _tableExists(db, 'purchases') &&
+        await _tableExists(db, 'purchase_items');
+
+    String supplierExpr;
+    String joins = '';
+
+    if (hasSuppliers) {
+      joins += '''
+        LEFT JOIN suppliers sup_direct ON (
+          (p.supplier GLOB '[0-9]*' AND CAST(p.supplier AS INTEGER) = sup_direct.id)
+          OR p.supplier = sup_direct.name
+        )
+      ''';
+      if (hasPurchases) {
+        joins += '''
+          LEFT JOIN (
+            SELECT 
+              pi.product_id,
+              sup.name as supplier_name,
+              ROW_NUMBER() OVER (PARTITION BY pi.product_id ORDER BY pu.date DESC, pu.id DESC) as rn
+            FROM purchase_items pi
+            JOIN purchases pu ON pi.purchase_id = pu.id
+            JOIN suppliers sup ON pu.supplier_id = sup.id
+          ) latest_purchase ON p.id = latest_purchase.product_id AND latest_purchase.rn = 1
+        ''';
+        supplierExpr = 'COALESCE(sup_direct.name, NULLIF(p.supplier, \'\'), latest_purchase.supplier_name)';
+      } else {
+        supplierExpr = 'COALESCE(sup_direct.name, NULLIF(p.supplier, \'\'))';
+      }
+    } else {
+      supplierExpr = 'p.supplier';
+    }
+
+    final baseSql = '''
+      SELECT 
+        p.*, 
+        COALESCE(s.total_sold, 0.0) as total_sold,
+        $supplierExpr as resolved_supplier
       FROM products p
+      $joins
       LEFT JOIN (
         SELECT product_id, SUM(quantity) as total_sold
         FROM invoice_items
@@ -27,20 +75,22 @@ class ProductRepository {
         GROUP BY product_id
       ) s ON p.id = s.product_id
     ''';
+
+    String sql = 'SELECT * FROM ($baseSql) AS p_sub';
     final args = <dynamic>[];
 
     if (query != null && query.isNotEmpty) {
       final enQuery = query.toEnglishDigits();
       if (enQuery != query) {
-        sql += ' WHERE p.name LIKE ? OR p.code LIKE ? OR p.code LIKE ?';
-        args.addAll(['%$query%', '%$query%', '%$enQuery%']);
+        sql += ' WHERE name LIKE ? OR code LIKE ? OR code LIKE ? OR resolved_supplier LIKE ?';
+        args.addAll(['%$query%', '%$query%', '%$enQuery%', '%$query%']);
       } else {
-        sql += ' WHERE p.name LIKE ? OR p.code LIKE ?';
-        args.addAll(['%$query%', '%$query%']);
+        sql += ' WHERE name LIKE ? OR code LIKE ? OR resolved_supplier LIKE ?';
+        args.addAll(['%$query%', '%$query%', '%$query%']);
       }
     }
 
-    sql += ' ORDER BY p.name ASC';
+    sql += ' ORDER BY name ASC';
 
     final maps = await db.rawQuery(sql, args);
     return maps.map((m) => ProductModel.fromMap(m)).toList();
@@ -49,16 +99,58 @@ class ProductRepository {
   /// Fetch a single product by ID with sold quantity joined.
   Future<ProductModel?> getById(int id) async {
     final db = await _database;
-    final maps = await db.rawQuery('''
-      SELECT p.*, COALESCE(s.total_sold, 0.0) as total_sold
+    final hasSuppliers = await _tableExists(db, 'suppliers');
+    final hasPurchases = hasSuppliers &&
+        await _tableExists(db, 'purchases') &&
+        await _tableExists(db, 'purchase_items');
+
+    String supplierExpr;
+    String joins = '';
+
+    if (hasSuppliers) {
+      joins += '''
+        LEFT JOIN suppliers sup_direct ON (
+          (p.supplier GLOB '[0-9]*' AND CAST(p.supplier AS INTEGER) = sup_direct.id)
+          OR p.supplier = sup_direct.name
+        )
+      ''';
+      if (hasPurchases) {
+        joins += '''
+          LEFT JOIN (
+            SELECT 
+              pi.product_id,
+              sup.name as supplier_name,
+              ROW_NUMBER() OVER (PARTITION BY pi.product_id ORDER BY pu.date DESC, pu.id DESC) as rn
+            FROM purchase_items pi
+            JOIN purchases pu ON pi.purchase_id = pu.id
+            JOIN suppliers sup ON pu.supplier_id = sup.id
+          ) latest_purchase ON p.id = latest_purchase.product_id AND latest_purchase.rn = 1
+        ''';
+        supplierExpr = 'COALESCE(sup_direct.name, NULLIF(p.supplier, \'\'), latest_purchase.supplier_name)';
+      } else {
+        supplierExpr = 'COALESCE(sup_direct.name, NULLIF(p.supplier, \'\'))';
+      }
+    } else {
+      supplierExpr = 'p.supplier';
+    }
+
+    final sql = '''
+      SELECT 
+        p.*, 
+        COALESCE(s.total_sold, 0.0) as total_sold,
+        $supplierExpr as resolved_supplier
       FROM products p
+      $joins
       LEFT JOIN (
         SELECT product_id, SUM(quantity) as total_sold
         FROM invoice_items
         WHERE product_id = ?
+        GROUP BY product_id
       ) s ON p.id = s.product_id
       WHERE p.id = ?
-    ''', [id, id]);
+    ''';
+
+    final maps = await db.rawQuery(sql, [id, id]);
     if (maps.isEmpty) return null;
     return ProductModel.fromMap(maps.first);
   }
@@ -172,6 +264,27 @@ class ProductRepository {
       "SELECT DISTINCT category FROM products WHERE category IS NOT NULL AND category != '' ORDER BY category ASC",
     );
     return result.map((r) => r['category'] as String).toList();
+  }
+
+  /// Get all distinct non-null suppliers across products and suppliers table.
+  Future<List<String>> getDistinctSuppliers() async {
+    final db = await _database;
+    final hasSuppliers = await _tableExists(db, 'suppliers');
+    if (hasSuppliers) {
+      final result = await db.rawQuery('''
+        SELECT DISTINCT name FROM (
+          SELECT supplier AS name FROM products WHERE supplier IS NOT NULL AND supplier != ''
+          UNION
+          SELECT name FROM suppliers WHERE name IS NOT NULL AND name != ''
+        ) ORDER BY name ASC
+      ''');
+      return result.map((r) => r['name'] as String).toList();
+    } else {
+      final result = await db.rawQuery(
+        "SELECT DISTINCT supplier FROM products WHERE supplier IS NOT NULL AND supplier != '' ORDER BY supplier ASC",
+      );
+      return result.map((r) => r['supplier'] as String).toList();
+    }
   }
 
   /// Bulk import products. Returns the count of successfully imported rows.

@@ -63,6 +63,9 @@ class ProductModel extends Equatable {
   /// User-facing string representation of stock.
   String get stockDisplay => isInfiniteStock ? 'نامحدود' : stock!.formattedInt;
 
+  /// User-facing string representation of supplier.
+  String get supplierDisplay => (supplier != null && supplier!.trim().isNotEmpty) ? supplier!.trim() : '-';
+
   factory ProductModel.fromMap(Map<String, dynamic> map) {
     return ProductModel(
       id: map['id'] as int?,
@@ -76,7 +79,7 @@ class ProductModel extends Equatable {
       stock: (map['stock'] as num?)?.toDouble(),
       createdAt: map['created_at'] as String?,
       buyDate: map['buy_date'] as String?,
-      supplier: map['supplier'] as String?,
+      supplier: ((map['resolved_supplier'] ?? map['supplier_title'] ?? map['supplier']) as String?)?.trim(),
       isTemporary: (map['is_temporary'] as int?) == 1,
       totalSold: (map['total_sold'] as num?)?.toDouble() ?? 0.0,
     );

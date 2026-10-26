@@ -72,6 +72,7 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
   bool _isTemporary = false;
   bool _isInfiniteStock = false;
   List<String> _categories = [];
+  List<String> _suppliers = [];
   bool _isAutoCalculating = false;
 
   bool get _isEditing => widget.product != null;
@@ -131,6 +132,7 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
     _buyDate = p?.buyDate;
     _isTemporary = p?.isTemporary ?? false;
     _loadCategories();
+    _loadSuppliers();
 
     _profitMarginFocusNode = FocusNode();
     _sellPriceFocusNode = FocusNode();
@@ -164,6 +166,11 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
   Future<void> _loadCategories() async {
     final cats = await _repo.getDistinctCategories();
     if (mounted) setState(() => _categories = cats);
+  }
+
+  Future<void> _loadSuppliers() async {
+    final sups = await _repo.getDistinctSuppliers();
+    if (mounted) setState(() => _suppliers = sups);
   }
 
   double _getBaseBuyPrice() {
@@ -596,9 +603,52 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: TextFormField(
-                          controller: _supplierCtrl,
-                          decoration: const InputDecoration(labelText: AppStrings.productSupplier),
+                        child: Autocomplete<String>(
+                          initialValue: TextEditingValue(text: _supplierCtrl.text),
+                          optionsBuilder: (textEditingValue) {
+                            if (textEditingValue.text.isEmpty) return _suppliers;
+                            return _suppliers.where(
+                              (s) => s.contains(textEditingValue.text),
+                            );
+                          },
+                          fieldViewBuilder: (context, controller, focusNode, onSubmitted) {
+                            controller.addListener(() => _supplierCtrl.text = controller.text);
+                            return TextFormField(
+                              controller: controller,
+                              focusNode: focusNode,
+                              decoration: const InputDecoration(labelText: AppStrings.productSupplier),
+                            );
+                          },
+                          onSelected: (value) {
+                            _supplierCtrl.text = value;
+                          },
+                          optionsViewBuilder: (context, onSelected, options) {
+                            return Align(
+                              alignment: Alignment.topRight,
+                              child: Material(
+                                elevation: 8,
+                                color: AppColors.cardDark,
+                                borderRadius: BorderRadius.circular(10),
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(maxHeight: 200, maxWidth: 300),
+                                  child: ListView.builder(
+                                    padding: EdgeInsets.zero,
+                                    shrinkWrap: true,
+                                    itemCount: options.length,
+                                    itemBuilder: (context, index) {
+                                      final sup = options.elementAt(index);
+                                      return ListTile(
+                                        dense: true,
+                                        title: Text(sup),
+                                        leading: const Icon(Icons.business, size: 18),
+                                        onTap: () => onSelected(sup),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       ),
                     ],

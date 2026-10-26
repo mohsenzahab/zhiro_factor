@@ -19,11 +19,18 @@ import 'widgets/import_mapping_dialog.dart';
 /// Products management page with CRUD data table.
 class ProductsPage extends StatelessWidget {
   final void Function(int productId)? onViewProductPurchases;
+  final ProductCubit? cubit;
 
-  const ProductsPage({super.key, this.onViewProductPurchases});
+  const ProductsPage({super.key, this.onViewProductPurchases, this.cubit});
 
   @override
   Widget build(BuildContext context) {
+    if (cubit != null) {
+      return BlocProvider.value(
+        value: cubit!,
+        child: _ProductsView(onViewProductPurchases: onViewProductPurchases),
+      );
+    }
     return BlocProvider(
       create: (_) => ProductCubit()..loadProducts(),
       child: _ProductsView(onViewProductPurchases: onViewProductPurchases),
@@ -419,6 +426,7 @@ class _ProductsViewState extends State<_ProductsView> {
                 DataColumn(label: Text(AppStrings.productCode)),
                 DataColumn(label: Text(AppStrings.productName)),
                 DataColumn(label: Text(AppStrings.productCategory)),
+                DataColumn(label: Text(AppStrings.productSupplier)),
                 DataColumn(label: Text(AppStrings.productBuyPrice)),
                 DataColumn(label: Text(AppStrings.productCurrentBuyPrice)),
                 DataColumn(label: Text(AppStrings.productSellPrice)),
@@ -509,6 +517,20 @@ class _ProductsViewState extends State<_ProductsView> {
                             ),
                           ),
                         ),
+                      ),
+                    ),
+                    DataCell(
+                      _EditableTableCell(
+                        displayValue: p.supplierDisplay,
+                        rawValue: p.supplier ?? '',
+                        minWidth: 80,
+                        tooltip: 'کلیک برای ویرایش تامین‌کننده',
+                        onSave: (val) {
+                          final clean = val.trim();
+                          context.read<ProductCubit>().updateProduct(
+                                p.copyWith(supplier: clean.isEmpty ? null : clean),
+                              );
+                        },
                       ),
                     ),
                     DataCell(
