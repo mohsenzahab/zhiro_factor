@@ -4,6 +4,7 @@ import 'package:excel_plus/excel_plus.dart';
 import 'package:file_picker/file_picker.dart';
 import '../data/models/product_model.dart';
 import '../data/models/price_change_model.dart';
+import '../data/models/product_sale_record.dart';
 
 /// Service for exporting data to Excel and CSV files.
 class ExportService {
@@ -261,6 +262,93 @@ class ExportService {
 
     final bytes = utf8.encode(buffer.toString());
     await _saveFile(bytes, 'تاریخچه_تغییرات_قیمت.csv', ['csv']);
+  }
+
+  /// Export product sales history to Excel (.xlsx).
+  static Future<void> exportProductSalesExcel(
+    ProductModel product,
+    List<ProductSaleRecord> sales,
+  ) async {
+    if (sales.isEmpty) throw Exception('داده‌ای برای خروجی وجود ندارد');
+
+    final excel = Excel.createExcel();
+    final sheet = excel['تاریخچه فروش'];
+
+    // Header row
+    sheet.appendRow([
+      TextCellValue('ردیف'),
+      TextCellValue('شماره فاکتور'),
+      TextCellValue('تاریخ'),
+      TextCellValue('مشتری'),
+      TextCellValue('وضعیت فاکتور'),
+      TextCellValue('تعداد'),
+      TextCellValue('واحد'),
+      TextCellValue('قیمت واحد (تومان)'),
+      TextCellValue('تخفیف (تومان)'),
+      TextCellValue('مبلغ کل (تومان)'),
+      TextCellValue('سود سطر (تومان)'),
+    ]);
+
+    for (var i = 0; i < sales.length; i++) {
+      final s = sales[i];
+      sheet.appendRow([
+        IntCellValue(i + 1),
+        TextCellValue(s.invoiceNumber),
+        TextCellValue(s.jalaliDate),
+        TextCellValue(s.customerDisplay),
+        TextCellValue(s.invoiceStatus),
+        DoubleCellValue(s.quantity),
+        TextCellValue(s.productUnit),
+        DoubleCellValue(s.unitPrice),
+        DoubleCellValue(s.discountCalculatedAmount),
+        DoubleCellValue(s.lineTotal),
+        DoubleCellValue(s.profitAmount),
+      ]);
+    }
+
+    if (excel.sheets.containsKey('Sheet1')) {
+      excel.delete('Sheet1');
+    }
+
+    final bytes = excel.encode();
+    if (bytes == null) throw Exception('خطا در ساخت فایل اکسل');
+
+    final safeName = product.name.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+    await _saveFile(bytes, 'تاریخچه_فروش_$safeName.xlsx', ['xlsx']);
+  }
+
+  /// Export product sales history to CSV.
+  static Future<void> exportProductSalesCsv(
+    ProductModel product,
+    List<ProductSaleRecord> sales,
+  ) async {
+    if (sales.isEmpty) throw Exception('داده‌ای برای خروجی وجود ندارد');
+
+    final buffer = StringBuffer();
+    buffer.write('\uFEFF'); // BOM
+
+    buffer.writeln('ردیف,شماره فاکتور,تاریخ,مشتری,وضعیت فاکتور,تعداد,واحد,قیمت واحد,تخفیف,مبلغ کل,سود سطر');
+
+    for (var i = 0; i < sales.length; i++) {
+      final s = sales[i];
+      buffer.writeln([
+        i + 1,
+        _csvEscape(s.invoiceNumber),
+        _csvEscape(s.jalaliDate),
+        _csvEscape(s.customerDisplay),
+        _csvEscape(s.invoiceStatus),
+        s.quantity,
+        _csvEscape(s.productUnit),
+        s.unitPrice,
+        s.discountCalculatedAmount,
+        s.lineTotal,
+        s.profitAmount,
+      ].join(','));
+    }
+
+    final bytes = utf8.encode(buffer.toString());
+    final safeName = product.name.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+    await _saveFile(bytes, 'تاریخچه_فروش_$safeName.csv', ['csv']);
   }
 
   static String _csvEscape(String value) {

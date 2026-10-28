@@ -4,6 +4,7 @@ import 'sidebar_nav.dart';
 import '../../features/invoice/view/invoice_page.dart';
 import '../../features/invoice_history/view/invoice_history_page.dart';
 import '../../features/products/view/products_page.dart';
+import '../../features/products/view/product_sales_history_page.dart';
 import '../../features/customers/view/customers_page.dart';
 import '../../features/suppliers/view/suppliers_page.dart';
 import '../../features/dashboard/view/dashboard_page.dart';
@@ -38,20 +39,24 @@ class AppScaffoldState extends State<AppScaffold> {
       _editInvoiceId = null;
       _filterPurchaseProductId = null;
       _filterPurchaseSupplierId = null;
+      if (page != NavPage.productSalesHistory) {
+        _salesHistoryProductId = null;
+      }
+      _returnPageAfterInvoice = null;
     });
   }
 
   /// Navigate to invoice editor with a specific invoice ID.
-  Future<void> editInvoice(int invoiceId) async {
+  Future<void> editInvoice(int invoiceId, {NavPage? returnPage}) async {
     if (onWillNavigateAway != null) {
       final canNavigate = await onWillNavigateAway!();
       if (!canNavigate) return;
     }
     setState(() {
       _currentPage = NavPage.newInvoice;
+      _editInvoiceId = invoiceId;
+      _returnPageAfterInvoice = returnPage;
     });
-    // We pass the invoice ID through a ValueKey so InvoicePage knows to load it
-    _editInvoiceId = invoiceId;
   }
 
   /// Navigate to purchase editor with a specific purchase ID.
@@ -70,6 +75,8 @@ class AppScaffoldState extends State<AppScaffold> {
   int? _editPurchaseId;
   int? _filterPurchaseProductId;
   int? _filterPurchaseSupplierId;
+  int? _salesHistoryProductId;
+  NavPage? _returnPageAfterInvoice;
 
   @override
   Widget build(BuildContext context) {
@@ -109,11 +116,13 @@ class AppScaffoldState extends State<AppScaffold> {
       case NavPage.newInvoice:
         final id = _editInvoiceId;
         _editInvoiceId = null; // Consume the ID
+        final returnPage = _returnPageAfterInvoice;
+        _returnPageAfterInvoice = null;
         return InvoicePage(
           key: ValueKey('invoice_$id'),
           editInvoiceId: id,
           onSavedAndGoBack: id != null
-              ? () => setState(() => _currentPage = NavPage.invoiceHistory)
+              ? () => setState(() => _currentPage = returnPage ?? NavPage.invoiceHistory)
               : null,
         );
       case NavPage.invoiceHistory:
@@ -142,12 +151,33 @@ class AppScaffoldState extends State<AppScaffold> {
         );
       case NavPage.products:
         return ProductsPage(
+          onViewProductSales: (productId) {
+            setState(() {
+              _currentPage = NavPage.productSalesHistory;
+              _salesHistoryProductId = productId;
+            });
+          },
           onViewProductPurchases: (productId) {
             setState(() {
               _currentPage = NavPage.purchaseHistory;
               _filterPurchaseProductId = productId;
             });
           },
+        );
+      case NavPage.productSalesHistory:
+        final pid = _salesHistoryProductId;
+        return ProductSalesHistoryPage(
+          productId: pid,
+          onBack: () {
+            setState(() {
+              _currentPage = NavPage.products;
+              _salesHistoryProductId = null;
+            });
+          },
+          onViewInvoice: (invoiceId) => editInvoice(
+            invoiceId,
+            returnPage: NavPage.productSalesHistory,
+          ),
         );
       case NavPage.demands:
         return const DemandsPage();

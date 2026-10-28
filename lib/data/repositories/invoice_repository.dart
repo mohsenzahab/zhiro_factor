@@ -1,12 +1,21 @@
+import 'package:sqflite_common/sqlite_api.dart';
 import '../../core/database/database_helper.dart';
 import '../../core/extensions/number_extensions.dart';
 import '../models/invoice_model.dart';
 import '../models/invoice_item_model.dart';
 import '../models/invoice_payment_model.dart';
+import '../models/product_sale_record.dart';
 
 /// Repository for Invoice CRUD with transactional item and payment management.
 class InvoiceRepository {
-  final DatabaseHelper _dbHelper = DatabaseHelper.instance;
+  final DatabaseHelper _dbHelper;
+  final Database? _overrideDb;
+
+  InvoiceRepository({DatabaseHelper? dbHelper, Database? db})
+      : _dbHelper = dbHelper ?? DatabaseHelper.instance,
+        _overrideDb = db;
+
+  Future<Database> get _database async => _overrideDb ?? await _dbHelper.database;
 
   /// Fetch all invoices with customer name join, optionally filtered.
   Future<List<InvoiceModel>> getAll({
@@ -17,7 +26,7 @@ class InvoiceRepository {
     String? dateFrom,
     String? dateTo,
   }) async {
-    final db = await _dbHelper.database;
+    final db = await _database;
 
     String sql = '''
       SELECT i.*, c.name as customer_name
@@ -111,7 +120,7 @@ class InvoiceRepository {
 
   /// Fetch a single invoice by ID with all its items and payments.
   Future<InvoiceModel?> getById(int id) async {
-    final db = await _dbHelper.database;
+    final db = await _database;
     final invoiceMaps = await db.rawQuery('''
       SELECT i.*, c.name as customer_name
       FROM invoices i
@@ -142,7 +151,7 @@ class InvoiceRepository {
 
   /// Fetch items for a given invoice.
   Future<List<InvoiceItemModel>> getItemsByInvoiceId(int invoiceId) async {
-    final db = await _dbHelper.database;
+    final db = await _database;
     final maps = await db.query(
       'invoice_items',
       where: 'invoice_id = ?',
@@ -154,7 +163,7 @@ class InvoiceRepository {
 
   /// Fetch payments for a given invoice.
   Future<List<InvoicePaymentModel>> getPaymentsByInvoiceId(int invoiceId) async {
-    final db = await _dbHelper.database;
+    final db = await _database;
     final maps = await db.query(
       'invoice_payments',
       where: 'invoice_id = ?',
@@ -168,7 +177,7 @@ class InvoiceRepository {
   /// Automatically deducts purchased quantities from product stock (unless stock is infinite/null).
   /// Returns the new invoice ID.
   Future<int> insert(InvoiceModel invoice) async {
-    final db = await _dbHelper.database;
+    final db = await _database;
     late int invoiceId;
 
     await db.transaction((txn) async {
@@ -201,7 +210,7 @@ class InvoiceRepository {
   /// Update an existing invoice, its items, and its payments in a single transaction.
   /// Restores previous items' stock and deducts new items' stock.
   Future<void> update(InvoiceModel invoice) async {
-    final db = await _dbHelper.database;
+    final db = await _database;
 
     await db.transaction((txn) async {
       await txn.update(
@@ -265,7 +274,7 @@ class InvoiceRepository {
 
   /// Add a single payment to an existing invoice directly and update invoice status.
   Future<int> addPayment(InvoicePaymentModel payment) async {
-    final db = await _dbHelper.database;
+    final db = await _database;
     return await db.transaction((txn) async {
       final pMap = payment.toMap();
       pMap.remove('id');
@@ -306,7 +315,7 @@ class InvoiceRepository {
 
   /// Delete a single payment from an invoice and re-check invoice status.
   Future<void> deletePayment(int paymentId) async {
-    final db = await _dbHelper.database;
+    final db = await _database;
     await db.transaction((txn) async {
       final pList = await txn.query('invoice_payments', where: 'id = ?', whereArgs: [paymentId]);
       if (pList.isNotEmpty) {
@@ -340,7 +349,7 @@ class InvoiceRepository {
 
   /// Delete an invoice by ID, restoring items' stock before deleting.
   Future<int> delete(int id) async {
-    final db = await _dbHelper.database;
+    final db = await _database;
     return await db.transaction((txn) async {
       // Restore stock for items of the deleted invoice
       final oldItems = await txn.query(
@@ -368,7 +377,7 @@ class InvoiceRepository {
 
   /// Get the next invoice counter for generating invoice numbers.
   Future<int> nextCounter() async {
-    final db = await _dbHelper.database;
+    final db = await _database;
     final result = await db.rawQuery('SELECT MAX(id) as max_id FROM invoices');
     final maxId = result.first['max_id'] as int?;
     return (maxId ?? 0) + 1;
@@ -376,7 +385,7 @@ class InvoiceRepository {
 
   /// Get invoices for a specific customer.
   Future<List<InvoiceModel>> getByCustomerId(int customerId) async {
-    final db = await _dbHelper.database;
+    final db = await _database;
     final maps = await db.rawQuery('''
       SELECT i.*, c.name as customer_name
       FROM invoices i
@@ -385,5 +394,75 @@ class InvoiceRepository {
       ORDER BY i.date DESC
     ''', [customerId]);
     return maps.map((m) => InvoiceModel.fromMap(m)).toList();
+  }
+
+  /// Fetch all sales of a specific product with customer and invoice info.
+  Future<List<ProductSaleRecord>> getProductSales(
+    int productId, {
+    String? dateFrom,
+    String? dateTo,
+    String? status,
+    String? query,
+  }) async {
+    final db = await _database;
+
+    String sql = '''
+      SELECT 
+        ii.id as item_id,
+        i.id as invoice_id,
+        i.invoice_number,
+        i.date,
+        i.status as invoice_status,
+        c.id as customer_id,
+        c.name as customer_name,
+        c.phone as customer_phone,
+        ii.product_id,
+        ii.product_name,
+        ii.quantity,
+        ii.unit_price,
+        ii.purchase_price,
+        ii.discount_type,
+        ii.discount_value,
+        ii.discount_calculated_amount,
+        ii.line_total,
+        p.unit as product_unit,
+        p.buy_price,
+        p.current_buy_price
+      FROM invoice_items ii
+      JOIN invoices i ON ii.invoice_id = i.id
+      LEFT JOIN customers c ON i.customer_id = c.id
+      LEFT JOIN products p ON ii.product_id = p.id
+      WHERE ii.product_id = ?
+    ''';
+    final args = <dynamic>[productId];
+
+    if (dateFrom != null && dateFrom.isNotEmpty) {
+      sql += ' AND i.date >= ?';
+      args.add(dateFrom);
+    }
+    if (dateTo != null && dateTo.isNotEmpty) {
+      sql += ' AND i.date <= ?';
+      args.add(dateTo);
+    }
+    if (status != null && status.isNotEmpty && status != 'همه') {
+      sql += ' AND i.status = ?';
+      args.add(status);
+    }
+    if (query != null && query.trim().isNotEmpty) {
+      final q = query.trim();
+      final enQuery = q.toEnglishDigits();
+      if (enQuery != q) {
+        sql += ' AND (c.name LIKE ? OR i.invoice_number LIKE ? OR i.invoice_number LIKE ?)';
+        args.addAll(['%$q%', '%$q%', '%$enQuery%']);
+      } else {
+        sql += ' AND (c.name LIKE ? OR i.invoice_number LIKE ?)';
+        args.addAll(['%$q%', '%$q%']);
+      }
+    }
+
+    sql += ' ORDER BY i.date DESC, i.id DESC';
+
+    final maps = await db.rawQuery(sql, args);
+    return maps.map((m) => ProductSaleRecord.fromMap(m)).toList();
   }
 }

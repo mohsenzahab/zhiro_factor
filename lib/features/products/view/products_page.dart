@@ -19,30 +19,46 @@ import 'widgets/price_history_dialog.dart';
 
 /// Products management page with CRUD data table.
 class ProductsPage extends StatelessWidget {
+  final void Function(int productId)? onViewProductSales;
   final void Function(int productId)? onViewProductPurchases;
   final ProductCubit? cubit;
 
-  const ProductsPage({super.key, this.onViewProductPurchases, this.cubit});
+  const ProductsPage({
+    super.key,
+    this.onViewProductSales,
+    this.onViewProductPurchases,
+    this.cubit,
+  });
 
   @override
   Widget build(BuildContext context) {
     if (cubit != null) {
       return BlocProvider.value(
         value: cubit!,
-        child: _ProductsView(onViewProductPurchases: onViewProductPurchases),
+        child: _ProductsView(
+          onViewProductSales: onViewProductSales,
+          onViewProductPurchases: onViewProductPurchases,
+        ),
       );
     }
     return BlocProvider(
       create: (_) => ProductCubit()..loadProducts(),
-      child: _ProductsView(onViewProductPurchases: onViewProductPurchases),
+      child: _ProductsView(
+        onViewProductSales: onViewProductSales,
+        onViewProductPurchases: onViewProductPurchases,
+      ),
     );
   }
 }
 
 class _ProductsView extends StatefulWidget {
+  final void Function(int productId)? onViewProductSales;
   final void Function(int productId)? onViewProductPurchases;
 
-  const _ProductsView({this.onViewProductPurchases});
+  const _ProductsView({
+    this.onViewProductSales,
+    this.onViewProductPurchases,
+  });
 
   @override
   State<_ProductsView> createState() => _ProductsViewState();
@@ -861,10 +877,17 @@ class _ProductsViewState extends State<_ProductsView> {
                     DataCell(Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        if (widget.onViewProductSales != null)
+                          IconButton(
+                            icon: const Icon(Icons.receipt_long_rounded, size: 18),
+                            color: AppColors.accent,
+                            tooltip: AppStrings.viewProductSales,
+                            onPressed: () => widget.onViewProductSales!(p.id!),
+                          ),
                         if (widget.onViewProductPurchases != null)
                           IconButton(
-                            icon: const Icon(Icons.receipt_long, size: 18),
-                            color: AppColors.accent,
+                            icon: const Icon(Icons.shopping_bag_outlined, size: 18),
+                            color: AppColors.primary,
                             tooltip: 'تاریخچه خرید کالا',
                             onPressed: () => widget.onViewProductPurchases!(p.id!),
                           ),

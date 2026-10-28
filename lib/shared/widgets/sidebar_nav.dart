@@ -10,6 +10,7 @@ enum NavPage {
   newPurchase,
   purchaseHistory,
   products,
+  productSalesHistory,
   demands,
   customers,
   suppliers,
@@ -257,7 +258,8 @@ class _SidebarNavState extends State<SidebarNav> with SingleTickerProviderStateM
   }
 
   Widget _buildNavItem(_NavItem item) {
-    final isActive = widget.currentPage == item.page;
+    final isActive = widget.currentPage == item.page ||
+        (item.page == NavPage.products && widget.currentPage == NavPage.productSalesHistory);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Material(

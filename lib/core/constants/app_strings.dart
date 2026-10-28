@@ -316,4 +316,22 @@ class AppStrings {
   static const String maxIncrease = 'بیشترین افزایش';
   static const String maxDecrease = 'بیشترین کاهش';
   static const String priceHistoryForProduct = 'تاریخچه تغییرات قیمت کالا';
+
+  // ─── Product Sales History (تاریخچه فروش کالا) ──────────────────────
+  static const String productSalesHistory = 'تاریخچه فروش کالا';
+  static const String productSalesHistorySubtitle = 'سوابق و فاکتورهای فروش کالا به مشتریان';
+  static const String backToProducts = 'بازگشت به کالاها';
+  static const String viewProductSales = 'تاریخچه فروش کالا';
+  static const String remainingStock = 'موجودی انبار';
+  static const String currentBuyPriceLabel = 'قیمت خرید کنونی';
+  static const String currentSellPriceLabel = 'قیمت فروش کنونی';
+  static const String totalSoldLabel = 'تعداد کل فروش';
+  static const String periodSalesTotal = 'مجموع فروش دوره';
+  static const String periodProfitTotal = 'سود دوره';
+  static const String periodQuantityTotal = 'تعداد فروش دوره';
+  static const String noProductSalesHistory = 'هیچ سابقه فروشی برای این کالا ثبت نشده است';
+  static const String searchCustomerOrInvoice = 'جستجوی نام مشتری یا شماره فاکتور...';
+  static const String clickToOpenInvoice = 'کلیک برای باز کردن فاکتور';
+  static const String exportProductSalesExcel = 'خروجی اکسل تاریخچه فروش';
+  static const String exportProductSalesCsv = 'خروجی CSV تاریخچه فروش';
 }
