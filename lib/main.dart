@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'core/database/database_helper.dart';
+import 'core/database/app_database.dart';
 import 'app.dart';
 
 void main() async {
@@ -10,7 +10,7 @@ void main() async {
   sqfliteFfiInit();
 
   // Initialize database (with automatic rolling backups)
-  await DatabaseHelper.instance.database;
+  AppDatabase.instance;
 
   runApp(const ZhiroFactorApp());
 }

@@ -1,16 +1,18 @@
-import '../../core/database/database_helper.dart';
+import 'package:drift/drift.dart';
+import '../../core/database/app_database.dart';
 import '../../core/extensions/number_extensions.dart';
 import '../models/demand_model.dart';
 import '../models/product_model.dart';
 import 'product_repository.dart';
 
-/// Repository for managing Demands and customer request history.
+/// Repository for managing Demands and customer request history using Drift ORM.
 class DemandRepository {
-  final DatabaseHelper _dbHelper = DatabaseHelper.instance;
+  final AppDatabase _db;
   final ProductRepository _productRepo;
 
-  DemandRepository({ProductRepository? productRepo})
-      : _productRepo = productRepo ?? ProductRepository();
+  DemandRepository({AppDatabase? db, ProductRepository? productRepo})
+      : _db = db ?? AppDatabase.instance,
+        _productRepo = productRepo ?? ProductRepository(db: db);
 
   /// Fetch all demands filtered by status, category, search query and sorted.
   Future<List<DemandModel>> getAll({
@@ -19,64 +21,68 @@ class DemandRepository {
     String? query,
     String sortBy = 'demandCount', // 'demandCount', 'newest', 'profit', 'capital', 'title'
   }) async {
-    final db = await _dbHelper.database;
-
-    final whereClauses = <String>[];
-    final args = <dynamic>[];
+    final q = _db.select(_db.demands);
 
     if (status != null && status.isNotEmpty) {
-      whereClauses.add('d.status = ?');
-      args.add(status);
+      q.where((d) => d.status.equals(status));
     }
 
     if (category != null && category.isNotEmpty) {
       if (category == 'بدون دسته‌بندی') {
-        whereClauses.add('(d.category IS NULL OR d.category = "")');
+        q.where((d) => d.category.isNull() | d.category.equals(''));
       } else {
-        whereClauses.add('d.category = ?');
-        args.add(category);
+        q.where((d) => d.category.equals(category));
       }
     }
 
     if (query != null && query.trim().isNotEmpty) {
-      final q = query.trim();
-      final enQuery = q.toEnglishDigits();
-      if (enQuery != q) {
-        whereClauses.add('(d.title LIKE ? OR d.notes LIKE ? OR d.category LIKE ? OR d.title LIKE ?)');
-        args.addAll(['%$q%', '%$q%', '%$q%', '%$enQuery%']);
+      final clean = query.trim();
+      final enClean = clean.toEnglishDigits();
+      final p1 = '%$clean%';
+      final p2 = '%$enClean%';
+
+      if (enClean != clean) {
+        q.where((d) =>
+            d.title.like(p1) |
+            d.notes.like(p1) |
+            d.category.like(p1) |
+            d.title.like(p2));
       } else {
-        whereClauses.add('(d.title LIKE ? OR d.notes LIKE ? OR d.category LIKE ?)');
-        args.addAll(['%$q%', '%$q%', '%$q%']);
+        q.where((d) => d.title.like(p1) | d.notes.like(p1) | d.category.like(p1));
       }
     }
 
-    final whereSql = whereClauses.isNotEmpty ? 'WHERE ${whereClauses.join(' AND ')}' : '';
-    final sql = 'SELECT d.* FROM demands d $whereSql ORDER BY d.id DESC';
-
-    final demandRows = await db.rawQuery(sql, args);
+    q.orderBy([(d) => OrderingTerm.desc(d.id)]);
+    final demandRows = await q.get();
     if (demandRows.isEmpty) return [];
 
-    final demandIds = demandRows.map((r) => r['id'] as int).toList();
-    final placeholders = List.filled(demandIds.length, '?').join(',');
+    final demandIds = demandRows.map((r) => r.id).toList();
 
-    final requestRows = await db.rawQuery('''
-      SELECT demand_id, request_date
-      FROM demand_requests
-      WHERE demand_id IN ($placeholders)
-      ORDER BY request_date ASC
-    ''', demandIds);
+    final requestRows = await (_db.select(_db.demandRequests)
+          ..where((r) => r.demandId.isIn(demandIds))
+          ..orderBy([(r) => OrderingTerm.asc(r.requestDate)]))
+        .get();
 
     final requestsByDemand = <int, List<String>>{};
     for (final r in requestRows) {
-      final did = r['demand_id'] as int;
-      final date = r['request_date'] as String;
-      requestsByDemand.putIfAbsent(did, () => []).add(date);
+      requestsByDemand.putIfAbsent(r.demandId, () => []).add(r.requestDate);
     }
 
     final demands = demandRows.map((row) {
-      final id = row['id'] as int;
-      final requestDates = requestsByDemand[id] ?? [];
-      return DemandModel.fromMap(row, requestDates: requestDates);
+      final requestDates = requestsByDemand[row.id] ?? [];
+      return DemandModel(
+        id: row.id,
+        title: row.title,
+        category: row.category,
+        buyPrice: row.buyPrice,
+        sellPrice: row.sellPrice,
+        status: row.status,
+        targetQuantity: row.targetQuantity,
+        notes: row.notes,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        requestDates: requestDates,
+      );
     }).toList();
 
     // Apply in-memory sorting
@@ -117,41 +123,60 @@ class DemandRepository {
 
   /// Get single demand with all its request dates.
   Future<DemandModel?> getById(int id) async {
-    final db = await _dbHelper.database;
-    final rows = await db.query('demands', where: 'id = ?', whereArgs: [id]);
-    if (rows.isEmpty) return null;
+    final row = await (_db.select(_db.demands)..where((d) => d.id.equals(id))).getSingleOrNull();
+    if (row == null) return null;
 
-    final requestRows = await db.query(
-      'demand_requests',
-      where: 'demand_id = ?',
-      whereArgs: [id],
-      orderBy: 'request_date ASC',
+    final requestRows = await (_db.select(_db.demandRequests)
+          ..where((r) => r.demandId.equals(id))
+          ..orderBy([(r) => OrderingTerm.asc(r.requestDate)]))
+        .get();
+
+    final requestDates = requestRows.map((r) => r.requestDate).toList();
+
+    return DemandModel(
+      id: row.id,
+      title: row.title,
+      category: row.category,
+      buyPrice: row.buyPrice,
+      sellPrice: row.sellPrice,
+      status: row.status,
+      targetQuantity: row.targetQuantity,
+      notes: row.notes,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      requestDates: requestDates,
     );
-    final requestDates = requestRows.map((r) => r['request_date'] as String).toList();
-
-    return DemandModel.fromMap(rows.first, requestDates: requestDates);
   }
 
   /// Insert a new demand and record its initial request dates.
   Future<int> insert(DemandModel demand, {int initialCount = 1, String? initialDate}) async {
-    final db = await _dbHelper.database;
     final now = DateTime.now().toIso8601String();
     final date = initialDate ?? now;
 
-    return await db.transaction((txn) async {
-      final map = demand.toMap();
-      map['created_at'] = now;
-      map['updated_at'] = now;
-      final demandId = await txn.insert('demands', map);
+    return await _db.transaction(() async {
+      final demandId = await _db.into(_db.demands).insert(
+            DemandsCompanion.insert(
+              title: demand.title.trim(),
+              category: Value(demand.category?.trim()),
+              buyPrice: Value(demand.buyPrice),
+              sellPrice: Value(demand.sellPrice),
+              status: Value(demand.status),
+              targetQuantity: Value(demand.targetQuantity),
+              notes: Value(demand.notes?.trim()),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
 
-      // Insert initial request dates
       final count = initialCount.clamp(1, 1000);
       for (int i = 0; i < count; i++) {
-        await txn.insert('demand_requests', {
-          'demand_id': demandId,
-          'request_date': date,
-          'note': 'ثبت اولیه',
-        });
+        await _db.into(_db.demandRequests).insert(
+              DemandRequestsCompanion.insert(
+                demandId: demandId,
+                requestDate: date,
+                note: const Value('ثبت اولیه'),
+              ),
+            );
       }
 
       return demandId;
@@ -161,81 +186,85 @@ class DemandRepository {
   /// Update demand properties.
   Future<int> update(DemandModel demand) async {
     if (demand.id == null) return 0;
-    final db = await _dbHelper.database;
-    final map = demand.toMap();
-    map['updated_at'] = DateTime.now().toIso8601String();
+    final now = DateTime.now().toIso8601String();
 
-    return await db.update('demands', map, where: 'id = ?', whereArgs: [demand.id]);
+    return await (_db.update(_db.demands)..where((d) => d.id.equals(demand.id!))).write(
+          DemandsCompanion(
+            title: Value(demand.title.trim()),
+            category: Value(demand.category?.trim()),
+            buyPrice: Value(demand.buyPrice),
+            sellPrice: Value(demand.sellPrice),
+            status: Value(demand.status),
+            targetQuantity: Value(demand.targetQuantity),
+            notes: Value(demand.notes?.trim()),
+            updatedAt: Value(now),
+          ),
+        );
   }
 
   /// Update status of a demand.
   Future<int> updateStatus(int demandId, String newStatus) async {
-    final db = await _dbHelper.database;
-    return await db.update(
-      'demands',
-      {
-        'status': newStatus,
-        'updated_at': DateTime.now().toIso8601String(),
-      },
-      where: 'id = ?',
-      whereArgs: [demandId],
-    );
+    final now = DateTime.now().toIso8601String();
+    return await (_db.update(_db.demands)..where((d) => d.id.equals(demandId))).write(
+          DemandsCompanion(
+            status: Value(newStatus),
+            updatedAt: Value(now),
+          ),
+        );
   }
 
   /// Increment customer requests count by adding a timestamped request event (+ button).
   Future<void> addRequest(int demandId, {String? requestDate, String? note}) async {
-    final db = await _dbHelper.database;
     final date = requestDate ?? DateTime.now().toIso8601String();
 
-    await db.transaction((txn) async {
-      await txn.insert('demand_requests', {
-        'demand_id': demandId,
-        'request_date': date,
-        'note': note,
-      });
-      await txn.update(
-        'demands',
-        {'updated_at': date},
-        where: 'id = ?',
-        whereArgs: [demandId],
-      );
+    await _db.transaction(() async {
+      await _db.into(_db.demandRequests).insert(
+            DemandRequestsCompanion.insert(
+              demandId: demandId,
+              requestDate: date,
+              note: Value(note),
+            ),
+          );
+      await (_db.update(_db.demands)..where((d) => d.id.equals(demandId))).write(
+            DemandsCompanion(
+              updatedAt: Value(date),
+            ),
+          );
     });
   }
 
   /// Decrement customer requests count by removing the most recent request event (- button).
   /// Ensures at least 1 request record remains (returns false if count <= 1).
   Future<bool> removeLatestRequest(int demandId) async {
-    final db = await _dbHelper.database;
-
-    return await db.transaction((txn) async {
-      final rows = await txn.rawQuery('''
-        SELECT id FROM demand_requests
-        WHERE demand_id = ?
-        ORDER BY request_date DESC, id DESC
-      ''', [demandId]);
+    return await _db.transaction(() async {
+      final rows = await (_db.select(_db.demandRequests)
+            ..where((r) => r.demandId.equals(demandId))
+            ..orderBy([
+              (tbl) => OrderingTerm.desc(tbl.requestDate),
+              (tbl) => OrderingTerm.desc(tbl.id),
+            ]))
+          .get();
 
       if (rows.length <= 1) {
-        return false; // Keep at least one request record
+        return false;
       }
 
-      final latestId = rows.first['id'] as int;
-      await txn.delete('demand_requests', where: 'id = ?', whereArgs: [latestId]);
-      await txn.update(
-        'demands',
-        {'updated_at': DateTime.now().toIso8601String()},
-        where: 'id = ?',
-        whereArgs: [demandId],
-      );
+      final latestId = rows.first.id;
+      await (_db.delete(_db.demandRequests)..where((r) => r.id.equals(latestId))).go();
+      await (_db.update(_db.demands)..where((d) => d.id.equals(demandId))).write(
+            DemandsCompanion(
+              updatedAt: Value(DateTime.now().toIso8601String()),
+            ),
+          );
       return true;
     });
   }
 
   /// Delete a demand and its associated requests.
   Future<int> delete(int id) async {
-    final db = await _dbHelper.database;
-    return await db.transaction((txn) async {
-      await txn.delete('demand_requests', where: 'demand_id = ?', whereArgs: [id]);
-      return await txn.delete('demands', where: 'id = ?', whereArgs: [id]);
+    return await _db.transaction(() async {
+      await (_db.delete(_db.demandRequests)..where((r) => r.demandId.equals(id))).go();
+      return await (_db.delete(_db.demands)..where((d) => d.id.equals(id))).go();
     });
   }
 

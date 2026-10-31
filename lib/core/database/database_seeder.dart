@@ -1,167 +1,400 @@
-import 'package:sqflite_common/sqlite_api.dart';
-import 'database_helper.dart';
+import 'package:drift/drift.dart';
+import 'app_database.dart';
 
-/// Seeds initial mock data on first run.
+/// Seeds initial mock data on first run using Drift ORM.
 class DatabaseSeeder {
   DatabaseSeeder._();
 
   /// Check if data exists, seed if empty.
-  static Future<void> seedIfEmpty() async {
-    final db = await DatabaseHelper.instance.database;
-    final count = (await db.rawQuery('SELECT COUNT(*) as c FROM products')).first['c'] as int;
-    if (count > 0) return; // Already seeded
+  static Future<void> seedIfEmpty([AppDatabase? database]) async {
+    final db = database ?? AppDatabase.instance;
+    final count = await (db.selectOnly(db.products)..addColumns([db.products.id.count()]))
+        .map((row) => row.read(db.products.id.count()))
+        .getSingle();
+    if ((count ?? 0) > 0) return; // Already seeded
 
     await _seedProducts(db);
     await _seedCustomers(db);
     await _seedInvoices(db);
   }
 
-  static Future<void> _seedProducts(Database db) async {
+  static Future<void> _seedProducts(AppDatabase db) async {
     final products = [
-      {'code': 'P001', 'name': 'لپ‌تاپ ایسوس VivoBook', 'category': 'الکترونیک', 'buy_price': 45000000.0, 'unit': 'دستگاه', 'stock': 15.0},
-      {'code': 'P002', 'name': 'موس بی‌سیم لاجیتک', 'category': 'جانبی', 'buy_price': 1200000.0, 'unit': 'عدد', 'stock': 50.0},
-      {'code': 'P003', 'name': 'کیبورد مکانیکال ردراگون', 'category': 'جانبی', 'buy_price': 3500000.0, 'unit': 'عدد', 'stock': 30.0},
-      {'code': 'P004', 'name': 'مانیتور سامسونگ 27 اینچ', 'category': 'الکترونیک', 'buy_price': 18000000.0, 'unit': 'دستگاه', 'stock': 8.0},
-      {'code': 'P005', 'name': 'هدفون بلوتوثی سونی', 'category': 'جانبی', 'buy_price': 8500000.0, 'unit': 'عدد', 'stock': 25.0},
-      {'code': 'P006', 'name': 'فلش مموری 64 گیگ سن‌دیسک', 'category': 'ذخیره‌سازی', 'buy_price': 450000.0, 'unit': 'عدد', 'stock': 100.0},
-      {'code': 'P007', 'name': 'هارد اکسترنال 1 ترابایت', 'category': 'ذخیره‌سازی', 'buy_price': 5200000.0, 'unit': 'عدد', 'stock': 12.0},
-      {'code': 'P008', 'name': 'کابل شارژ تایپ سی', 'category': 'جانبی', 'buy_price': 250000.0, 'unit': 'عدد', 'stock': 200.0},
-      {'code': 'P009', 'name': 'وب‌کم لاجیتک C920', 'category': 'الکترونیک', 'buy_price': 6800000.0, 'unit': 'عدد', 'stock': 18.0},
-      {'code': 'P010', 'name': 'پرینتر اپسون L3250', 'category': 'الکترونیک', 'buy_price': 12500000.0, 'unit': 'دستگاه', 'stock': 5.0},
-      {'code': 'P011', 'name': 'اسپیکر بلوتوثی JBL', 'category': 'جانبی', 'buy_price': 4200000.0, 'unit': 'عدد', 'stock': 22.0},
-      {'code': 'P012', 'name': 'پاوربانک 20000 شیائومی', 'category': 'جانبی', 'buy_price': 2800000.0, 'unit': 'عدد', 'stock': 35.0},
-      {'code': 'P013', 'name': 'خدمات نصب ویندوز', 'category': 'خدمات', 'buy_price': 500000.0, 'unit': 'پروژه', 'stock': 999.0},
-      {'code': 'P014', 'name': 'مشاوره فنی (ساعتی)', 'category': 'خدمات', 'buy_price': 800000.0, 'unit': 'ساعت', 'stock': 999.0},
-      {'code': 'P015', 'name': 'کارتریج پرینتر HP', 'category': 'مواد مصرفی', 'buy_price': 1800000.0, 'unit': 'عدد', 'stock': 40.0},
+      ProductsCompanion.insert(
+        name: 'لپ‌تاپ ایسوس VivoBook',
+        unit: 'دستگاه',
+        buyPrice: 45000000.0,
+        code: const Value('P001'),
+        category: const Value('الکترونیک'),
+        stock: const Value(15.0),
+        createdAt: Value(DateTime.now().toIso8601String()),
+      ),
+      ProductsCompanion.insert(
+        name: 'موس بی‌سیم لاجیتک',
+        unit: 'عدد',
+        buyPrice: 1200000.0,
+        code: const Value('P002'),
+        category: const Value('جانبی'),
+        stock: const Value(50.0),
+        createdAt: Value(DateTime.now().toIso8601String()),
+      ),
+      ProductsCompanion.insert(
+        name: 'کیبورد مکانیکال ردراگون',
+        unit: 'عدد',
+        buyPrice: 3500000.0,
+        code: const Value('P003'),
+        category: const Value('جانبی'),
+        stock: const Value(30.0),
+        createdAt: Value(DateTime.now().toIso8601String()),
+      ),
+      ProductsCompanion.insert(
+        name: 'مانیتور سامسونگ 27 اینچ',
+        unit: 'دستگاه',
+        buyPrice: 18000000.0,
+        code: const Value('P004'),
+        category: const Value('الکترونیک'),
+        stock: const Value(8.0),
+        createdAt: Value(DateTime.now().toIso8601String()),
+      ),
+      ProductsCompanion.insert(
+        name: 'هدفون بلوتوثی سونی',
+        unit: 'عدد',
+        buyPrice: 8500000.0,
+        code: const Value('P005'),
+        category: const Value('جانبی'),
+        stock: const Value(25.0),
+        createdAt: Value(DateTime.now().toIso8601String()),
+      ),
+      ProductsCompanion.insert(
+        name: 'فلش مموری 64 گیگ سن‌دیسک',
+        unit: 'عدد',
+        buyPrice: 450000.0,
+        code: const Value('P006'),
+        category: const Value('ذخیره‌سازی'),
+        stock: const Value(100.0),
+        createdAt: Value(DateTime.now().toIso8601String()),
+      ),
+      ProductsCompanion.insert(
+        name: 'هارد اکسترنال 1 ترابایت',
+        unit: 'عدد',
+        buyPrice: 5200000.0,
+        code: const Value('P007'),
+        category: const Value('ذخیره‌سازی'),
+        stock: const Value(12.0),
+        createdAt: Value(DateTime.now().toIso8601String()),
+      ),
+      ProductsCompanion.insert(
+        name: 'کابل شارژ تایپ سی',
+        unit: 'عدد',
+        buyPrice: 250000.0,
+        code: const Value('P008'),
+        category: const Value('جانبی'),
+        stock: const Value(200.0),
+        createdAt: Value(DateTime.now().toIso8601String()),
+      ),
+      ProductsCompanion.insert(
+        name: 'وب‌کم لاجیتک C920',
+        unit: 'عدد',
+        buyPrice: 6800000.0,
+        code: const Value('P009'),
+        category: const Value('الکترونیک'),
+        stock: const Value(18.0),
+        createdAt: Value(DateTime.now().toIso8601String()),
+      ),
+      ProductsCompanion.insert(
+        name: 'پرینتر اپسون L3250',
+        unit: 'دستگاه',
+        buyPrice: 12500000.0,
+        code: const Value('P010'),
+        category: const Value('الکترونیک'),
+        stock: const Value(5.0),
+        createdAt: Value(DateTime.now().toIso8601String()),
+      ),
+      ProductsCompanion.insert(
+        name: 'اسپیکر بلوتوثی JBL',
+        unit: 'عدد',
+        buyPrice: 4200000.0,
+        code: const Value('P011'),
+        category: const Value('جانبی'),
+        stock: const Value(22.0),
+        createdAt: Value(DateTime.now().toIso8601String()),
+      ),
+      ProductsCompanion.insert(
+        name: 'پاوربانک 20000 شیائومی',
+        unit: 'عدد',
+        buyPrice: 2800000.0,
+        code: const Value('P012'),
+        category: const Value('جانبی'),
+        stock: const Value(35.0),
+        createdAt: Value(DateTime.now().toIso8601String()),
+      ),
+      ProductsCompanion.insert(
+        name: 'خدمات نصب ویندوز',
+        unit: 'پروژه',
+        buyPrice: 500000.0,
+        code: const Value('P013'),
+        category: const Value('خدمات'),
+        stock: const Value(999.0),
+        createdAt: Value(DateTime.now().toIso8601String()),
+      ),
+      ProductsCompanion.insert(
+        name: 'مشاوره فنی (ساعتی)',
+        unit: 'ساعت',
+        buyPrice: 800000.0,
+        code: const Value('P014'),
+        category: const Value('خدمات'),
+        stock: const Value(999.0),
+        createdAt: Value(DateTime.now().toIso8601String()),
+      ),
+      ProductsCompanion.insert(
+        name: 'کارتریج پرینتر HP',
+        unit: 'عدد',
+        buyPrice: 1800000.0,
+        code: const Value('P015'),
+        category: const Value('مواد مصرفی'),
+        stock: const Value(40.0),
+        createdAt: Value(DateTime.now().toIso8601String()),
+      ),
     ];
 
-    for (final p in products) {
-      p['created_at'] = DateTime.now().toIso8601String();
-      await db.insert('products', p);
-    }
+    await db.batch((batch) {
+      batch.insertAll(db.products, products);
+    });
   }
 
-  static Future<void> _seedCustomers(Database db) async {
+  static Future<void> _seedCustomers(AppDatabase db) async {
     final customers = [
-      {'code': 'C001', 'name': 'شرکت فناوری آینده', 'phone': '021-88776655', 'address': 'تهران، خیابان ولیعصر، پلاک 120', 'notes': 'مشتری ویژه'},
-      {'code': 'C002', 'name': 'محمد رضایی', 'phone': '09121234567', 'address': 'اصفهان، خیابان چهارباغ', 'notes': ''},
-      {'code': 'C003', 'name': 'فروشگاه دیجیتال نوین', 'phone': '021-44332211', 'address': 'تهران، بازار موبایل علاءالدین', 'notes': 'خرید عمده'},
-      {'code': 'C004', 'name': 'علی احمدی', 'phone': '09357654321', 'address': 'شیراز، بلوار زند', 'notes': ''},
-      {'code': 'C005', 'name': 'مؤسسه آموزشی دانش‌پژوهان', 'phone': '031-36251478', 'address': 'اصفهان، خیابان مشتاق', 'notes': 'قرارداد سالانه'},
-      {'code': 'C006', 'name': 'سارا محمدی', 'phone': '09198765432', 'address': 'مشهد، بلوار وکیل‌آباد', 'notes': ''},
-      {'code': 'C007', 'name': 'شرکت مهندسی پارس‌سازه', 'phone': '021-22334455', 'address': 'تهران، سعادت‌آباد', 'notes': 'نیاز به فاکتور رسمی'},
-      {'code': 'C008', 'name': 'حسین کریمی', 'phone': '09361112233', 'address': 'تبریز، خیابان آزادی', 'notes': ''},
+      CustomersCompanion.insert(
+        name: 'شرکت فناوری آینده',
+        code: const Value('C001'),
+        phone: const Value('021-88776655'),
+        address: const Value('تهران، خیابان ولیعصر، پلاک 120'),
+        notes: const Value('مشتری ویژه'),
+      ),
+      CustomersCompanion.insert(
+        name: 'محمد رضایی',
+        code: const Value('C002'),
+        phone: const Value('09121234567'),
+        address: const Value('اصفهان، خیابان چهارباغ'),
+      ),
+      CustomersCompanion.insert(
+        name: 'فروشگاه دیجیتال نوین',
+        code: const Value('C003'),
+        phone: const Value('021-44332211'),
+        address: const Value('تهران، بازار موبایل علاءالدین'),
+        notes: const Value('خرید عمده'),
+      ),
+      CustomersCompanion.insert(
+        name: 'علی احمدی',
+        code: const Value('C004'),
+        phone: const Value('09357654321'),
+        address: const Value('شیراز، بلوار زند'),
+      ),
+      CustomersCompanion.insert(
+        name: 'مؤسسه آموزشی دانش‌پژوهان',
+        code: const Value('C005'),
+        phone: const Value('031-36251478'),
+        address: const Value('اصفهان، خیابان مشتاق'),
+        notes: const Value('قرارداد سالانه'),
+      ),
+      CustomersCompanion.insert(
+        name: 'سارا محمدی',
+        code: const Value('C006'),
+        phone: const Value('09198765432'),
+        address: const Value('مشهد، بلوار وکیل‌آباد'),
+      ),
+      CustomersCompanion.insert(
+        name: 'شرکت مهندسی پارس‌سازه',
+        code: const Value('C007'),
+        phone: const Value('021-22334455'),
+        address: const Value('تهران، سعادت‌آباد'),
+        notes: const Value('نیاز به فاکتور رسمی'),
+      ),
+      CustomersCompanion.insert(
+        name: 'حسین کریمی',
+        code: const Value('C008'),
+        phone: const Value('09361112233'),
+        address: const Value('تبریز، خیابان آزادی'),
+      ),
     ];
 
-    for (final c in customers) {
-      await db.insert('customers', c);
-    }
+    await db.batch((batch) {
+      batch.insertAll(db.customers, customers);
+    });
   }
 
-  static Future<void> _seedInvoices(Database db) async {
+  static Future<void> _seedInvoices(AppDatabase db) async {
     // Invoice 1: Settled
-    final inv1Id = await db.insert('invoices', {
-      'invoice_number': 'INV-0506-0001',
-      'customer_id': 1,
-      'date': DateTime(2026, 8, 20).toIso8601String(),
-      'status': 'تسویه شده',
-      'total_gross': 52400000.0,
-      'total_discount': 2400000.0,
-      'total_net': 50000000.0,
-      'notes': 'فاکتور خرید تجهیزات دفتر',
-    });
-    await db.insert('invoice_items', {
-      'invoice_id': inv1Id, 'product_id': 1, 'product_name': 'لپ‌تاپ ایسوس VivoBook',
-      'unit_price': 45000000.0, 'quantity': 1.0, 'discount_type': 'percentage',
-      'discount_value': 5.0, 'discount_calculated_amount': 2250000.0, 'line_total': 42750000.0,
-    });
-    await db.insert('invoice_items', {
-      'invoice_id': inv1Id, 'product_id': 2, 'product_name': 'موس بی‌سیم لاجیتک',
-      'unit_price': 1200000.0, 'quantity': 2.0, 'discount_type': 'none',
-      'discount_value': 0.0, 'discount_calculated_amount': 0.0, 'line_total': 2400000.0,
-    });
-    await db.insert('invoice_items', {
-      'invoice_id': inv1Id, 'product_id': 3, 'product_name': 'کیبورد مکانیکال ردراگون',
-      'unit_price': 3500000.0, 'quantity': 2.0, 'discount_type': 'amount',
-      'discount_value': 150000.0, 'discount_calculated_amount': 150000.0, 'line_total': 6850000.0,
+    final inv1Id = await db.into(db.invoices).insert(InvoicesCompanion.insert(
+      invoiceNumber: 'INV-0506-0001',
+      customerId: const Value(1),
+      date: DateTime(2026, 8, 20).toIso8601String(),
+      status: const Value('تسویه شده'),
+      totalGross: 52400000.0,
+      totalDiscount: 2400000.0,
+      totalNet: 50000000.0,
+      notes: const Value('فاکتور خرید تجهیزات دفتر'),
+    ));
+
+    await db.batch((batch) {
+      batch.insertAll(db.invoiceItems, [
+        InvoiceItemsCompanion.insert(
+          invoiceId: inv1Id,
+          productId: const Value(1),
+          productName: 'لپ‌تاپ ایسوس VivoBook',
+          unitPrice: 45000000.0,
+          quantity: const Value(1.0),
+          discountType: const Value('percentage'),
+          discountValue: const Value(5.0),
+          discountCalculatedAmount: const Value(2250000.0),
+          lineTotal: 42750000.0,
+        ),
+        InvoiceItemsCompanion.insert(
+          invoiceId: inv1Id,
+          productId: const Value(2),
+          productName: 'موس بی‌سیم لاجیتک',
+          unitPrice: 1200000.0,
+          quantity: const Value(2.0),
+          discountType: const Value('none'),
+          discountValue: const Value(0.0),
+          discountCalculatedAmount: const Value(0.0),
+          lineTotal: 2400000.0,
+        ),
+        InvoiceItemsCompanion.insert(
+          invoiceId: inv1Id,
+          productId: const Value(3),
+          productName: 'کیبورد مکانیکال ردراگون',
+          unitPrice: 3500000.0,
+          quantity: const Value(2.0),
+          discountType: const Value('amount'),
+          discountValue: const Value(150000.0),
+          discountCalculatedAmount: const Value(150000.0),
+          lineTotal: 6850000.0,
+        ),
+      ]);
     });
 
     // Invoice 2: Pending
-    final inv2Id = await db.insert('invoices', {
-      'invoice_number': 'INV-0506-0002',
-      'customer_id': 3,
-      'date': DateTime(2026, 8, 25).toIso8601String(),
-      'status': 'در انتظار پرداخت',
-      'total_gross': 36000000.0,
-      'total_discount': 1800000.0,
-      'total_net': 34200000.0,
-      'notes': '',
-    });
-    await db.insert('invoice_items', {
-      'invoice_id': inv2Id, 'product_id': 4, 'product_name': 'مانیتور سامسونگ 27 اینچ',
-      'unit_price': 18000000.0, 'quantity': 2.0, 'discount_type': 'percentage',
-      'discount_value': 5.0, 'discount_calculated_amount': 1800000.0, 'line_total': 34200000.0,
-    });
+    final inv2Id = await db.into(db.invoices).insert(InvoicesCompanion.insert(
+      invoiceNumber: 'INV-0506-0002',
+      customerId: const Value(3),
+      date: DateTime(2026, 8, 25).toIso8601String(),
+      status: const Value('در انتظار پرداخت'),
+      totalGross: 36000000.0,
+      totalDiscount: 1800000.0,
+      totalNet: 34200000.0,
+    ));
+
+    await db.into(db.invoiceItems).insert(InvoiceItemsCompanion.insert(
+      invoiceId: inv2Id,
+      productId: const Value(4),
+      productName: 'مانیتور سامسونگ 27 اینچ',
+      unitPrice: 18000000.0,
+      quantity: const Value(2.0),
+      discountType: const Value('percentage'),
+      discountValue: const Value(5.0),
+      discountCalculatedAmount: const Value(1800000.0),
+      lineTotal: 34200000.0,
+    ));
 
     // Invoice 3: Deposit
-    final inv3Id = await db.insert('invoices', {
-      'invoice_number': 'INV-0506-0003',
-      'customer_id': 5,
-      'date': DateTime(2026, 8, 28).toIso8601String(),
-      'status': 'بیعانه',
-      'total_gross': 26300000.0,
-      'total_discount': 0.0,
-      'total_net': 26300000.0,
-      'notes': 'بیعانه 10 میلیون دریافت شد',
-    });
-    await db.insert('invoice_items', {
-      'invoice_id': inv3Id, 'product_id': 5, 'product_name': 'هدفون بلوتوثی سونی',
-      'unit_price': 8500000.0, 'quantity': 3.0, 'discount_type': 'none',
-      'discount_value': 0.0, 'discount_calculated_amount': 0.0, 'line_total': 25500000.0,
-    });
-    await db.insert('invoice_items', {
-      'invoice_id': inv3Id, 'product_id': 14, 'product_name': 'مشاوره فنی (ساعتی)',
-      'unit_price': 800000.0, 'quantity': 1.0, 'discount_type': 'none',
-      'discount_value': 0.0, 'discount_calculated_amount': 0.0, 'line_total': 800000.0,
+    final inv3Id = await db.into(db.invoices).insert(InvoicesCompanion.insert(
+      invoiceNumber: 'INV-0506-0003',
+      customerId: const Value(5),
+      date: DateTime(2026, 8, 28).toIso8601String(),
+      status: const Value('بیعانه'),
+      totalGross: 26300000.0,
+      totalDiscount: 0.0,
+      totalNet: 26300000.0,
+      notes: const Value('بیعانه 10 میلیون دریافت شد'),
+    ));
+
+    await db.batch((batch) {
+      batch.insertAll(db.invoiceItems, [
+        InvoiceItemsCompanion.insert(
+          invoiceId: inv3Id,
+          productId: const Value(5),
+          productName: 'هدفون بلوتوثی سونی',
+          unitPrice: 8500000.0,
+          quantity: const Value(3.0),
+          discountType: const Value('none'),
+          discountValue: const Value(0.0),
+          discountCalculatedAmount: const Value(0.0),
+          lineTotal: 25500000.0,
+        ),
+        InvoiceItemsCompanion.insert(
+          invoiceId: inv3Id,
+          productId: const Value(14),
+          productName: 'مشاوره فنی (ساعتی)',
+          unitPrice: 800000.0,
+          quantity: const Value(1.0),
+          discountType: const Value('none'),
+          discountValue: const Value(0.0),
+          discountCalculatedAmount: const Value(0.0),
+          lineTotal: 800000.0,
+        ),
+      ]);
     });
 
     // Invoice 4: Settled
-    final inv4Id = await db.insert('invoices', {
-      'invoice_number': 'INV-0506-0004',
-      'customer_id': 2,
-      'date': DateTime(2026, 8, 15).toIso8601String(),
-      'status': 'تسویه شده',
-      'total_gross': 6050000.0,
-      'total_discount': 250000.0,
-      'total_net': 5800000.0,
-      'notes': '',
-    });
-    await db.insert('invoice_items', {
-      'invoice_id': inv4Id, 'product_id': 7, 'product_name': 'هارد اکسترنال 1 ترابایت',
-      'unit_price': 5200000.0, 'quantity': 1.0, 'discount_type': 'amount',
-      'discount_value': 200000.0, 'discount_calculated_amount': 200000.0, 'line_total': 5000000.0,
-    });
-    await db.insert('invoice_items', {
-      'invoice_id': inv4Id, 'product_id': 8, 'product_name': 'کابل شارژ تایپ سی',
-      'unit_price': 250000.0, 'quantity': 2.0, 'discount_type': 'percentage',
-      'discount_value': 10.0, 'discount_calculated_amount': 50000.0, 'line_total': 450000.0,
-    });
-    await db.insert('invoice_items', {
-      'invoice_id': inv4Id, 'product_id': 6, 'product_name': 'فلش مموری 64 گیگ سن‌دیسک',
-      'unit_price': 450000.0, 'quantity': 1.0, 'discount_type': 'none',
-      'discount_value': 0.0, 'discount_calculated_amount': 0.0, 'line_total': 450000.0,
+    final inv4Id = await db.into(db.invoices).insert(InvoicesCompanion.insert(
+      invoiceNumber: 'INV-0506-0004',
+      customerId: const Value(2),
+      date: DateTime(2026, 8, 15).toIso8601String(),
+      status: const Value('تسویه شده'),
+      totalGross: 6050000.0,
+      totalDiscount: 250000.0,
+      totalNet: 5800000.0,
+    ));
+
+    await db.batch((batch) {
+      batch.insertAll(db.invoiceItems, [
+        InvoiceItemsCompanion.insert(
+          invoiceId: inv4Id,
+          productId: const Value(7),
+          productName: 'هارد اکسترنال 1 ترابایت',
+          unitPrice: 5200000.0,
+          quantity: const Value(1.0),
+          discountType: const Value('amount'),
+          discountValue: const Value(200000.0),
+          discountCalculatedAmount: const Value(200000.0),
+          lineTotal: 5000000.0,
+        ),
+        InvoiceItemsCompanion.insert(
+          invoiceId: inv4Id,
+          productId: const Value(8),
+          productName: 'کابل شارژ تایپ سی',
+          unitPrice: 250000.0,
+          quantity: const Value(2.0),
+          discountType: const Value('percentage'),
+          discountValue: const Value(10.0),
+          discountCalculatedAmount: const Value(50000.0),
+          lineTotal: 450000.0,
+        ),
+        InvoiceItemsCompanion.insert(
+          invoiceId: inv4Id,
+          productId: const Value(6),
+          productName: 'فلش مموری 64 گیگ سن‌دیسک',
+          unitPrice: 450000.0,
+          quantity: const Value(1.0),
+          discountType: const Value('none'),
+          discountValue: const Value(0.0),
+          discountCalculatedAmount: const Value(0.0),
+          lineTotal: 450000.0,
+        ),
+      ]);
     });
 
     // Invoice 5: Cancelled
-    await db.insert('invoices', {
-      'invoice_number': 'INV-0506-0005',
-      'customer_id': 4,
-      'date': DateTime(2026, 8, 10).toIso8601String(),
-      'status': 'لغو شده',
-      'total_gross': 12500000.0,
-      'total_discount': 0.0,
-      'total_net': 12500000.0,
-      'notes': 'مشتری انصراف داد',
-    });
+    await db.into(db.invoices).insert(InvoicesCompanion.insert(
+      invoiceNumber: 'INV-0506-0005',
+      customerId: const Value(4),
+      date: DateTime(2026, 8, 10).toIso8601String(),
+      status: const Value('لغو شده'),
+      totalGross: 12500000.0,
+      totalDiscount: 0.0,
+      totalNet: 12500000.0,
+      notes: const Value('مشتری انصراف داد'),
+    ));
   }
 }

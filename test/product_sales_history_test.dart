@@ -11,7 +11,8 @@ import 'package:sales_box/features/products/cubit/product_sales_history_cubit.da
 import 'package:sales_box/features/products/cubit/product_sales_history_state.dart';
 import 'package:sales_box/features/products/view/product_sales_history_page.dart';
 import 'package:sales_box/features/products/view/products_page.dart';
-import 'package:sales_box/shared/widgets/date_range_filter_bar.dart';
+import 'package:drift/drift.dart';
+import 'package:sales_box/core/database/app_database.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 class _FakeProductSalesInvoiceRepo extends InvoiceRepository {
@@ -176,158 +177,109 @@ void main() {
   });
 
   group('InvoiceRepository.getProductSales Database Integration Tests', () {
-    late Database db;
+    late AppDatabase db;
     late InvoiceRepository repo;
 
     setUp(() async {
-      db = await openDatabase(
-        inMemoryDatabasePath,
-        version: 1,
-        onCreate: (db, version) async {
-          await db.execute('''
-            CREATE TABLE customers (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              name TEXT NOT NULL,
-              phone TEXT
-            )
-          ''');
-          await db.execute('''
-            CREATE TABLE products (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              code TEXT,
-              name TEXT NOT NULL,
-              category TEXT,
-              buy_price REAL NOT NULL,
-              current_buy_price REAL,
-              sell_price REAL,
-              unit TEXT NOT NULL,
-              stock REAL DEFAULT 0
-            )
-          ''');
-          await db.execute('''
-            CREATE TABLE invoices (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              invoice_number TEXT NOT NULL,
-              customer_id INTEGER,
-              date TEXT NOT NULL,
-              status TEXT NOT NULL,
-              total_gross REAL NOT NULL,
-              total_discount REAL NOT NULL,
-              total_net REAL NOT NULL
-            )
-          ''');
-          await db.execute('''
-            CREATE TABLE invoice_items (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              invoice_id INTEGER NOT NULL,
-              product_id INTEGER NOT NULL,
-              product_name TEXT NOT NULL,
-              unit_price REAL NOT NULL,
-              purchase_price REAL NOT NULL,
-              quantity REAL NOT NULL,
-              discount_type TEXT NOT NULL DEFAULT 'none',
-              discount_value REAL NOT NULL DEFAULT 0.0,
-              discount_calculated_amount REAL NOT NULL DEFAULT 0.0,
-              line_total REAL NOT NULL
-            )
-          ''');
-        },
-      );
+      db = AppDatabase.memory();
 
-      await db.insert('customers', {'id': 1, 'name': 'امیر حسینی', 'phone': '09123456789'});
+      await db.into(db.customers).insert(CustomersCompanion.insert(
+        id: const Value(1),
+        name: 'امیر حسینی',
+        phone: const Value('09123456789'),
+      ));
 
-      await db.insert('products', {
-        'id': 10,
-        'code': 'P-10',
-        'name': 'چای ماسالا',
-        'category': 'نوشیدنی',
-        'buy_price': 80000.0,
-        'current_buy_price': 90000.0,
-        'sell_price': 120000.0,
-        'unit': 'بسته',
-        'stock': 15.0,
-      });
+      await db.into(db.products).insert(ProductsCompanion.insert(
+        id: const Value(10),
+        code: const Value('P-10'),
+        name: 'چای ماسالا',
+        category: const Value('نوشیدنی'),
+        buyPrice: 80000.0,
+        currentBuyPrice: const Value(90000.0),
+        sellPrice: const Value(120000.0),
+        unit: 'بسته',
+        stock: const Value(15.0),
+      ));
 
-      await db.insert('products', {
-        'id': 20,
-        'code': 'P-20',
-        'name': 'قهوه اسپرسو',
-        'category': 'نوشیدنی',
-        'buy_price': 150000.0,
-        'current_buy_price': 160000.0,
-        'sell_price': 200000.0,
-        'unit': 'کیلو',
-        'stock': 5.0,
-      });
+      await db.into(db.products).insert(ProductsCompanion.insert(
+        id: const Value(20),
+        code: const Value('P-20'),
+        name: 'قهوه اسپرسو',
+        category: const Value('نوشیدنی'),
+        buyPrice: 150000.0,
+        currentBuyPrice: const Value(160000.0),
+        sellPrice: const Value(200000.0),
+        unit: 'کیلو',
+        stock: const Value(5.0),
+      ));
 
-      await db.insert('invoices', {
-        'id': 100,
-        'invoice_number': 'F-100',
-        'customer_id': 1,
-        'date': '2026-10-10T10:00:00.000',
-        'status': 'تسویه شده',
-        'total_gross': 240000.0,
-        'total_discount': 0.0,
-        'total_net': 240000.0,
-      });
-      await db.insert('invoice_items', {
-        'invoice_id': 100,
-        'product_id': 10,
-        'product_name': 'چای ماسالا',
-        'unit_price': 120000.0,
-        'purchase_price': 90000.0,
-        'quantity': 2.0,
-        'discount_type': 'none',
-        'discount_value': 0.0,
-        'discount_calculated_amount': 0.0,
-        'line_total': 240000.0,
-      });
+      await db.into(db.invoices).insert(InvoicesCompanion.insert(
+        id: const Value(100),
+        invoiceNumber: 'F-100',
+        customerId: const Value(1),
+        date: '2026-10-10T10:00:00.000',
+        status: const Value('تسویه شده'),
+        totalGross: 240000.0,
+        totalDiscount: 0.0,
+        totalNet: 240000.0,
+      ));
+      await db.into(db.invoiceItems).insert(InvoiceItemsCompanion.insert(
+        invoiceId: 100,
+        productId: const Value(10),
+        productName: 'چای ماسالا',
+        unitPrice: 120000.0,
+        purchasePrice: const Value(90000.0),
+        quantity: const Value(2.0),
+        discountType: const Value('none'),
+        discountValue: const Value(0.0),
+        discountCalculatedAmount: const Value(0.0),
+        lineTotal: 240000.0,
+      ));
 
-      await db.insert('invoices', {
-        'id': 101,
-        'invoice_number': 'F-101',
-        'customer_id': null,
-        'date': '2026-10-20T12:00:00.000',
-        'status': 'در انتظار پرداخت',
-        'total_gross': 360000.0,
-        'total_discount': 10000.0,
-        'total_net': 350000.0,
-      });
-      await db.insert('invoice_items', {
-        'invoice_id': 101,
-        'product_id': 10,
-        'product_name': 'چای ماسالا',
-        'unit_price': 120000.0,
-        'purchase_price': 90000.0,
-        'quantity': 3.0,
-        'discount_type': 'amount',
-        'discount_value': 10000.0,
-        'discount_calculated_amount': 10000.0,
-        'line_total': 350000.0,
-      });
+      await db.into(db.invoices).insert(InvoicesCompanion.insert(
+        id: const Value(101),
+        invoiceNumber: 'F-101',
+        date: '2026-10-20T12:00:00.000',
+        status: const Value('در انتظار پرداخت'),
+        totalGross: 360000.0,
+        totalDiscount: 10000.0,
+        totalNet: 350000.0,
+      ));
+      await db.into(db.invoiceItems).insert(InvoiceItemsCompanion.insert(
+        invoiceId: 101,
+        productId: const Value(10),
+        productName: 'چای ماسالا',
+        unitPrice: 120000.0,
+        purchasePrice: const Value(90000.0),
+        quantity: const Value(3.0),
+        discountType: const Value('amount'),
+        discountValue: const Value(10000.0),
+        discountCalculatedAmount: const Value(10000.0),
+        lineTotal: 350000.0,
+      ));
 
-      await db.insert('invoices', {
-        'id': 102,
-        'invoice_number': 'F-102',
-        'customer_id': 1,
-        'date': '2026-10-25T14:00:00.000',
-        'status': 'تسویه شده',
-        'total_gross': 200000.0,
-        'total_discount': 0.0,
-        'total_net': 200000.0,
-      });
-      await db.insert('invoice_items', {
-        'invoice_id': 102,
-        'product_id': 20,
-        'product_name': 'قهوه اسپرسو',
-        'unit_price': 200000.0,
-        'purchase_price': 160000.0,
-        'quantity': 1.0,
-        'discount_type': 'none',
-        'discount_value': 0.0,
-        'discount_calculated_amount': 0.0,
-        'line_total': 200000.0,
-      });
+      await db.into(db.invoices).insert(InvoicesCompanion.insert(
+        id: const Value(102),
+        invoiceNumber: 'F-102',
+        customerId: const Value(1),
+        date: '2026-10-25T14:00:00.000',
+        status: const Value('تسویه شده'),
+        totalGross: 200000.0,
+        totalDiscount: 0.0,
+        totalNet: 200000.0,
+      ));
+      await db.into(db.invoiceItems).insert(InvoiceItemsCompanion.insert(
+        invoiceId: 102,
+        productId: const Value(20),
+        productName: 'قهوه اسپرسو',
+        unitPrice: 200000.0,
+        purchasePrice: const Value(160000.0),
+        quantity: const Value(1.0),
+        discountType: const Value('none'),
+        discountValue: const Value(0.0),
+        discountCalculatedAmount: const Value(0.0),
+        lineTotal: 200000.0,
+      ));
 
       repo = InvoiceRepository(db: db);
     });

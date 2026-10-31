@@ -1,5 +1,7 @@
+import 'package:drift/drift.dart' hide isNull;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sales_box/core/database/app_database.dart';
 import 'package:sales_box/core/constants/app_strings.dart';
 import 'package:sales_box/data/models/product_model.dart';
 import 'package:sales_box/data/repositories/product_repository.dart';
@@ -69,129 +71,80 @@ void main() {
   });
 
   group('ProductRepository Supplier Reading Tests with SQLite', () {
-    late Database db;
+    late AppDatabase db;
     late ProductRepository repository;
 
     setUp(() async {
-      db = await databaseFactory.openDatabase(inMemoryDatabasePath);
-      await db.execute('''
-        CREATE TABLE products (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          code TEXT,
-          name TEXT NOT NULL,
-          category TEXT,
-          buy_price REAL NOT NULL,
-          current_buy_price REAL,
-          sell_price REAL,
-          unit TEXT NOT NULL,
-          stock REAL,
-          created_at TEXT,
-          buy_date TEXT,
-          supplier TEXT,
-          is_temporary INTEGER NOT NULL DEFAULT 0
-        )
-      ''');
-      await db.execute('''
-        CREATE TABLE suppliers (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          code TEXT,
-          name TEXT NOT NULL,
-          phone TEXT,
-          address TEXT,
-          notes TEXT
-        )
-      ''');
-      await db.execute('''
-        CREATE TABLE purchases (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          purchase_number TEXT NOT NULL,
-          supplier_id INTEGER,
-          date TEXT NOT NULL,
-          FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
-        )
-      ''');
-      await db.execute('''
-        CREATE TABLE purchase_items (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          purchase_id INTEGER NOT NULL,
-          product_id INTEGER,
-          product_name TEXT NOT NULL,
-          unit_price REAL NOT NULL,
-          quantity REAL NOT NULL,
-          line_total REAL NOT NULL,
-          FOREIGN KEY (purchase_id) REFERENCES purchases(id)
-        )
-      ''');
-      await db.execute('''
-        CREATE TABLE invoice_items (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          product_id INTEGER,
-          quantity REAL NOT NULL
-        )
-      ''');
+      db = AppDatabase.memory();
 
       // Seed Suppliers
-      await db.insert('suppliers', {'id': 1, 'code': 'S001', 'name': 'شرکت فناوری البرز'});
-      await db.insert('suppliers', {'id': 2, 'code': 'S002', 'name': 'بازرگانی پارس گستر'});
+      await db.into(db.suppliers).insert(SuppliersCompanion.insert(
+        id: const Value(1),
+        code: const Value('S001'),
+        name: 'شرکت فناوری البرز',
+      ));
+      await db.into(db.suppliers).insert(SuppliersCompanion.insert(
+        id: const Value(2),
+        code: const Value('S002'),
+        name: 'بازرگانی پارس گستر',
+      ));
 
       // Product 1: Direct supplier name
-      await db.insert('products', {
-        'id': 1,
-        'code': 'P001',
-        'name': 'کابل HDMI',
-        'category': 'جانبی',
-        'buy_price': 50000.0,
-        'unit': 'عدد',
-        'supplier': 'فروشگاه سپهر',
-      });
+      await db.into(db.products).insert(ProductsCompanion.insert(
+        id: const Value(1),
+        code: const Value('P001'),
+        name: 'کابل HDMI',
+        category: const Value('جانبی'),
+        buyPrice: 50000.0,
+        unit: 'عدد',
+        supplier: const Value('فروشگاه سپهر'),
+      ));
 
       // Product 2: Supplier stored as supplier ID '1'
-      await db.insert('products', {
-        'id': 2,
-        'code': 'P002',
-        'name': 'کیبورد بیاند',
-        'category': 'جانبی',
-        'buy_price': 350000.0,
-        'unit': 'عدد',
-        'supplier': '1',
-      });
+      await db.into(db.products).insert(ProductsCompanion.insert(
+        id: const Value(2),
+        code: const Value('P002'),
+        name: 'کیبورد بیاند',
+        category: const Value('جانبی'),
+        buyPrice: 350000.0,
+        unit: 'عدد',
+        supplier: const Value('1'),
+      ));
 
       // Product 3: No direct supplier in products, but purchased via purchase with supplier 2
-      await db.insert('products', {
-        'id': 3,
-        'code': 'P003',
-        'name': 'موس اپتیکال',
-        'category': 'جانبی',
-        'buy_price': 120000.0,
-        'unit': 'عدد',
-        'supplier': null,
-      });
-      await db.insert('purchases', {
-        'id': 100,
-        'purchase_number': 'PUR-001',
-        'supplier_id': 2,
-        'date': '2026-10-15',
-      });
-      await db.insert('purchase_items', {
-        'id': 1001,
-        'purchase_id': 100,
-        'product_id': 3,
-        'product_name': 'موس اپتیکال',
-        'unit_price': 120000.0,
-        'quantity': 10.0,
-        'line_total': 1200000.0,
-      });
+      await db.into(db.products).insert(ProductsCompanion.insert(
+        id: const Value(3),
+        code: const Value('P003'),
+        name: 'موس اپتیکال',
+        category: const Value('جانبی'),
+        buyPrice: 120000.0,
+        unit: 'عدد',
+      ));
+      await db.into(db.purchases).insert(PurchasesCompanion.insert(
+        id: const Value(100),
+        purchaseNumber: 'PUR-001',
+        supplierId: const Value(2),
+        date: '2026-10-15',
+      ));
+      await db.into(db.purchaseItems).insert(PurchaseItemsCompanion.insert(
+        id: const Value(1001),
+        purchaseId: 100,
+        productId: const Value(3),
+        productName: 'موس اپتیکال',
+        unitPrice: 120000.0,
+        quantity: const Value(10.0),
+        lineTotal: 1200000.0,
+      ));
 
       // Product 4: No supplier at all
-      await db.insert('products', {
-        'id': 4,
-        'code': 'P004',
-        'name': 'پد الکلی',
-        'category': 'مصرفی',
-        'buy_price': 5000.0,
-        'unit': 'بسته',
-        'supplier': null,
-      });
+      await db.into(db.products).insert(ProductsCompanion.insert(
+        id: const Value(4),
+        code: const Value('P004'),
+        name: 'پد الکلی',
+        category: const Value('مصرفی'),
+        buyPrice: 5000.0,
+        unit: 'بسته',
+      ));
 
       repository = ProductRepository(db: db);
     });

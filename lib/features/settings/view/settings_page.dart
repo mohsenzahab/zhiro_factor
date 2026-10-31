@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
-import '../../../core/database/database_helper.dart';
+import '../../../core/database/app_database.dart';
 import '../../../core/extensions/number_extensions.dart';
 import '../../../data/models/business_settings_model.dart';
 import '../../../data/repositories/settings_repository.dart';
@@ -53,8 +53,8 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _loadSettings() async {
     final settings = await _repo.loadSettings();
-    final dbPath = await DatabaseHelper.getDatabasePath();
-    final dbVersion = DatabaseHelper.currentVersion;
+    final dbPath = await AppDatabase.getDatabasePath();
+    final dbVersion = AppDatabase.currentVersion;
     
     String versionText = '۱.۰.۰';
     try {

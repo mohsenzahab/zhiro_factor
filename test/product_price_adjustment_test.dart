@@ -1,4 +1,6 @@
+import 'package:drift/drift.dart' hide isNull;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sales_box/core/database/app_database.dart';
 import 'package:sales_box/core/extensions/number_extensions.dart';
 import 'package:sales_box/data/models/product_model.dart';
 import 'package:sales_box/data/repositories/product_repository.dart';
@@ -127,81 +129,52 @@ void main() {
   });
 
   group('SQLite In-Memory Integration - bulkApplyPriceAdjustment', () {
-    late Database db;
+    late AppDatabase db;
     late ProductRepository repository;
 
     setUp(() async {
-      db = await databaseFactory.openDatabase(inMemoryDatabasePath);
-      await db.execute('''
-        CREATE TABLE products (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          code TEXT,
-          name TEXT NOT NULL,
-          category TEXT,
-          buy_price REAL NOT NULL,
-          current_buy_price REAL,
-          sell_price REAL,
-          unit TEXT NOT NULL,
-          stock REAL,
-          created_at TEXT,
-          buy_date TEXT,
-          supplier TEXT,
-          is_temporary INTEGER NOT NULL DEFAULT 0
-        )
-      ''');
-      await db.execute('''
-        CREATE TABLE invoice_items (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          product_id INTEGER,
-          quantity REAL NOT NULL
-        )
-      ''');
+      db = AppDatabase.memory();
 
       // Seed 4 test products
       // 1. Initial buy 100,000, no current buy, sell 120,000 (cat: جانبی)
-      await db.insert('products', {
-        'id': 1,
-        'code': 'P1',
-        'name': 'کابل تایپ سی',
-        'category': 'جانبی',
-        'buy_price': 100000.0,
-        'current_buy_price': null,
-        'sell_price': 120000.0,
-        'unit': 'عدد',
-      });
+      await db.into(db.products).insert(ProductsCompanion.insert(
+        id: const Value(1),
+        code: const Value('P1'),
+        name: 'کابل تایپ سی',
+        category: const Value('جانبی'),
+        buyPrice: 100000.0,
+        sellPrice: const Value(120000.0),
+        unit: 'عدد',
+      ));
       // 2. Initial buy 80,000, current buy 100,000, sell 130,000 (cat: جانبی)
-      await db.insert('products', {
-        'id': 2,
-        'code': 'P2',
-        'name': 'کیبورد',
-        'category': 'جانبی',
-        'buy_price': 80000.0,
-        'current_buy_price': 100000.0,
-        'sell_price': 130000.0,
-        'unit': 'عدد',
-      });
+      await db.into(db.products).insert(ProductsCompanion.insert(
+        id: const Value(2),
+        code: const Value('P2'),
+        name: 'کیبورد',
+        category: const Value('جانبی'),
+        buyPrice: 80000.0,
+        currentBuyPrice: const Value(100000.0),
+        sellPrice: const Value(130000.0),
+        unit: 'عدد',
+      ));
       // 3. Initial buy 200,000, no current buy, sell 250,000 (cat: سخت‌افزار)
-      await db.insert('products', {
-        'id': 3,
-        'code': 'P3',
-        'name': 'رم ۸ گیگ',
-        'category': 'سخت‌افزار',
-        'buy_price': 200000.0,
-        'current_buy_price': null,
-        'sell_price': 250000.0,
-        'unit': 'عدد',
-      });
+      await db.into(db.products).insert(ProductsCompanion.insert(
+        id: const Value(3),
+        code: const Value('P3'),
+        name: 'رم ۸ گیگ',
+        category: const Value('سخت‌افزار'),
+        buyPrice: 200000.0,
+        sellPrice: const Value(250000.0),
+        unit: 'عدد',
+      ));
       // 4. Initial buy 50,000, no current buy, no sell price (uncategorized)
-      await db.insert('products', {
-        'id': 4,
-        'code': 'P4',
-        'name': 'پیچ قاب',
-        'category': null,
-        'buy_price': 50000.0,
-        'current_buy_price': null,
-        'sell_price': null,
-        'unit': 'بسته',
-      });
+      await db.into(db.products).insert(ProductsCompanion.insert(
+        id: const Value(4),
+        code: const Value('P4'),
+        name: 'پیچ قاب',
+        buyPrice: 50000.0,
+        unit: 'بسته',
+      ));
 
       repository = ProductRepository(db: db);
     });
@@ -277,45 +250,21 @@ void main() {
   });
 
   group('ProductCubit Integration - applyPriceAdjustment', () {
-    late Database db;
+    late AppDatabase db;
     late ProductRepository repository;
 
     setUp(() async {
-      db = await databaseFactory.openDatabase(inMemoryDatabasePath);
-      await db.execute('''
-        CREATE TABLE products (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          code TEXT,
-          name TEXT NOT NULL,
-          category TEXT,
-          buy_price REAL NOT NULL,
-          current_buy_price REAL,
-          sell_price REAL,
-          unit TEXT NOT NULL,
-          stock REAL,
-          created_at TEXT,
-          buy_date TEXT,
-          supplier TEXT,
-          is_temporary INTEGER NOT NULL DEFAULT 0
-        )
-      ''');
-      await db.execute('''
-        CREATE TABLE invoice_items (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          product_id INTEGER,
-          quantity REAL NOT NULL
-        )
-      ''');
+      db = AppDatabase.memory();
 
-      await db.insert('products', {
-        'id': 1,
-        'code': 'P1',
-        'name': 'روغن موتور توتال',
-        'category': 'روغن',
-        'buy_price': 100000.0,
-        'sell_price': 130000.0,
-        'unit': 'لیتر',
-      });
+      await db.into(db.products).insert(ProductsCompanion.insert(
+        id: const Value(1),
+        code: const Value('P1'),
+        name: 'روغن موتور توتال',
+        category: const Value('روغن'),
+        buyPrice: 100000.0,
+        sellPrice: const Value(130000.0),
+        unit: 'لیتر',
+      ));
 
       repository = ProductRepository(db: db);
     });

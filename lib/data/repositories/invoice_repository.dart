@@ -1,21 +1,16 @@
-import 'package:sqflite_common/sqlite_api.dart';
-import '../../core/database/database_helper.dart';
+import 'package:drift/drift.dart';
+import '../../core/database/app_database.dart';
 import '../../core/extensions/number_extensions.dart';
 import '../models/invoice_model.dart';
 import '../models/invoice_item_model.dart';
 import '../models/invoice_payment_model.dart';
 import '../models/product_sale_record.dart';
 
-/// Repository for Invoice CRUD with transactional item and payment management.
+/// Repository for Invoice CRUD with transactional item and payment management using Drift ORM.
 class InvoiceRepository {
-  final DatabaseHelper _dbHelper;
-  final Database? _overrideDb;
+  final AppDatabase _db;
 
-  InvoiceRepository({DatabaseHelper? dbHelper, Database? db})
-      : _dbHelper = dbHelper ?? DatabaseHelper.instance,
-        _overrideDb = db;
-
-  Future<Database> get _database async => _overrideDb ?? await _dbHelper.database;
+  InvoiceRepository({AppDatabase? db}) : _db = db ?? AppDatabase.instance;
 
   /// Fetch all invoices with customer name join, optionally filtered.
   Future<List<InvoiceModel>> getAll({
@@ -26,284 +21,421 @@ class InvoiceRepository {
     String? dateFrom,
     String? dateTo,
   }) async {
-    final db = await _database;
-
-    String sql = '''
-      SELECT i.*, c.name as customer_name
-      FROM invoices i
-      LEFT JOIN customers c ON i.customer_id = c.id
-      WHERE 1=1
-    ''';
-    final args = <dynamic>[];
+    final q = _db.select(_db.invoices).join([
+      leftOuterJoin(_db.customers, _db.customers.id.equalsExp(_db.invoices.customerId)),
+    ]);
 
     if (customerQuery != null && customerQuery.isNotEmpty) {
-      final enQuery = customerQuery.toEnglishDigits();
-      if (enQuery != customerQuery) {
-        sql += ' AND (c.name LIKE ? OR i.invoice_number LIKE ? OR i.invoice_number LIKE ?)';
-        args.addAll(['%$customerQuery%', '%$customerQuery%', '%$enQuery%']);
+      final clean = customerQuery.trim();
+      final enQuery = clean.toEnglishDigits();
+      final p1 = '%$clean%';
+      final p2 = '%$enQuery%';
+      if (enQuery != clean) {
+        q.where(_db.customers.name.like(p1) |
+            _db.invoices.invoiceNumber.like(p1) |
+            _db.invoices.invoiceNumber.like(p2));
       } else {
-        sql += ' AND (c.name LIKE ? OR i.invoice_number LIKE ?)';
-        args.addAll(['%$customerQuery%', '%$customerQuery%']);
+        q.where(_db.customers.name.like(p1) | _db.invoices.invoiceNumber.like(p1));
       }
     }
+
     if (productQuery != null && productQuery.isNotEmpty) {
-      sql += ''' AND EXISTS (
-        SELECT 1 FROM invoice_items ii 
-        WHERE ii.invoice_id = i.id 
-        AND ii.product_name LIKE ?
-      )''';
-      args.add('%$productQuery%');
+      final sub = _db.selectOnly(_db.invoiceItems)
+        ..addColumns([_db.invoiceItems.invoiceId])
+        ..where(_db.invoiceItems.productName.like('%$productQuery%'));
+      q.where(_db.invoices.id.isInQuery(sub));
     }
+
     if (category != null && category.isNotEmpty) {
-      sql += ''' AND EXISTS (
-        SELECT 1 FROM invoice_items ii
-        JOIN products p ON p.id = ii.product_id
-        WHERE ii.invoice_id = i.id AND p.category = ?
-      )''';
-      args.add(category);
+      final sub = _db.selectOnly(_db.invoiceItems)
+        ..join([
+          innerJoin(_db.products, _db.products.id.equalsExp(_db.invoiceItems.productId)),
+        ])
+        ..where(_db.products.category.equals(category))
+        ..addColumns([_db.invoiceItems.invoiceId]);
+      q.where(_db.invoices.id.isInQuery(sub));
     }
+
     if (status != null && status.isNotEmpty) {
-      sql += ' AND i.status = ?';
-      args.add(status);
+      q.where(_db.invoices.status.equals(status));
     }
     if (dateFrom != null && dateFrom.isNotEmpty) {
-      sql += ' AND i.date >= ?';
-      args.add(dateFrom);
+      q.where(_db.invoices.date.isBiggerOrEqualValue(dateFrom));
     }
     if (dateTo != null && dateTo.isNotEmpty) {
-      sql += ' AND i.date <= ?';
-      args.add(dateTo);
+      q.where(_db.invoices.date.isSmallerOrEqualValue(dateTo));
     }
 
-    sql += ' ORDER BY i.date DESC, i.id DESC';
+    q.orderBy([
+      OrderingTerm.desc(_db.invoices.date),
+      OrderingTerm.desc(_db.invoices.id),
+    ]);
 
-    final maps = await db.rawQuery(sql, args);
-    if (maps.isEmpty) return [];
+    final rows = await q.get();
+    if (rows.isEmpty) return [];
 
-    // Batch load items and payments for all returned invoices
-    final invoiceIds = maps.map((m) => m['id'] as int).toList();
-    final placeholders = List.filled(invoiceIds.length, '?').join(',');
+    final invoicesList = rows.map((r) {
+      final inv = r.readTable(_db.invoices);
+      final cust = r.readTableOrNull(_db.customers);
+      return (inv: inv, customerName: cust?.name);
+    }).toList();
 
-    final itemMaps = await db.rawQuery(
-      'SELECT * FROM invoice_items WHERE invoice_id IN ($placeholders) ORDER BY id ASC',
-      invoiceIds,
-    );
+    final invoiceIds = invoicesList.map((pair) => pair.inv.id).toList();
+
+    final itemRows = await (_db.select(_db.invoiceItems)
+          ..where((i) => i.invoiceId.isIn(invoiceIds))
+          ..orderBy([(i) => OrderingTerm.asc(i.id)]))
+        .get();
+
     final itemsByInvoice = <int, List<InvoiceItemModel>>{};
-    for (final im in itemMaps) {
-      final item = InvoiceItemModel.fromMap(im);
-      if (item.invoiceId != null) {
-        itemsByInvoice.putIfAbsent(item.invoiceId!, () => []).add(item);
-      }
+    for (final im in itemRows) {
+      final item = InvoiceItemModel(
+        id: im.id,
+        invoiceId: im.invoiceId,
+        productId: im.productId,
+        productName: im.productName,
+        unitPrice: im.unitPrice,
+        purchasePrice: im.purchasePrice,
+        quantity: im.quantity,
+        discountType: im.discountType,
+        discountValue: im.discountValue,
+        discountCalculatedAmount: im.discountCalculatedAmount,
+        lineTotal: im.lineTotal,
+      );
+      itemsByInvoice.putIfAbsent(im.invoiceId, () => []).add(item);
     }
 
-    final paymentMaps = await db.rawQuery(
-      'SELECT * FROM invoice_payments WHERE invoice_id IN ($placeholders) ORDER BY date ASC, id ASC',
-      invoiceIds,
-    );
+    final paymentRows = await (_db.select(_db.invoicePayments)
+          ..where((p) => p.invoiceId.isIn(invoiceIds))
+          ..orderBy([
+            (tbl) => OrderingTerm.asc(tbl.date),
+            (tbl) => OrderingTerm.asc(tbl.id),
+          ]))
+        .get();
+
     final paymentsByInvoice = <int, List<InvoicePaymentModel>>{};
-    for (final pm in paymentMaps) {
-      final payment = InvoicePaymentModel.fromMap(pm);
-      if (payment.invoiceId != null) {
-        paymentsByInvoice.putIfAbsent(payment.invoiceId!, () => []).add(payment);
-      }
+    for (final pm in paymentRows) {
+      final payment = InvoicePaymentModel(
+        id: pm.id,
+        invoiceId: pm.invoiceId,
+        amount: pm.amount,
+        date: pm.date,
+        note: pm.note,
+      );
+      paymentsByInvoice.putIfAbsent(pm.invoiceId, () => []).add(payment);
     }
 
-    return maps.map((m) {
-      final id = m['id'] as int?;
-      return InvoiceModel.fromMap(
-        m,
-        items: id != null ? itemsByInvoice[id] : null,
-        payments: id != null ? paymentsByInvoice[id] : null,
+    return invoicesList.map((pair) {
+      final inv = pair.inv;
+      return InvoiceModel(
+        id: inv.id,
+        invoiceNumber: inv.invoiceNumber,
+        customerId: inv.customerId,
+        customerName: pair.customerName,
+        date: inv.date,
+        status: inv.status ?? 'در انتظار پرداخت',
+        totalGross: inv.totalGross,
+        totalDiscount: inv.totalDiscount,
+        totalNet: inv.totalNet,
+        overallDiscountType: inv.overallDiscountType,
+        overallDiscountValue: inv.overallDiscountValue,
+        overallDiscountAmount: inv.overallDiscountAmount,
+        notes: inv.notes,
+        items: itemsByInvoice[inv.id] ?? const [],
+        payments: paymentsByInvoice[inv.id] ?? const [],
       );
     }).toList();
   }
 
   /// Fetch a single invoice by ID with all its items and payments.
   Future<InvoiceModel?> getById(int id) async {
-    final db = await _database;
-    final invoiceMaps = await db.rawQuery('''
-      SELECT i.*, c.name as customer_name
-      FROM invoices i
-      LEFT JOIN customers c ON i.customer_id = c.id
-      WHERE i.id = ?
-    ''', [id]);
+    final q = _db.select(_db.invoices).join([
+      leftOuterJoin(_db.customers, _db.customers.id.equalsExp(_db.invoices.customerId)),
+    ])..where(_db.invoices.id.equals(id));
 
-    if (invoiceMaps.isEmpty) return null;
+    final rows = await q.get();
+    if (rows.isEmpty) return null;
 
-    final itemMaps = await db.query(
-      'invoice_items',
-      where: 'invoice_id = ?',
-      whereArgs: [id],
-      orderBy: 'id ASC',
+    final inv = rows.first.readTable(_db.invoices);
+    final cust = rows.first.readTableOrNull(_db.customers);
+
+    final itemRows = await (_db.select(_db.invoiceItems)
+          ..where((i) => i.invoiceId.equals(id))
+          ..orderBy([(i) => OrderingTerm.asc(i.id)]))
+        .get();
+
+    final items = itemRows
+        .map((im) => InvoiceItemModel(
+              id: im.id,
+              invoiceId: im.invoiceId,
+              productId: im.productId,
+              productName: im.productName,
+              unitPrice: im.unitPrice,
+              purchasePrice: im.purchasePrice,
+              quantity: im.quantity,
+              discountType: im.discountType,
+              discountValue: im.discountValue,
+              discountCalculatedAmount: im.discountCalculatedAmount,
+              lineTotal: im.lineTotal,
+            ))
+        .toList();
+
+    final paymentRows = await (_db.select(_db.invoicePayments)
+          ..where((p) => p.invoiceId.equals(id))
+          ..orderBy([
+            (tbl) => OrderingTerm.asc(tbl.date),
+            (tbl) => OrderingTerm.asc(tbl.id),
+          ]))
+        .get();
+
+    final payments = paymentRows
+        .map((pm) => InvoicePaymentModel(
+              id: pm.id,
+              invoiceId: pm.invoiceId,
+              amount: pm.amount,
+              date: pm.date,
+              note: pm.note,
+            ))
+        .toList();
+
+    return InvoiceModel(
+      id: inv.id,
+      invoiceNumber: inv.invoiceNumber,
+      customerId: inv.customerId,
+      customerName: cust?.name,
+      date: inv.date,
+      status: inv.status ?? 'در انتظار پرداخت',
+      totalGross: inv.totalGross,
+      totalDiscount: inv.totalDiscount,
+      totalNet: inv.totalNet,
+      overallDiscountType: inv.overallDiscountType,
+      overallDiscountValue: inv.overallDiscountValue,
+      overallDiscountAmount: inv.overallDiscountAmount,
+      notes: inv.notes,
+      items: items,
+      payments: payments,
     );
-    final items = itemMaps.map((m) => InvoiceItemModel.fromMap(m)).toList();
-
-    final paymentMaps = await db.query(
-      'invoice_payments',
-      where: 'invoice_id = ?',
-      whereArgs: [id],
-      orderBy: 'date ASC, id ASC',
-    );
-    final payments = paymentMaps.map((m) => InvoicePaymentModel.fromMap(m)).toList();
-
-    return InvoiceModel.fromMap(invoiceMaps.first, items: items, payments: payments);
   }
 
   /// Fetch items for a given invoice.
   Future<List<InvoiceItemModel>> getItemsByInvoiceId(int invoiceId) async {
-    final db = await _database;
-    final maps = await db.query(
-      'invoice_items',
-      where: 'invoice_id = ?',
-      whereArgs: [invoiceId],
-      orderBy: 'id ASC',
-    );
-    return maps.map((m) => InvoiceItemModel.fromMap(m)).toList();
+    final rows = await (_db.select(_db.invoiceItems)
+          ..where((i) => i.invoiceId.equals(invoiceId))
+          ..orderBy([(i) => OrderingTerm.asc(i.id)]))
+        .get();
+
+    return rows
+        .map((im) => InvoiceItemModel(
+              id: im.id,
+              invoiceId: im.invoiceId,
+              productId: im.productId,
+              productName: im.productName,
+              unitPrice: im.unitPrice,
+              purchasePrice: im.purchasePrice,
+              quantity: im.quantity,
+              discountType: im.discountType,
+              discountValue: im.discountValue,
+              discountCalculatedAmount: im.discountCalculatedAmount,
+              lineTotal: im.lineTotal,
+            ))
+        .toList();
   }
 
   /// Fetch payments for a given invoice.
   Future<List<InvoicePaymentModel>> getPaymentsByInvoiceId(int invoiceId) async {
-    final db = await _database;
-    final maps = await db.query(
-      'invoice_payments',
-      where: 'invoice_id = ?',
-      whereArgs: [invoiceId],
-      orderBy: 'date ASC, id ASC',
-    );
-    return maps.map((m) => InvoicePaymentModel.fromMap(m)).toList();
+    final rows = await (_db.select(_db.invoicePayments)
+          ..where((p) => p.invoiceId.equals(invoiceId))
+          ..orderBy([
+            (tbl) => OrderingTerm.asc(tbl.date),
+            (tbl) => OrderingTerm.asc(tbl.id),
+          ]))
+        .get();
+
+    return rows
+        .map((pm) => InvoicePaymentModel(
+              id: pm.id,
+              invoiceId: pm.invoiceId,
+              amount: pm.amount,
+              date: pm.date,
+              note: pm.note,
+            ))
+        .toList();
   }
 
   /// Save a new invoice with items and payments in a single transaction.
-  /// Automatically deducts purchased quantities from product stock (unless stock is infinite/null).
-  /// Returns the new invoice ID.
+  /// Automatically deducts purchased quantities from product stock.
   Future<int> insert(InvoiceModel invoice) async {
-    final db = await _database;
-    late int invoiceId;
-
-    await db.transaction((txn) async {
-      invoiceId = await txn.insert('invoices', invoice.toMap());
+    return await _db.transaction(() async {
+      final invoiceId = await _db.into(_db.invoices).insert(
+            InvoicesCompanion.insert(
+              invoiceNumber: invoice.invoiceNumber.trim(),
+              customerId: Value(invoice.customerId),
+              date: invoice.date,
+              status: Value(invoice.status),
+              totalGross: invoice.totalGross,
+              totalDiscount: invoice.totalDiscount,
+              totalNet: invoice.totalNet,
+              overallDiscountType: Value(invoice.overallDiscountType),
+              overallDiscountValue: Value(invoice.overallDiscountValue),
+              overallDiscountAmount: Value(invoice.overallDiscountAmount),
+              notes: Value(invoice.notes?.trim()),
+            ),
+          );
 
       for (final item in invoice.items) {
-        final itemMap = item.copyWith(invoiceId: invoiceId).toMap();
-        itemMap.remove('id');
-        await txn.insert('invoice_items', itemMap);
+        await _db.into(_db.invoiceItems).insert(
+              InvoiceItemsCompanion.insert(
+                invoiceId: invoiceId,
+                productId: Value(item.productId),
+                productName: item.productName.trim(),
+                unitPrice: item.unitPrice,
+                purchasePrice: Value(item.purchasePrice),
+                quantity: Value(item.quantity),
+                discountType: Value(item.discountType),
+                discountValue: Value(item.discountValue),
+                discountCalculatedAmount: Value(item.discountCalculatedAmount),
+                lineTotal: item.lineTotal,
+              ),
+            );
 
-        // Deduct purchased quantity from product stock
         if (item.productId != null && item.quantity > 0) {
-          await txn.rawUpdate(
+          await _db.customUpdate(
             'UPDATE products SET stock = stock - ? WHERE id = ? AND stock IS NOT NULL',
-            [item.quantity, item.productId],
+            variables: [Variable.withReal(item.quantity), Variable.withInt(item.productId!)],
+            updates: {_db.products},
           );
         }
       }
 
       for (final payment in invoice.payments) {
-        final pMap = payment.copyWith(invoiceId: invoiceId).toMap();
-        pMap.remove('id');
-        await txn.insert('invoice_payments', pMap);
+        await _db.into(_db.invoicePayments).insert(
+              InvoicePaymentsCompanion.insert(
+                invoiceId: invoiceId,
+                amount: payment.amount,
+                date: payment.date,
+                note: Value(payment.note?.trim()),
+              ),
+            );
       }
-    });
 
-    return invoiceId;
+      return invoiceId;
+    });
   }
 
   /// Update an existing invoice, its items, and its payments in a single transaction.
   /// Restores previous items' stock and deducts new items' stock.
   Future<void> update(InvoiceModel invoice) async {
-    final db = await _database;
+    if (invoice.id == null) return;
 
-    await db.transaction((txn) async {
-      await txn.update(
-        'invoices',
-        invoice.toMap(),
-        where: 'id = ?',
-        whereArgs: [invoice.id],
-      );
+    await _db.transaction(() async {
+      await (_db.update(_db.invoices)..where((i) => i.id.equals(invoice.id!))).write(
+            InvoicesCompanion(
+              invoiceNumber: Value(invoice.invoiceNumber.trim()),
+              customerId: Value(invoice.customerId),
+              date: Value(invoice.date),
+              status: Value(invoice.status),
+              totalGross: Value(invoice.totalGross),
+              totalDiscount: Value(invoice.totalDiscount),
+              totalNet: Value(invoice.totalNet),
+              overallDiscountType: Value(invoice.overallDiscountType),
+              overallDiscountValue: Value(invoice.overallDiscountValue),
+              overallDiscountAmount: Value(invoice.overallDiscountAmount),
+              notes: Value(invoice.notes?.trim()),
+            ),
+          );
 
       // Restore stock for previously saved items
-      final oldItems = await txn.query(
-        'invoice_items',
-        where: 'invoice_id = ?',
-        whereArgs: [invoice.id],
-      );
+      final oldItems = await (_db.select(_db.invoiceItems)
+            ..where((i) => i.invoiceId.equals(invoice.id!)))
+          .get();
+
       for (final oldItem in oldItems) {
-        final pid = oldItem['product_id'] as int?;
-        final qty = (oldItem['quantity'] as num?)?.toDouble() ?? 0.0;
-        if (pid != null && qty > 0) {
-          await txn.rawUpdate(
+        if (oldItem.productId != null && oldItem.quantity > 0) {
+          await _db.customUpdate(
             'UPDATE products SET stock = stock + ? WHERE id = ? AND stock IS NOT NULL',
-            [qty, pid],
+            variables: [Variable.withReal(oldItem.quantity), Variable.withInt(oldItem.productId!)],
+            updates: {_db.products},
           );
         }
       }
 
       // Delete old items and re-insert
-      await txn.delete(
-        'invoice_items',
-        where: 'invoice_id = ?',
-        whereArgs: [invoice.id],
-      );
+      await (_db.delete(_db.invoiceItems)..where((i) => i.invoiceId.equals(invoice.id!))).go();
 
       for (final item in invoice.items) {
-        final itemMap = item.copyWith(invoiceId: invoice.id).toMap();
-        itemMap.remove('id');
-        await txn.insert('invoice_items', itemMap);
+        await _db.into(_db.invoiceItems).insert(
+              InvoiceItemsCompanion.insert(
+                invoiceId: invoice.id!,
+                productId: Value(item.productId),
+                productName: item.productName.trim(),
+                unitPrice: item.unitPrice,
+                purchasePrice: Value(item.purchasePrice),
+                quantity: Value(item.quantity),
+                discountType: Value(item.discountType),
+                discountValue: Value(item.discountValue),
+                discountCalculatedAmount: Value(item.discountCalculatedAmount),
+                lineTotal: item.lineTotal,
+              ),
+            );
 
-        // Deduct new items' stock
         if (item.productId != null && item.quantity > 0) {
-          await txn.rawUpdate(
+          await _db.customUpdate(
             'UPDATE products SET stock = stock - ? WHERE id = ? AND stock IS NOT NULL',
-            [item.quantity, item.productId],
+            variables: [Variable.withReal(item.quantity), Variable.withInt(item.productId!)],
+            updates: {_db.products},
           );
         }
       }
 
-      // Sync payments
-      await txn.delete(
-        'invoice_payments',
-        where: 'invoice_id = ?',
-        whereArgs: [invoice.id],
-      );
-      for (final payment in invoice.payments) {
-        final pMap = payment.copyWith(invoiceId: invoice.id).toMap();
-        pMap.remove('id');
-        await txn.insert('invoice_payments', pMap);
+      // Re-insert payments if passed
+      if (invoice.payments.isNotEmpty) {
+        await (_db.delete(_db.invoicePayments)..where((p) => p.invoiceId.equals(invoice.id!))).go();
+        for (final payment in invoice.payments) {
+          await _db.into(_db.invoicePayments).insert(
+                InvoicePaymentsCompanion.insert(
+                  invoiceId: invoice.id!,
+                  amount: payment.amount,
+                  date: payment.date,
+                  note: Value(payment.note?.trim()),
+                ),
+              );
+        }
       }
     });
   }
 
   /// Add a single payment to an existing invoice directly and update invoice status.
   Future<int> addPayment(InvoicePaymentModel payment) async {
-    final db = await _database;
-    return await db.transaction((txn) async {
-      final pMap = payment.toMap();
-      pMap.remove('id');
-      final paymentId = await txn.insert('invoice_payments', pMap);
+    return await _db.transaction(() async {
+      final paymentId = await _db.into(_db.invoicePayments).insert(
+            InvoicePaymentsCompanion.insert(
+              invoiceId: payment.invoiceId!,
+              amount: payment.amount,
+              date: payment.date,
+              note: Value(payment.note?.trim()),
+            ),
+          );
 
       if (payment.invoiceId != null) {
-        final invList = await txn.query('invoices', where: 'id = ?', whereArgs: [payment.invoiceId]);
-        if (invList.isNotEmpty) {
-          final totalNet = (invList.first['total_net'] as num).toDouble();
-          final currentStatus = invList.first['status'] as String? ?? '';
-          final paySumResult = await txn.rawQuery(
-            'SELECT SUM(amount) as sum_amount FROM invoice_payments WHERE invoice_id = ?',
-            [payment.invoiceId],
-          );
-          final totalPaid = (paySumResult.first['sum_amount'] as num?)?.toDouble() ?? 0.0;
+        final inv = await (_db.select(_db.invoices)..where((i) => i.id.equals(payment.invoiceId!))).getSingleOrNull();
+        if (inv != null) {
+          final totalNet = inv.totalNet;
+          final currentStatus = inv.status ?? '';
+
+          final sumExp = _db.invoicePayments.amount.sum();
+          final paySumQuery = _db.selectOnly(_db.invoicePayments)
+            ..addColumns([sumExp])
+            ..where(_db.invoicePayments.invoiceId.equals(payment.invoiceId!));
+          final paySumResult = await paySumQuery.getSingle();
+          final totalPaid = paySumResult.read(sumExp) ?? 0.0;
 
           if (totalPaid >= totalNet && currentStatus != 'تسویه شده' && currentStatus != 'لغو شده') {
-            await txn.update(
-              'invoices',
-              {'status': 'تسویه شده'},
-              where: 'id = ?',
-              whereArgs: [payment.invoiceId],
+            await (_db.update(_db.invoices)..where((i) => i.id.equals(payment.invoiceId!))).write(
+              const InvoicesCompanion(status: Value('تسویه شده')),
             );
           } else if (totalPaid > 0 && totalPaid < totalNet && (currentStatus == 'در انتظار پرداخت' || currentStatus == 'بیعانه')) {
-            await txn.update(
-              'invoices',
-              {'status': 'نسیه'},
-              where: 'id = ?',
-              whereArgs: [payment.invoiceId],
+            await (_db.update(_db.invoices)..where((i) => i.id.equals(payment.invoiceId!))).write(
+              const InvoicesCompanion(status: Value('نسیه')),
             );
           }
         }
@@ -315,32 +447,28 @@ class InvoiceRepository {
 
   /// Delete a single payment from an invoice and re-check invoice status.
   Future<void> deletePayment(int paymentId) async {
-    final db = await _database;
-    await db.transaction((txn) async {
-      final pList = await txn.query('invoice_payments', where: 'id = ?', whereArgs: [paymentId]);
-      if (pList.isNotEmpty) {
-        final invId = pList.first['invoice_id'] as int?;
-        await txn.delete('invoice_payments', where: 'id = ?', whereArgs: [paymentId]);
+    await _db.transaction(() async {
+      final p = await (_db.select(_db.invoicePayments)..where((tbl) => tbl.id.equals(paymentId))).getSingleOrNull();
+      if (p != null) {
+        final invId = p.invoiceId;
+        await (_db.delete(_db.invoicePayments)..where((tbl) => tbl.id.equals(paymentId))).go();
 
-        if (invId != null) {
-          final invList = await txn.query('invoices', where: 'id = ?', whereArgs: [invId]);
-          if (invList.isNotEmpty) {
-            final totalNet = (invList.first['total_net'] as num).toDouble();
-            final currentStatus = invList.first['status'] as String? ?? '';
-            final paySumResult = await txn.rawQuery(
-              'SELECT SUM(amount) as sum_amount FROM invoice_payments WHERE invoice_id = ?',
-              [invId],
+        final inv = await (_db.select(_db.invoices)..where((i) => i.id.equals(invId))).getSingleOrNull();
+        if (inv != null) {
+          final totalNet = inv.totalNet;
+          final currentStatus = inv.status ?? '';
+
+          final sumExp = _db.invoicePayments.amount.sum();
+          final paySumQuery = _db.selectOnly(_db.invoicePayments)
+            ..addColumns([sumExp])
+            ..where(_db.invoicePayments.invoiceId.equals(invId));
+          final paySumResult = await paySumQuery.getSingle();
+          final totalPaid = paySumResult.read(sumExp) ?? 0.0;
+
+          if (totalPaid < totalNet && currentStatus == 'تسویه شده') {
+            await (_db.update(_db.invoices)..where((i) => i.id.equals(invId))).write(
+              InvoicesCompanion(status: Value(totalPaid > 0 ? 'نسیه' : 'در انتظار پرداخت')),
             );
-            final totalPaid = (paySumResult.first['sum_amount'] as num?)?.toDouble() ?? 0.0;
-
-            if (totalPaid < totalNet && currentStatus == 'تسویه شده') {
-              await txn.update(
-                'invoices',
-                {'status': totalPaid > 0 ? 'نسیه' : 'در انتظار پرداخت'},
-                where: 'id = ?',
-                whereArgs: [invId],
-              );
-            }
           }
         }
       }
@@ -349,51 +477,63 @@ class InvoiceRepository {
 
   /// Delete an invoice by ID, restoring items' stock before deleting.
   Future<int> delete(int id) async {
-    final db = await _database;
-    return await db.transaction((txn) async {
-      // Restore stock for items of the deleted invoice
-      final oldItems = await txn.query(
-        'invoice_items',
-        where: 'invoice_id = ?',
-        whereArgs: [id],
-      );
+    return await _db.transaction(() async {
+      final oldItems = await (_db.select(_db.invoiceItems)..where((i) => i.invoiceId.equals(id))).get();
+
       for (final oldItem in oldItems) {
-        final pid = oldItem['product_id'] as int?;
-        final qty = (oldItem['quantity'] as num?)?.toDouble() ?? 0.0;
-        if (pid != null && qty > 0) {
-          await txn.rawUpdate(
+        if (oldItem.productId != null && oldItem.quantity > 0) {
+          await _db.customUpdate(
             'UPDATE products SET stock = stock + ? WHERE id = ? AND stock IS NOT NULL',
-            [qty, pid],
+            variables: [Variable.withReal(oldItem.quantity), Variable.withInt(oldItem.productId!)],
+            updates: {_db.products},
           );
         }
       }
 
-      // Delete items, payments and invoice
-      await txn.delete('invoice_items', where: 'invoice_id = ?', whereArgs: [id]);
-      await txn.delete('invoice_payments', where: 'invoice_id = ?', whereArgs: [id]);
-      return await txn.delete('invoices', where: 'id = ?', whereArgs: [id]);
+      await (_db.delete(_db.invoiceItems)..where((i) => i.invoiceId.equals(id))).go();
+      await (_db.delete(_db.invoicePayments)..where((p) => p.invoiceId.equals(id))).go();
+      return await (_db.delete(_db.invoices)..where((i) => i.id.equals(id))).go();
     });
   }
 
   /// Get the next invoice counter for generating invoice numbers.
   Future<int> nextCounter() async {
-    final db = await _database;
-    final result = await db.rawQuery('SELECT MAX(id) as max_id FROM invoices');
-    final maxId = result.first['max_id'] as int?;
+    final maxIdExp = _db.invoices.id.max();
+    final query = _db.selectOnly(_db.invoices)..addColumns([maxIdExp]);
+    final result = await query.getSingle();
+    final maxId = result.read(maxIdExp);
     return (maxId ?? 0) + 1;
   }
 
   /// Get invoices for a specific customer.
   Future<List<InvoiceModel>> getByCustomerId(int customerId) async {
-    final db = await _database;
-    final maps = await db.rawQuery('''
-      SELECT i.*, c.name as customer_name
-      FROM invoices i
-      LEFT JOIN customers c ON i.customer_id = c.id
-      WHERE i.customer_id = ?
-      ORDER BY i.date DESC
-    ''', [customerId]);
-    return maps.map((m) => InvoiceModel.fromMap(m)).toList();
+    final q = _db.select(_db.invoices).join([
+      leftOuterJoin(_db.customers, _db.customers.id.equalsExp(_db.invoices.customerId)),
+    ])
+      ..where(_db.invoices.customerId.equals(customerId))
+      ..orderBy([OrderingTerm.desc(_db.invoices.date)]);
+
+    final rows = await q.get();
+
+    return rows.map((r) {
+      final inv = r.readTable(_db.invoices);
+      final cust = r.readTableOrNull(_db.customers);
+      return InvoiceModel(
+        id: inv.id,
+        invoiceNumber: inv.invoiceNumber,
+        customerId: inv.customerId,
+        customerName: cust?.name,
+        date: inv.date,
+        status: inv.status ?? 'در انتظار پرداخت',
+        totalGross: inv.totalGross,
+        totalDiscount: inv.totalDiscount,
+        totalNet: inv.totalNet,
+        overallDiscountType: inv.overallDiscountType,
+        overallDiscountValue: inv.overallDiscountValue,
+        overallDiscountAmount: inv.overallDiscountAmount,
+        notes: inv.notes,
+      );
+    }).toList();
   }
 
   /// Fetch all sales of a specific product with customer and invoice info.
@@ -404,65 +544,74 @@ class InvoiceRepository {
     String? status,
     String? query,
   }) async {
-    final db = await _database;
-
-    String sql = '''
-      SELECT 
-        ii.id as item_id,
-        i.id as invoice_id,
-        i.invoice_number,
-        i.date,
-        i.status as invoice_status,
-        c.id as customer_id,
-        c.name as customer_name,
-        c.phone as customer_phone,
-        ii.product_id,
-        ii.product_name,
-        ii.quantity,
-        ii.unit_price,
-        ii.purchase_price,
-        ii.discount_type,
-        ii.discount_value,
-        ii.discount_calculated_amount,
-        ii.line_total,
-        p.unit as product_unit,
-        p.buy_price,
-        p.current_buy_price
-      FROM invoice_items ii
-      JOIN invoices i ON ii.invoice_id = i.id
-      LEFT JOIN customers c ON i.customer_id = c.id
-      LEFT JOIN products p ON ii.product_id = p.id
-      WHERE ii.product_id = ?
-    ''';
-    final args = <dynamic>[productId];
+    final q = _db.select(_db.invoiceItems).join([
+      innerJoin(_db.invoices, _db.invoices.id.equalsExp(_db.invoiceItems.invoiceId)),
+      leftOuterJoin(_db.customers, _db.customers.id.equalsExp(_db.invoices.customerId)),
+      leftOuterJoin(_db.products, _db.products.id.equalsExp(_db.invoiceItems.productId)),
+    ])..where(_db.invoiceItems.productId.equals(productId));
 
     if (dateFrom != null && dateFrom.isNotEmpty) {
-      sql += ' AND i.date >= ?';
-      args.add(dateFrom);
+      q.where(_db.invoices.date.isBiggerOrEqualValue(dateFrom));
     }
     if (dateTo != null && dateTo.isNotEmpty) {
-      sql += ' AND i.date <= ?';
-      args.add(dateTo);
+      q.where(_db.invoices.date.isSmallerOrEqualValue(dateTo));
     }
     if (status != null && status.isNotEmpty && status != 'همه') {
-      sql += ' AND i.status = ?';
-      args.add(status);
+      q.where(_db.invoices.status.equals(status));
     }
     if (query != null && query.trim().isNotEmpty) {
-      final q = query.trim();
-      final enQuery = q.toEnglishDigits();
-      if (enQuery != q) {
-        sql += ' AND (c.name LIKE ? OR i.invoice_number LIKE ? OR i.invoice_number LIKE ?)';
-        args.addAll(['%$q%', '%$q%', '%$enQuery%']);
+      final clean = query.trim();
+      final enQuery = clean.toEnglishDigits();
+      final p1 = '%$clean%';
+      final p2 = '%$enQuery%';
+      if (enQuery != clean) {
+        q.where(_db.customers.name.like(p1) |
+            _db.invoices.invoiceNumber.like(p1) |
+            _db.invoices.invoiceNumber.like(p2));
       } else {
-        sql += ' AND (c.name LIKE ? OR i.invoice_number LIKE ?)';
-        args.addAll(['%$q%', '%$q%']);
+        q.where(_db.customers.name.like(p1) | _db.invoices.invoiceNumber.like(p1));
       }
     }
 
-    sql += ' ORDER BY i.date DESC, i.id DESC';
+    q.orderBy([
+      OrderingTerm.desc(_db.invoices.date),
+      OrderingTerm.desc(_db.invoices.id),
+    ]);
 
-    final maps = await db.rawQuery(sql, args);
-    return maps.map((m) => ProductSaleRecord.fromMap(m)).toList();
+    final rows = await q.get();
+
+    return rows.map((r) {
+      final ii = r.readTable(_db.invoiceItems);
+      final inv = r.readTable(_db.invoices);
+      final cust = r.readTableOrNull(_db.customers);
+      final prod = r.readTableOrNull(_db.products);
+
+      final buyPriceFallback = (prod?.currentBuyPrice != null && prod!.currentBuyPrice! > 0)
+          ? prod.currentBuyPrice!
+          : (prod?.buyPrice ?? 0.0);
+      final itemPurchasePrice = ii.purchasePrice;
+      final effectiveCost = itemPurchasePrice > 0 ? itemPurchasePrice : buyPriceFallback;
+
+      return ProductSaleRecord(
+        itemId: ii.id,
+        invoiceId: inv.id,
+        invoiceNumber: inv.invoiceNumber,
+        date: inv.date,
+        invoiceStatus: inv.status ?? 'تسویه شده',
+        customerId: cust?.id,
+        customerName: cust?.name,
+        customerPhone: cust?.phone,
+        productId: ii.productId ?? productId,
+        productName: ii.productName,
+        quantity: ii.quantity,
+        unitPrice: ii.unitPrice,
+        purchasePrice: effectiveCost,
+        discountType: ii.discountType,
+        discountValue: ii.discountValue,
+        discountCalculatedAmount: ii.discountCalculatedAmount,
+        lineTotal: ii.lineTotal,
+        productUnit: prod?.unit ?? 'عدد',
+      );
+    }).toList();
   }
 }

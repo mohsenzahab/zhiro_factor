@@ -1,79 +1,107 @@
-import '../../core/database/database_helper.dart';
+import 'package:drift/drift.dart';
+import '../../core/database/app_database.dart';
 import '../../core/extensions/number_extensions.dart';
 import '../models/customer_model.dart';
 
-/// Repository for Customer CRUD operations.
+/// Repository for Customer CRUD operations using Drift ORM.
 class CustomerRepository {
-  final DatabaseHelper _dbHelper = DatabaseHelper.instance;
+  final AppDatabase _db;
+
+  CustomerRepository({AppDatabase? db}) : _db = db ?? AppDatabase.instance;
 
   /// Fetch all customers, optionally filtered by search query.
   Future<List<CustomerModel>> getAll({String? query}) async {
-    final db = await _dbHelper.database;
-    List<Map<String, dynamic>> maps;
+    final q = _db.select(_db.customers);
 
     if (query != null && query.isNotEmpty) {
       final enQuery = query.toEnglishDigits();
+      final p1 = '%$query%';
+      final p2 = '%$enQuery%';
       if (enQuery != query) {
-        maps = await db.query(
-          'customers',
-          where: 'name LIKE ? OR phone LIKE ? OR code LIKE ? OR phone LIKE ? OR code LIKE ?',
-          whereArgs: ['%$query%', '%$query%', '%$query%', '%$enQuery%', '%$enQuery%'],
-          orderBy: 'name ASC',
-        );
+        q.where((c) =>
+            c.name.like(p1) |
+            c.phone.like(p1) |
+            c.code.like(p1) |
+            c.phone.like(p2) |
+            c.code.like(p2));
       } else {
-        maps = await db.query(
-          'customers',
-          where: 'name LIKE ? OR phone LIKE ? OR code LIKE ?',
-          whereArgs: ['%$query%', '%$query%', '%$query%'],
-          orderBy: 'name ASC',
-        );
+        q.where((c) => c.name.like(p1) | c.phone.like(p1) | c.code.like(p1));
       }
-    } else {
-      maps = await db.query('customers', orderBy: 'name ASC');
     }
 
-    return maps.map((m) => CustomerModel.fromMap(m)).toList();
+    q.orderBy([(c) => OrderingTerm.asc(c.name)]);
+    final rows = await q.get();
+
+    return rows
+        .map((r) => CustomerModel(
+              id: r.id,
+              code: r.code,
+              name: r.name,
+              phone: r.phone,
+              address: r.address,
+              notes: r.notes,
+            ))
+        .toList();
   }
 
   /// Fetch a single customer by ID.
   Future<CustomerModel?> getById(int id) async {
-    final db = await _dbHelper.database;
-    final maps = await db.query('customers', where: 'id = ?', whereArgs: [id]);
-    if (maps.isEmpty) return null;
-    return CustomerModel.fromMap(maps.first);
+    final row = await (_db.select(_db.customers)..where((c) => c.id.equals(id))).getSingleOrNull();
+    if (row == null) return null;
+    return CustomerModel(
+      id: row.id,
+      code: row.code,
+      name: row.name,
+      phone: row.phone,
+      address: row.address,
+      notes: row.notes,
+    );
   }
 
   /// Insert a new customer. Returns the new row ID.
   Future<int> insert(CustomerModel customer) async {
-    final db = await _dbHelper.database;
-    return await db.insert('customers', customer.toMap());
+    final cleanCode = (customer.code != null && customer.code!.trim().isNotEmpty) ? customer.code!.trim() : null;
+    return await _db.into(_db.customers).insert(
+          CustomersCompanion.insert(
+            code: Value(cleanCode),
+            name: customer.name.trim(),
+            phone: Value(customer.phone?.trim()),
+            address: Value(customer.address?.trim()),
+            notes: Value(customer.notes?.trim()),
+          ),
+        );
   }
 
   /// Update an existing customer.
   Future<int> update(CustomerModel customer) async {
-    final db = await _dbHelper.database;
-    return await db.update(
-      'customers',
-      customer.toMap(),
-      where: 'id = ?',
-      whereArgs: [customer.id],
-    );
+    if (customer.id == null) return 0;
+    final cleanCode = (customer.code != null && customer.code!.trim().isNotEmpty) ? customer.code!.trim() : null;
+    return await (_db.update(_db.customers)..where((c) => c.id.equals(customer.id!))).write(
+          CustomersCompanion(
+            code: Value(cleanCode),
+            name: Value(customer.name.trim()),
+            phone: Value(customer.phone?.trim()),
+            address: Value(customer.address?.trim()),
+            notes: Value(customer.notes?.trim()),
+          ),
+        );
   }
 
   /// Delete a customer by ID.
   Future<int> delete(int id) async {
-    final db = await _dbHelper.database;
-    return await db.delete('customers', where: 'id = ?', whereArgs: [id]);
+    return await (_db.delete(_db.customers)..where((c) => c.id.equals(id))).go();
   }
 
   /// Get the next available customer code.
   Future<String> nextCode() async {
-    final db = await _dbHelper.database;
-    final result = await db.rawQuery(
-      "SELECT code FROM customers WHERE code LIKE 'C%' ORDER BY code DESC LIMIT 1",
-    );
-    if (result.isEmpty) return 'C001';
-    final lastCode = (result.first['code'] as String).toEnglishDigits();
+    final row = await (_db.select(_db.customers)
+          ..where((c) => c.code.like('C%'))
+          ..orderBy([(c) => OrderingTerm.desc(c.code)])
+          ..limit(1))
+        .getSingleOrNull();
+
+    if (row == null || row.code == null) return 'C001';
+    final lastCode = row.code!.toEnglishDigits();
     final num = int.tryParse(lastCode.substring(1)) ?? 0;
     return 'C${(num + 1).toString().padLeft(3, '0')}';
   }
