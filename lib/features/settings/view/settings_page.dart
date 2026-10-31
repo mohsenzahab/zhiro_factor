@@ -4,6 +4,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/extensions/number_extensions.dart';
+import '../../../core/responsive/responsive_breakpoints.dart';
 import '../../../data/models/business_settings_model.dart';
 import '../../../data/repositories/settings_repository.dart';
 
@@ -121,7 +122,7 @@ class _SettingsPageState extends State<SettingsPage> {
     return Scaffold(
       backgroundColor: AppColors.scaffoldDark,
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(28),
+        padding: context.responsivePagePadding,
         child: Form(
           key: _formKey,
           child: Column(
@@ -149,7 +150,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 24),
 
               // ── Business Profile Section ────────────────────────
               _buildSectionCard(
@@ -192,111 +193,155 @@ class _SettingsPageState extends State<SettingsPage> {
                     onChanged: (v) => setState(() => _showDescriptionOnInvoice = v),
                     icon: Icons.description_outlined,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   // ── Description Position ───────────────────────
-                  Row(
-                    children: [
-                      const Icon(Icons.swap_vert, color: AppColors.textMuted, size: 20),
-                      const SizedBox(width: 10),
-                      Text(
-                        AppStrings.descriptionPosition,
-                        style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: SegmentedButton<String>(
-                          segments: const [
-                            ButtonSegment(
-                              value: 'bottom',
-                              label: Text('کنار جمع کل (سمت چپ)'),
-                              icon: Icon(Icons.table_chart_outlined, size: 18),
-                            ),
-                            ButtonSegment(
-                              value: 'top',
-                              label: Text('ابتدای فاکتور'),
-                              icon: Icon(Icons.vertical_align_top, size: 18),
-                            ),
-                          ],
-                          selected: {_descriptionPosition},
-                          onSelectionChanged: (v) => setState(() => _descriptionPosition = v.first),
-                          style: ButtonStyle(
-                            backgroundColor: WidgetStateProperty.resolveWith((states) {
-                              if (states.contains(WidgetState.selected)) {
-                                return AppColors.primary.withValues(alpha: 0.2);
-                              }
-                              return AppColors.surfaceDark;
-                            }),
-                            foregroundColor: WidgetStateProperty.resolveWith((states) {
-                              if (states.contains(WidgetState.selected)) {
-                                return AppColors.primary;
-                              }
-                              return AppColors.textMuted;
-                            }),
-                            side: WidgetStateProperty.all(
-                              const BorderSide(color: AppColors.dividerDark),
-                            ),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isCompact = constraints.maxWidth < 450;
+                      final label = Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.swap_vert, color: AppColors.textMuted, size: 20),
+                          const SizedBox(width: 10),
+                          Text(
+                            AppStrings.descriptionPosition,
+                            style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+                          ),
+                        ],
+                      );
+                      final switcher = SegmentedButton<String>(
+                        segments: const [
+                          ButtonSegment(
+                            value: 'bottom',
+                            label: Text('کنار جمع کل (سمت چپ)'),
+                            icon: Icon(Icons.table_chart_outlined, size: 18),
+                          ),
+                          ButtonSegment(
+                            value: 'top',
+                            label: Text('ابتدای فاکتور'),
+                            icon: Icon(Icons.vertical_align_top, size: 18),
+                          ),
+                        ],
+                        selected: {_descriptionPosition},
+                        onSelectionChanged: (v) => setState(() => _descriptionPosition = v.first),
+                        style: ButtonStyle(
+                          backgroundColor: WidgetStateProperty.resolveWith((states) {
+                            if (states.contains(WidgetState.selected)) {
+                              return AppColors.primary.withValues(alpha: 0.2);
+                            }
+                            return AppColors.surfaceDark;
+                          }),
+                          foregroundColor: WidgetStateProperty.resolveWith((states) {
+                            if (states.contains(WidgetState.selected)) {
+                              return AppColors.primary;
+                            }
+                            return AppColors.textMuted;
+                          }),
+                          side: WidgetStateProperty.all(
+                            const BorderSide(color: AppColors.dividerDark),
                           ),
                         ),
-                      ),
-                    ],
+                      );
+
+                      if (isCompact) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            label,
+                            const SizedBox(height: 8),
+                            switcher,
+                          ],
+                        );
+                      }
+
+                      return Row(
+                        children: [
+                          label,
+                          const SizedBox(width: 16),
+                          Expanded(child: switcher),
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 16),
                   // ── Default Page Format ───────────────────────
-                  Row(
-                    children: [
-                      const Icon(Icons.print_outlined, color: AppColors.textMuted, size: 20),
-                      const SizedBox(width: 10),
-                      Text(
-                        AppStrings.defaultPageFormat,
-                        style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: SegmentedButton<String>(
-                          segments: const [
-                            ButtonSegment(
-                              value: 'a4',
-                              label: Text(AppStrings.pageFormatA4),
-                              icon: Icon(Icons.article_outlined, size: 18),
-                            ),
-                            ButtonSegment(
-                              value: 'a5',
-                              label: Text(AppStrings.pageFormatA5),
-                              icon: Icon(Icons.menu_book_outlined, size: 18),
-                            ),
-                          ],
-                          selected: {_defaultPageFormat},
-                          onSelectionChanged: (v) => setState(() => _defaultPageFormat = v.first),
-                          style: ButtonStyle(
-                            backgroundColor: WidgetStateProperty.resolveWith((states) {
-                              if (states.contains(WidgetState.selected)) {
-                                return AppColors.primary.withValues(alpha: 0.2);
-                              }
-                              return AppColors.surfaceDark;
-                            }),
-                            foregroundColor: WidgetStateProperty.resolveWith((states) {
-                              if (states.contains(WidgetState.selected)) {
-                                return AppColors.primary;
-                              }
-                              return AppColors.textMuted;
-                            }),
-                            side: WidgetStateProperty.all(
-                              const BorderSide(color: AppColors.dividerDark),
-                            ),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isCompact = constraints.maxWidth < 450;
+                      final label = Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.print_outlined, color: AppColors.textMuted, size: 20),
+                          const SizedBox(width: 10),
+                          Text(
+                            AppStrings.defaultPageFormat,
+                            style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+                          ),
+                        ],
+                      );
+                      final switcher = SegmentedButton<String>(
+                        segments: const [
+                          ButtonSegment(
+                            value: 'a4',
+                            label: Text(AppStrings.pageFormatA4),
+                            icon: Icon(Icons.article_outlined, size: 18),
+                          ),
+                          ButtonSegment(
+                            value: 'a5',
+                            label: Text(AppStrings.pageFormatA5),
+                            icon: Icon(Icons.menu_book_outlined, size: 18),
+                          ),
+                        ],
+                        selected: {_defaultPageFormat},
+                        onSelectionChanged: (v) => setState(() => _defaultPageFormat = v.first),
+                        style: ButtonStyle(
+                          backgroundColor: WidgetStateProperty.resolveWith((states) {
+                            if (states.contains(WidgetState.selected)) {
+                              return AppColors.primary.withValues(alpha: 0.2);
+                            }
+                            return AppColors.surfaceDark;
+                          }),
+                          foregroundColor: WidgetStateProperty.resolveWith((states) {
+                            if (states.contains(WidgetState.selected)) {
+                              return AppColors.primary;
+                            }
+                            return AppColors.textMuted;
+                          }),
+                          side: WidgetStateProperty.all(
+                            const BorderSide(color: AppColors.dividerDark),
                           ),
                         ),
-                      ),
-                    ],
+                      );
+
+                      if (isCompact) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            label,
+                            const SizedBox(height: 8),
+                            switcher,
+                          ],
+                        );
+                      }
+
+                      return Row(
+                        children: [
+                          label,
+                          const SizedBox(width: 16),
+                          Expanded(child: switcher),
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 24),
 
               // ── Save Button ─────────────────────────────────────
               Align(
                 alignment: Alignment.centerLeft,
                 child: SizedBox(
-                  width: 200,
+                  width: context.isMobile ? double.infinity : 200,
                   height: 48,
                   child: ElevatedButton.icon(
                     onPressed: _saving ? null : _saveSettings,

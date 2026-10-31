@@ -89,9 +89,8 @@ class _ProductSearchDialogState extends State<ProductSearchDialog> {
       child: Dialog(
         backgroundColor: AppColors.surfaceDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: SizedBox(
-          width: 550,
-          height: 520,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 550, maxHeight: 520),
           child: Column(
             children: [
               // ── Header ────────────────────────────────────────

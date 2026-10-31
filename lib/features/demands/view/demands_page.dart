@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/number_extensions.dart';
+import '../../../core/responsive/responsive_breakpoints.dart';
 import '../../../core/utils/jalali_utils.dart';
 import '../../../data/models/demand_model.dart';
+import '../../../shared/widgets/category_filter_bar.dart';
 import '../../../shared/widgets/confirm_dialog.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/responsive_kpi_grid.dart';
+import '../../../shared/widgets/responsive_page_header.dart';
 import '../cubit/demand_cubit.dart';
 import '../cubit/demand_state.dart';
 import 'widgets/demand_form_dialog.dart';
@@ -144,38 +148,15 @@ class _DemandsViewState extends State<_DemandsView> {
       },
       builder: (context, state) {
         return Padding(
-          padding: const EdgeInsets.all(24),
+          padding: context.responsivePagePadding,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ── Header Title & Add Button ───────────────────────
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.checklist_rtl, color: AppColors.primary, size: 28),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'لیست نیازمندی‌ها (کالاهای درخواستی مشتریان)',
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 2),
-                        const Text(
-                          'ثبت کالاها و خدماتی که مشتریان متقاضی آن بوده‌اند تا بر اساس میزان تقاضا و سود تهیه شوند',
-                          style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-                        ),
-                      ],
-                    ),
-                  ),
+              ResponsivePageHeader(
+                title: 'لیست نیازمندی‌ها (کالاهای درخواستی)',
+                icon: Icons.checklist_rtl,
+                actions: [
                   ElevatedButton.icon(
                     onPressed: () => _openAddDialog(context, state),
                     icon: const Icon(Icons.add, size: 20),
@@ -183,17 +164,16 @@ class _DemandsViewState extends State<_DemandsView> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
 
               // ── KPI Summary Cards ───────────────────────────────
               _buildKpiSummaryRow(state),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
 
               // ── Filter Bar & Search ─────────────────────────────
               _buildFilterBar(context, state),
@@ -218,58 +198,47 @@ class _DemandsViewState extends State<_DemandsView> {
   }
 
   Widget _buildKpiSummaryRow(DemandState state) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final cardWidth = (constraints.maxWidth - 36) / 4;
-        return Row(
-          children: [
-            // 1. Total Demands & Requests
-            _KpiCard(
-              width: cardWidth,
-              title: 'کل اقلام و تقاضاها',
-              value: '${state.totalDemandsCount.toString().toPersianDigits()} مورد',
-              subtitle: '${state.totalRequestsCount.toString().toPersianDigits()} بار درخواست مشتریان',
-              icon: Icons.playlist_add_check,
-              color: AppColors.primary,
-            ),
-            const SizedBox(width: 12),
+    return ResponsiveKpiGrid(
+      minItemWidth: 220,
+      children: [
+        // 1. Total Demands & Requests
+        _KpiCard(
+          title: 'کل اقلام و تقاضاها',
+          value: '${state.totalDemandsCount.toString().toPersianDigits()} مورد',
+          subtitle: '${state.totalRequestsCount.toString().toPersianDigits()} بار درخواست مشتریان',
+          icon: Icons.playlist_add_check,
+          color: AppColors.primary,
+        ),
 
-            // 2. Total Required Capital
-            _KpiCard(
-              width: cardWidth,
-              title: 'سرمایه مورد نیاز',
-              value: state.totalRequiredCapital.toman,
-              subtitle: 'جهت تأمین ${state.activeDemands.length.toString().toPersianDigits()} مورد تهیه نشده',
-              icon: Icons.account_balance_wallet_outlined,
-              color: AppColors.warning,
-            ),
-            const SizedBox(width: 12),
+        // 2. Total Required Capital
+        _KpiCard(
+          title: 'سرمایه مورد نیاز',
+          value: state.totalRequiredCapital.toman,
+          subtitle: 'جهت تأمین ${state.activeDemands.length.toString().toPersianDigits()} مورد تهیه نشده',
+          icon: Icons.account_balance_wallet_outlined,
+          color: AppColors.warning,
+        ),
 
-            // 3. Projected Total Profit
-            _KpiCard(
-              width: cardWidth,
-              title: 'سود کل پیش‌بینی شده',
-              value: state.totalProjectedProfit.toman,
-              subtitle: 'از فروش اقلام در حال تهیه و تهیه نشده',
-              icon: Icons.trending_up,
-              color: AppColors.accent,
-            ),
-            const SizedBox(width: 12),
+        // 3. Projected Total Profit
+        _KpiCard(
+          title: 'سود کل پیش‌بینی شده',
+          value: state.totalProjectedProfit.toman,
+          subtitle: 'از فروش اقلام در حال تهیه و تهیه نشده',
+          icon: Icons.trending_up,
+          color: AppColors.accent,
+        ),
 
-            // 4. Top Demanded Item
-            _KpiCard(
-              width: cardWidth,
-              title: 'پرتقاضاترین مورد',
-              value: state.topDemandedItem?.title ?? '---',
-              subtitle: state.topDemandedItem != null
-                  ? '${state.topDemandedItem!.requestCount.toString().toPersianDigits()} بار درخواست (${state.topDemandedItem!.averageRequestsPerMonthDisplay})'
-                  : 'بدون تقاضا',
-              icon: Icons.star_outline,
-              color: const Color(0xFFFF9800),
-            ),
-          ],
-        );
-      },
+        // 4. Top Demanded Item
+        _KpiCard(
+          title: 'پرتقاضاترین مورد',
+          value: state.topDemandedItem?.title ?? '---',
+          subtitle: state.topDemandedItem != null
+              ? '${state.topDemandedItem!.requestCount.toString().toPersianDigits()} بار درخواست (${state.topDemandedItem!.averageRequestsPerMonthDisplay})'
+              : 'بدون تقاضا',
+          icon: Icons.star_outline,
+          color: const Color(0xFFFF9800),
+        ),
+      ],
     );
   }
 
@@ -395,30 +364,10 @@ class _DemandsViewState extends State<_DemandsView> {
         // Category Filter Chips
         if (state.availableCategories.isNotEmpty) ...[
           const SizedBox(height: 12),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                const Icon(Icons.category_outlined, size: 16, color: AppColors.textMuted),
-                const SizedBox(width: 6),
-                const Text('دسته‌بندی:', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
-                const SizedBox(width: 8),
-                _CategoryChip(
-                  label: 'همه',
-                  isSelected: state.categoryFilter == null,
-                  onTap: () => cubit.setCategoryFilter(null),
-                ),
-                const SizedBox(width: 6),
-                ...state.availableCategories.map((cat) => Padding(
-                      padding: const EdgeInsets.only(left: 6),
-                      child: _CategoryChip(
-                        label: cat,
-                        isSelected: state.categoryFilter == cat,
-                        onTap: () => cubit.setCategoryFilter(cat),
-                      ),
-                    )),
-              ],
-            ),
+          CategoryFilterBar(
+            categories: state.availableCategories,
+            selectedCategory: state.categoryFilter,
+            onCategorySelected: (cat) => cubit.setCategoryFilter(cat),
           ),
         ],
       ],
@@ -899,42 +848,7 @@ class _StatusFilterPill extends StatelessWidget {
   }
 }
 
-class _CategoryChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _CategoryChip({required this.label, required this.isSelected, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withValues(alpha: 0.2) : AppColors.surfaceDark,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.dividerDark,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            color: isSelected ? AppColors.primary : AppColors.textSecondary,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _KpiCard extends StatelessWidget {
-  final double width;
   final String title;
   final String value;
   final String subtitle;
@@ -942,7 +856,6 @@ class _KpiCard extends StatelessWidget {
   final Color color;
 
   const _KpiCard({
-    required this.width,
     required this.title,
     required this.value,
     required this.subtitle,
@@ -952,52 +865,49 @@ class _KpiCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: width,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.cardDark,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.dividerDark),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, size: 18, color: color),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 12, color: AppColors.textMuted, fontWeight: FontWeight.w500),
-                  ),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cardDark,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.dividerDark),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18, color: color),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, color: AppColors.textMuted, fontWeight: FontWeight.w500),
                 ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.bold,
-                color: color,
               ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+              color: color,
             ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+          ),
+        ],
       ),
     );
   }

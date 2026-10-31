@@ -127,7 +127,7 @@ class DemandHistoryDialog extends StatelessWidget {
                         )
                       : ListView.separated(
                           itemCount: sortedDates.length,
-                          separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.dividerDark),
+                          separatorBuilder: (_, _) => const Divider(height: 1, color: AppColors.dividerDark),
                           itemBuilder: (context, index) {
                             final dateIso = sortedDates[index];
                             final jalaliStr = JalaliUtils.formatIso(dateIso);

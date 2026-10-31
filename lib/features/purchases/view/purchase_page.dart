@@ -5,6 +5,7 @@ import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/number_extensions.dart';
+import '../../../core/responsive/responsive_breakpoints.dart';
 import '../../../core/utils/jalali_utils.dart';
 import '../../../data/models/supplier_model.dart';
 import '../../../data/repositories/supplier_repository.dart';
@@ -69,23 +70,28 @@ class _PurchaseView extends StatelessWidget {
         child: Focus(
           autofocus: true,
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: context.responsivePagePadding,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // ── Title Bar ─────────────────────────────────────
                 Row(
                   children: [
-                    Icon(Icons.shopping_cart, color: AppColors.accent, size: 28),
+                    const Icon(Icons.shopping_cart, color: AppColors.accent, size: 28),
                     const SizedBox(width: 12),
-                    Text(
-                      editPurchaseId != null ? AppStrings.editPurchase : AppStrings.newPurchase,
-                      style: Theme.of(context).textTheme.headlineMedium,
+                    Expanded(
+                      child: Text(
+                        editPurchaseId != null ? AppStrings.editPurchase : AppStrings.newPurchase,
+                        style: Theme.of(context).textTheme.headlineMedium,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    const Spacer(),
-                    _ShortcutBadge(label: 'Ctrl+S', description: AppStrings.save),
-                    const SizedBox(width: 8),
-                    _ShortcutBadge(label: 'F2', description: AppStrings.addItem),
+                    if (context.isDesktop) ...[
+                      const SizedBox(width: 8),
+                      _ShortcutBadge(label: 'Ctrl+S', description: AppStrings.save),
+                      const SizedBox(width: 8),
+                      _ShortcutBadge(label: 'F2', description: AppStrings.addItem),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 20),
@@ -143,116 +149,136 @@ class _PurchaseHeader extends StatelessWidget {
     return BlocBuilder<PurchaseCubit, PurchaseState>(
       builder: (context, state) {
         return Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: AppColors.cardDark,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppColors.dividerDark),
           ),
-          child: Row(
-            children: [
-              // Purchase Number
-              Expanded(
-                child: _buildField(
-                  context,
-                  label: AppStrings.purchaseNumber,
-                  child: TextFormField(
-                    initialValue: state.purchaseNumber,
-                    onChanged: (v) => context.read<PurchaseCubit>().setPurchaseNumber(v),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isNarrow = constraints.maxWidth < 700;
+
+              final purchaseNum = _buildField(
+                context,
+                label: AppStrings.purchaseNumber,
+                child: TextFormField(
+                  initialValue: state.purchaseNumber,
+                  onChanged: (v) => context.read<PurchaseCubit>().setPurchaseNumber(v),
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                  style: const TextStyle(fontWeight: FontWeight.w600, letterSpacing: 1),
+                ),
+              );
+
+              final datePicker = _buildField(
+                context,
+                label: AppStrings.purchaseDate,
+                child: InkWell(
+                  onTap: () => _pickDate(context),
+                  borderRadius: BorderRadius.circular(10),
+                  child: InputDecorator(
                     decoration: const InputDecoration(
                       isDense: true,
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      suffixIcon: Icon(Icons.calendar_today, size: 18),
                     ),
-                    style: const TextStyle(fontWeight: FontWeight.w600, letterSpacing: 1),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-
-              // Date Picker
-              Expanded(
-                child: _buildField(
-                  context,
-                  label: AppStrings.purchaseDate,
-                  child: InkWell(
-                    onTap: () => _pickDate(context),
-                    borderRadius: BorderRadius.circular(10),
-                    child: InputDecorator(
-                      decoration: const InputDecoration(
-                        isDense: true,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        suffixIcon: Icon(Icons.calendar_today, size: 18),
-                      ),
-                      child: Text(
-                        state.date.isNotEmpty
-                            ? JalaliUtils.format(JalaliUtils.fromIso(state.date))
-                            : '---',
-                        style: Theme.of(context).textTheme.bodyLarge,
-                      ),
+                    child: Text(
+                      state.date.isNotEmpty
+                          ? JalaliUtils.format(JalaliUtils.fromIso(state.date))
+                          : '---',
+                      style: Theme.of(context).textTheme.bodyLarge,
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 16),
+              );
 
-              // Supplier Search with Create
-              Expanded(
-                flex: 2,
-                child: _buildField(
-                  context,
-                  label: AppStrings.selectSupplier,
-                  child: _SupplierSearchField(
-                    initialSupplier: state.selectedSupplier,
-                    onSelected: (s) => context.read<PurchaseCubit>().setSupplier(s),
-                  ),
+              final supplierSearch = _buildField(
+                context,
+                label: AppStrings.selectSupplier,
+                child: _SupplierSearchField(
+                  initialSupplier: state.selectedSupplier,
+                  onSelected: (s) => context.read<PurchaseCubit>().setSupplier(s),
                 ),
-              ),
-              const SizedBox(width: 16),
+              );
 
-              // Status Dropdown
-              Expanded(
-                child: _buildField(
-                  context,
-                  label: AppStrings.invoiceStatus,
-                  child: DropdownButtonFormField<String>(
-                    initialValue: state.status,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      isDense: true,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    ),
-                    items: AppStrings.purchaseStatuses.map((s) {
-                      return DropdownMenuItem(
-                        value: s,
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: AppColors.statusColor(s),
-                              ),
+              final statusDropdown = _buildField(
+                context,
+                label: AppStrings.invoiceStatus,
+                child: DropdownButtonFormField<String>(
+                  initialValue: state.status,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                  items: AppStrings.purchaseStatuses.map((s) {
+                    return DropdownMenuItem(
+                      value: s,
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppColors.statusColor(s),
                             ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                s,
-                                style: const TextStyle(fontSize: 13),
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              s,
+                              style: const TextStyle(fontSize: 13),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (v) {
-                      if (v != null) context.read<PurchaseCubit>().setStatus(v);
-                    },
-                  ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (v) {
+                    if (v != null) context.read<PurchaseCubit>().setStatus(v);
+                  },
                 ),
-              ),
-            ],
+              );
+
+              if (isNarrow) {
+                return Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(child: purchaseNum),
+                        const SizedBox(width: 12),
+                        Expanded(child: datePicker),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(flex: 3, child: supplierSearch),
+                        const SizedBox(width: 12),
+                        Expanded(flex: 2, child: statusDropdown),
+                      ],
+                    ),
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(child: purchaseNum),
+                  const SizedBox(width: 16),
+                  Expanded(child: datePicker),
+                  const SizedBox(width: 16),
+                  Expanded(flex: 2, child: supplierSearch),
+                  const SizedBox(width: 16),
+                  Expanded(child: statusDropdown),
+                ],
+              );
+            },
           ),
         );
       },
@@ -680,138 +706,130 @@ class _PurchaseFooter extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppColors.dividerDark),
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Left: Notes
-              Expanded(
-                flex: 3,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      AppStrings.purchaseNotes,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.textMuted,
-                            fontWeight: FontWeight.w500,
-                          ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isCompact = constraints.maxWidth < 750;
+
+              final notesWidget = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    AppStrings.purchaseNotes,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.textMuted,
+                          fontWeight: FontWeight.w500,
+                        ),
+                  ),
+                  const SizedBox(height: 6),
+                  TextFormField(
+                    initialValue: state.notes ?? '',
+                    maxLines: isCompact ? 2 : 3,
+                    onChanged: (v) => context.read<PurchaseCubit>().setNotes(v),
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      hintText: 'یادداشت برای این خرید...',
+                      contentPadding: EdgeInsets.all(12),
                     ),
-                    const SizedBox(height: 6),
-                    TextFormField(
-                      initialValue: state.notes ?? '',
-                      maxLines: 3,
-                      onChanged: (v) => context.read<PurchaseCubit>().setNotes(v),
-                      decoration: const InputDecoration(
-                        isDense: true,
-                        hintText: 'یادداشت برای این خرید...',
-                        contentPadding: EdgeInsets.all(12),
+                  ),
+                ],
+              );
+
+              final totalsWidget = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Shipping Cost
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(AppStrings.shippingCost,
+                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 24),
-
-              // Right: Costs & Totals
-              Expanded(
-                flex: 3,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Shipping Cost
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(AppStrings.shippingCost,
-                              style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-                        ),
-                        SizedBox(
-                          width: 160,
-                          child: TextFormField(
-                            initialValue: state.shippingCost > 0
-                                ? state.shippingCost.round().toString().toPersianDigits()
-                                : '',
-                            onChanged: (v) {
-                              final val = double.tryParse(v.toEnglishDigits()) ?? 0;
-                              context.read<PurchaseCubit>().setShippingCost(val);
-                            },
-                            decoration: const InputDecoration(
-                              isDense: true,
-                              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                              suffixText: 'تومان',
-                              hintText: '۰',
-                            ),
-                            style: const TextStyle(fontSize: 13),
-                            textAlign: TextAlign.center,
+                      SizedBox(
+                        width: 160,
+                        child: TextFormField(
+                          initialValue: state.shippingCost > 0
+                              ? state.shippingCost.round().toString().toPersianDigits()
+                              : '',
+                          onChanged: (v) {
+                            final val = double.tryParse(v.toEnglishDigits()) ?? 0;
+                            context.read<PurchaseCubit>().setShippingCost(val);
+                          },
+                          decoration: const InputDecoration(
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            suffixText: 'تومان',
+                            hintText: '۰',
                           ),
+                          style: const TextStyle(fontSize: 13),
+                          textAlign: TextAlign.center,
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    // Extra Costs
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(AppStrings.extraCosts,
-                              style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-                        ),
-                        SizedBox(
-                          width: 160,
-                          child: TextFormField(
-                            initialValue: state.extraCosts > 0
-                                ? state.extraCosts.round().toString().toPersianDigits()
-                                : '',
-                            onChanged: (v) {
-                              final val = double.tryParse(v.toEnglishDigits()) ?? 0;
-                              context.read<PurchaseCubit>().setExtraCosts(val);
-                            },
-                            decoration: const InputDecoration(
-                              isDense: true,
-                              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                              suffixText: 'تومان',
-                              hintText: '۰',
-                            ),
-                            style: const TextStyle(fontSize: 13),
-                            textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  // Extra Costs
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(AppStrings.extraCosts,
+                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                      ),
+                      SizedBox(
+                        width: 160,
+                        child: TextFormField(
+                          initialValue: state.extraCosts > 0
+                              ? state.extraCosts.round().toString().toPersianDigits()
+                              : '',
+                          onChanged: (v) {
+                            final val = double.tryParse(v.toEnglishDigits()) ?? 0;
+                            context.read<PurchaseCubit>().setExtraCosts(val);
+                          },
+                          decoration: const InputDecoration(
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            suffixText: 'تومان',
+                            hintText: '۰',
                           ),
+                          style: const TextStyle(fontSize: 13),
+                          textAlign: TextAlign.center,
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Divider(color: AppColors.dividerDark),
-                    const SizedBox(height: 8),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const Divider(color: AppColors.dividerDark),
+                  const SizedBox(height: 8),
 
-                    // Items Total
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(AppStrings.purchaseItemsTotal,
-                            style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-                        Text('${state.totalAmount.round().formatted} تومان',
-                            style: const TextStyle(fontSize: 14)),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
+                  // Items Total
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(AppStrings.purchaseItemsTotal,
+                          style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                      Text('${state.totalAmount.round().formatted} تومان',
+                          style: const TextStyle(fontSize: 14)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
 
-                    // Net Total
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(AppStrings.purchaseNetTotal,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.accent)),
-                        Text('${state.totalNet.round().formatted} تومان',
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.accent)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 24),
+                  // Net Total
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(AppStrings.purchaseNetTotal,
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.accent)),
+                      Text('${state.totalNet.round().formatted} تومان',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.accent)),
+                    ],
+                  ),
+                ],
+              );
 
-              // Save Button
-              Column(
+              final saveWidget = Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (state.errorMessage != null) ...[
                     Container(
@@ -829,7 +847,6 @@ class _PurchaseFooter extends StatelessWidget {
                   ],
                   SizedBox(
                     height: 48,
-                    width: 160,
                     child: ElevatedButton.icon(
                       onPressed: state.isSaving ? null : () => context.read<PurchaseCubit>().save(),
                       icon: state.isSaving
@@ -847,8 +864,46 @@ class _PurchaseFooter extends StatelessWidget {
                     ),
                   ),
                 ],
-              ),
-            ],
+              );
+
+              if (isCompact) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    notesWidget,
+                    const SizedBox(height: 16),
+                    totalsWidget,
+                    const SizedBox(height: 16),
+                    saveWidget,
+                  ],
+                );
+              }
+
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Left: Notes
+                  Expanded(
+                    flex: 3,
+                    child: notesWidget,
+                  ),
+                  const SizedBox(width: 24),
+
+                  // Right: Costs & Totals
+                  Expanded(
+                    flex: 3,
+                    child: totalsWidget,
+                  ),
+                  const SizedBox(width: 24),
+
+                  // Save Button
+                  SizedBox(
+                    width: 160,
+                    child: saveWidget,
+                  ),
+                ],
+              );
+            },
           ),
         );
       },

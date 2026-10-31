@@ -36,159 +36,197 @@ class InvoiceFooter extends StatelessWidget {
               _OverallDiscountRow(state: state),
               const SizedBox(height: 16),
 
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ── Totals & Credit ────────────────────────────
-                  Expanded(
-                    flex: 4,
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            _TotalCard(
-                              label: AppStrings.totalGross,
-                              value: state.totalGross.toman,
-                              color: AppColors.textPrimary,
-                              icon: Icons.receipt,
-                              tooltip: 'قیمت خرید: ${state.totalCost.formatted} تومان\n'
-                                  'سود (روی خرید): ${(state.totalGross - state.totalCost).formatted} تومان (${(state.totalCost > 0 ? ((state.totalGross - state.totalCost) / state.totalCost) * 100.0 : 0.0).toStringAsFixed(1).toPersianDigits()}٪)',
-                            ),
-                            const SizedBox(width: 12),
-                            _TotalCard(
-                              label: AppStrings.totalDiscount,
-                              value: state.totalDiscount.toman,
-                              color: AppColors.warning,
-                              icon: Icons.discount_outlined,
-                              tooltip: 'درصد تخفیف: ${(state.totalGross > 0 ? (state.totalDiscount / state.totalGross) * 100.0 : 0.0).toStringAsFixed(1).toPersianDigits()}٪',
-                            ),
-                            const SizedBox(width: 12),
-                            _TotalCard(
-                              label: AppStrings.finalPayable,
-                              value: state.totalNet.toman,
-                              color: AppColors.accent,
-                              icon: Icons.payments_outlined,
-                              isHighlighted: true,
-                              tooltip: 'سود فاکتور: ${state.totalProfit.formatted} تومان (${state.totalProfitPercentage.toStringAsFixed(1).toPersianDigits()}٪)',
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        _PaymentsSummaryBar(
-                          state: state,
-                          onManage: () => _openPaymentsDialog(context, state),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isCompact = constraints.maxWidth < 750;
 
-                  // ── Notes ──────────────────────────────────────
-                  Expanded(
-                    flex: 2,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'توضیحات فاکتور',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: AppColors.textMuted,
-                                fontWeight: FontWeight.w500,
-                              ),
-                        ),
-                        const SizedBox(height: 6),
-                        TextFormField(
-                          initialValue: state.notes ?? '',
-                          maxLines: 4,
-                          onChanged: (v) => context.read<InvoiceCubit>().setNotes(v),
-                          decoration: InputDecoration(
-                            isDense: true,
-                            hintText: 'یادداشت برای این فاکتور...',
-                            contentPadding: const EdgeInsets.all(12),
-                            filled: true,
-                            fillColor: AppColors.surfaceDark,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(color: AppColors.dividerDark),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(color: AppColors.dividerDark),
-                            ),
-                          ),
-                          style: const TextStyle(fontSize: 13),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 24),
-
-                  // ── Actions ─────────────────────────────────────
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
+                  final totalsCards = Row(
                     children: [
-                      SizedBox(
-                        width: 170,
-                        child: ElevatedButton.icon(
-                          onPressed: state.isSaving
-                              ? null
-                              : () async {
-                                    await context.read<InvoiceCubit>().save();
-                                    if (context.mounted) {
-                                      final newState = context.read<InvoiceCubit>().state;
-                                      if (newState.errorMessage != null) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text(newState.errorMessage!),
-                                            backgroundColor: AppColors.error,
-                                          ),
-                                        );
-                                      }
-                                    }
-                                  },
-                          icon: state.isSaving
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Icon(Icons.save, size: 20),
-                          label: const Text(AppStrings.saveInvoice),
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                        ),
+                      _TotalCard(
+                        label: AppStrings.totalGross,
+                        value: state.totalGross.toman,
+                        color: AppColors.textPrimary,
+                        icon: Icons.receipt,
+                        tooltip: 'قیمت خرید: ${state.totalCost.formatted} تومان\n'
+                            'سود (روی خرید): ${(state.totalGross - state.totalCost).formatted} تومان (${(state.totalCost > 0 ? ((state.totalGross - state.totalCost) / state.totalCost) * 100.0 : 0.0).toStringAsFixed(1).toPersianDigits()}٪)',
                       ),
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        width: 170,
-                        child: OutlinedButton.icon(
-                          onPressed: onPrint,
-                          icon: const Icon(Icons.visibility_outlined, size: 18),
-                          label: const Text(AppStrings.previewInvoice),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 11),
-                            foregroundColor: AppColors.primary,
-                            side: BorderSide(color: AppColors.primary.withValues(alpha: 0.6)),
-                          ),
-                        ),
+                      const SizedBox(width: 8),
+                      _TotalCard(
+                        label: AppStrings.totalDiscount,
+                        value: state.totalDiscount.toman,
+                        color: AppColors.warning,
+                        icon: Icons.discount_outlined,
+                        tooltip: 'درصد تخفیف: ${(state.totalGross > 0 ? (state.totalDiscount / state.totalGross) * 100.0 : 0.0).toStringAsFixed(1).toPersianDigits()}٪',
                       ),
-                      const SizedBox(height: 6),
-                      SizedBox(
-                        width: 170,
-                        child: TextButton.icon(
-                          onPressed: onQuickPrint,
-                          icon: const Icon(Icons.print_outlined, size: 16),
-                          label: const Text(AppStrings.quickPrint),
-                          style: TextButton.styleFrom(
-                            foregroundColor: AppColors.textMuted,
-                            padding: const EdgeInsets.symmetric(vertical: 6),
-                          ),
-                        ),
+                      const SizedBox(width: 8),
+                      _TotalCard(
+                        label: AppStrings.finalPayable,
+                        value: state.totalNet.toman,
+                        color: AppColors.accent,
+                        icon: Icons.payments_outlined,
+                        isHighlighted: true,
+                        tooltip: 'سود فاکتور: ${state.totalProfit.formatted} تومان (${state.totalProfitPercentage.toStringAsFixed(1).toPersianDigits()}٪)',
                       ),
                     ],
-                  ),
-                ],
+                  );
+
+                  final paymentsBar = _PaymentsSummaryBar(
+                    state: state,
+                    onManage: () => _openPaymentsDialog(context, state),
+                  );
+
+                  final notesField = Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'توضیحات فاکتور',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppColors.textMuted,
+                              fontWeight: FontWeight.w500,
+                            ),
+                      ),
+                      const SizedBox(height: 6),
+                      TextFormField(
+                        initialValue: state.notes ?? '',
+                        maxLines: isCompact ? 2 : 4,
+                        onChanged: (v) => context.read<InvoiceCubit>().setNotes(v),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          hintText: 'یادداشت برای این فاکتور...',
+                          contentPadding: const EdgeInsets.all(12),
+                          filled: true,
+                          fillColor: AppColors.surfaceDark,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: AppColors.dividerDark),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: AppColors.dividerDark),
+                          ),
+                        ),
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                    ],
+                  );
+
+                  final saveButton = ElevatedButton.icon(
+                    onPressed: state.isSaving
+                        ? null
+                        : () async {
+                            await context.read<InvoiceCubit>().save();
+                            if (context.mounted) {
+                              final newState = context.read<InvoiceCubit>().state;
+                              if (newState.errorMessage != null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(newState.errorMessage!),
+                                    backgroundColor: AppColors.error,
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                    icon: state.isSaving
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.save, size: 20),
+                    label: const Text(AppStrings.saveInvoice),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  );
+
+                  final previewButton = OutlinedButton.icon(
+                    onPressed: onPrint,
+                    icon: const Icon(Icons.visibility_outlined, size: 18),
+                    label: const Text(AppStrings.previewInvoice),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 11),
+                      foregroundColor: AppColors.primary,
+                      side: BorderSide(color: AppColors.primary.withValues(alpha: 0.6)),
+                    ),
+                  );
+
+                  final quickPrintButton = TextButton.icon(
+                    onPressed: onQuickPrint,
+                    icon: const Icon(Icons.print_outlined, size: 16),
+                    label: const Text(AppStrings.quickPrint),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.textMuted,
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                    ),
+                  );
+
+                  if (isCompact) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        totalsCards,
+                        const SizedBox(height: 10),
+                        paymentsBar,
+                        const SizedBox(height: 12),
+                        notesField,
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(child: saveButton),
+                            const SizedBox(width: 8),
+                            Expanded(child: previewButton),
+                            if (onQuickPrint != null) ...[
+                              const SizedBox(width: 8),
+                              IconButton(
+                                icon: const Icon(Icons.print_outlined),
+                                tooltip: AppStrings.quickPrint,
+                                onPressed: onQuickPrint,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    );
+                  }
+
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ── Totals & Credit ────────────────────────────
+                      Expanded(
+                        flex: 4,
+                        child: Column(
+                          children: [
+                            totalsCards,
+                            const SizedBox(height: 10),
+                            paymentsBar,
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+
+                      // ── Notes ──────────────────────────────────────
+                      Expanded(
+                        flex: 2,
+                        child: notesField,
+                      ),
+                      const SizedBox(width: 24),
+
+                      // ── Actions ─────────────────────────────────────
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(width: 170, child: saveButton),
+                          const SizedBox(height: 8),
+                          SizedBox(width: 170, child: previewButton),
+                          const SizedBox(height: 6),
+                          SizedBox(width: 170, child: quickPrintButton),
+                        ],
+                      ),
+                    ],
+                  );
+                },
               ),
             ],
           ),

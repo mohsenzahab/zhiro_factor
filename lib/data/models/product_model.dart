@@ -18,7 +18,7 @@ class ProductModel extends Equatable {
   final bool isTemporary;
   final double totalSold;
 
-  ProductModel({
+  const ProductModel({
     this.id,
     this.code,
     required this.name,

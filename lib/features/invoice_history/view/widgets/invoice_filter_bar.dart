@@ -23,94 +23,121 @@ class InvoiceFilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.cardDark,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.dividerDark),
-      ),
-      child: Row(
-        children: [
-          // Search Customer/Invoice
-          SizedBox(
-            width: 280,
-            child: TextField(
-              controller: searchController,
-              onChanged: onSearchChanged,
-              decoration: InputDecoration(
-                hintText: 'جستجو مشتری یا شماره فاکتور...',
-                prefixIcon: const Icon(Icons.search, size: 20),
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                suffixIcon: ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: searchController,
-                  builder: (_, v, _) {
-                    if (v.text.isEmpty) return const SizedBox.shrink();
-                    return IconButton(
-                      icon: const Icon(Icons.close, size: 16),
-                      onPressed: () {
-                        searchController.clear();
-                        onSearchChanged('');
-                      },
-                    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 750;
+
+        final searchCustomerField = TextField(
+          controller: searchController,
+          onChanged: onSearchChanged,
+          decoration: InputDecoration(
+            hintText: 'جستجو مشتری یا شماره فاکتور...',
+            prefixIcon: const Icon(Icons.search, size: 20),
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            suffixIcon: ValueListenableBuilder<TextEditingValue>(
+              valueListenable: searchController,
+              builder: (_, v, _) {
+                if (v.text.isEmpty) return const SizedBox.shrink();
+                return IconButton(
+                  icon: const Icon(Icons.close, size: 16),
+                  onPressed: () {
+                    searchController.clear();
+                    onSearchChanged('');
                   },
-                ),
-              ),
+                );
+              },
             ),
           ),
-          const SizedBox(width: 16),
+        );
 
-          // Search Product
-          SizedBox(
-            width: 220,
-            child: TextField(
-              controller: productSearchController,
-              onChanged: onProductSearchChanged,
-              decoration: InputDecoration(
-                hintText: 'جستجو کالا در فاکتور...',
-                prefixIcon: const Icon(Icons.inventory_2_outlined, size: 20),
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                suffixIcon: ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: productSearchController,
-                  builder: (_, v, _) {
-                    if (v.text.isEmpty) return const SizedBox.shrink();
-                    return IconButton(
-                      icon: const Icon(Icons.close, size: 16),
-                      onPressed: () {
-                        productSearchController.clear();
-                        onProductSearchChanged('');
-                      },
-                    );
+        final searchProductField = TextField(
+          controller: productSearchController,
+          onChanged: onProductSearchChanged,
+          decoration: InputDecoration(
+            hintText: 'جستجو کالا در فاکتور...',
+            prefixIcon: const Icon(Icons.inventory_2_outlined, size: 20),
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            suffixIcon: ValueListenableBuilder<TextEditingValue>(
+              valueListenable: productSearchController,
+              builder: (_, v, _) {
+                if (v.text.isEmpty) return const SizedBox.shrink();
+                return IconButton(
+                  icon: const Icon(Icons.close, size: 16),
+                  onPressed: () {
+                    productSearchController.clear();
+                    onProductSearchChanged('');
                   },
-                ),
-              ),
+                );
+              },
             ),
           ),
-          const SizedBox(width: 16),
+        );
 
-          // Status filter chips
-          const Text('وضعیت:', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
-          const SizedBox(width: 8),
-          _StatusChip(
-            label: 'همه',
-            isSelected: statusFilter == null,
-            onTap: () => onStatusChanged(null),
-          ),
-          ...AppStrings.invoiceStatuses.map((s) {
-            return Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: _StatusChip(
-                label: s,
-                isSelected: statusFilter == s,
-                color: AppColors.statusColor(s),
-                onTap: () => onStatusChanged(s),
+        final statusChips = SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('وضعیت:', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+              const SizedBox(width: 8),
+              _StatusChip(
+                label: 'همه',
+                isSelected: statusFilter == null,
+                onTap: () => onStatusChanged(null),
               ),
-            );
-          }),
-        ],
-      ),
+              ...AppStrings.invoiceStatuses.map((s) {
+                return Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: _StatusChip(
+                    label: s,
+                    isSelected: statusFilter == s,
+                    color: AppColors.statusColor(s),
+                    onTap: () => onStatusChanged(s),
+                  ),
+                );
+              }),
+            ],
+          ),
+        );
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.cardDark,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.dividerDark),
+          ),
+          child: isCompact
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    searchCustomerField,
+                    const SizedBox(height: 8),
+                    searchProductField,
+                    const SizedBox(height: 10),
+                    statusChips,
+                  ],
+                )
+              : Row(
+                  children: [
+                    SizedBox(
+                      width: 260,
+                      child: searchCustomerField,
+                    ),
+                    const SizedBox(width: 12),
+                    SizedBox(
+                      width: 200,
+                      child: searchProductField,
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(child: statusChips),
+                  ],
+                ),
+        );
+      },
     );
   }
 }

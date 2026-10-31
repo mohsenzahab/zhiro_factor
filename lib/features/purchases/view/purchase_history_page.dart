@@ -3,9 +3,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/number_extensions.dart';
+import '../../../core/responsive/responsive_breakpoints.dart';
 import '../../../core/utils/jalali_utils.dart';
 import '../../../shared/widgets/confirm_dialog.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/responsive_page_header.dart';
 import '../cubit/purchase_history_cubit.dart';
 import '../../../data/models/purchase_model.dart';
 
@@ -53,20 +55,15 @@ class _PurchaseHistoryViewState extends State<_PurchaseHistoryView> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: context.responsivePagePadding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── Title ───────────────────────────────────────────
-          Row(
-            children: [
-              Icon(Icons.history, color: AppColors.accent, size: 28),
-              const SizedBox(width: 12),
-              Text(
-                AppStrings.purchaseHistory,
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-            ],
+          const ResponsivePageHeader(
+            title: AppStrings.purchaseHistory,
+            icon: Icons.history,
+            iconColor: AppColors.accent,
           ),
           const SizedBox(height: 16),
 
@@ -136,69 +133,124 @@ class _PurchaseHistoryViewState extends State<_PurchaseHistoryView> {
                   },
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    child: Row(
-                      children: [
-                        // Expand icon
-                        AnimatedRotation(
-                          turns: isExpanded ? 0.25 : 0,
-                          duration: const Duration(milliseconds: 200),
-                          child: const Icon(Icons.chevron_left, size: 20, color: AppColors.textMuted),
-                        ),
-                        const SizedBox(width: 12),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isCompact = constraints.maxWidth < 650;
 
-                        // Purchase Number
-                        SizedBox(
-                          width: 140,
-                          child: Text(
-                            purchase.purchaseNumber.toPersianDigits(),
-                            style: const TextStyle(fontWeight: FontWeight.w600, letterSpacing: 0.5),
-                          ),
-                        ),
-
-                        // Date
-                        SizedBox(
-                          width: 100,
-                          child: Text(jalaliDate, style: const TextStyle(fontSize: 13)),
-                        ),
-
-                        // Supplier Name
-                        Expanded(
-                          flex: 2,
-                          child: Row(
+                        if (isCompact) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(Icons.local_shipping_outlined, size: 16, color: AppColors.textMuted),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  purchase.supplierName ?? '---',
-                                  style: const TextStyle(fontWeight: FontWeight.w500),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                              Row(
+                                children: [
+                                  AnimatedRotation(
+                                    turns: isExpanded ? 0.25 : 0,
+                                    duration: const Duration(milliseconds: 200),
+                                    child: const Icon(Icons.chevron_left, size: 20, color: AppColors.textMuted),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    purchase.purchaseNumber.toPersianDigits(),
+                                    style: const TextStyle(fontWeight: FontWeight.w600, letterSpacing: 0.5),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _StatusBadge(status: purchase.status),
+                                  const Spacer(),
+                                  _buildActionMenu(context, purchase),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  const Icon(Icons.local_shipping_outlined, size: 16, color: AppColors.textMuted),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      purchase.supplierName ?? '---',
+                                      style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  Text(
+                                    jalaliDate,
+                                    style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    '${purchase.totalNet.round().formatted} تومان',
+                                    style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.accent, fontSize: 13),
+                                  ),
+                                ],
                               ),
                             ],
-                          ),
-                        ),
+                          );
+                        }
 
-                        // Status Badge
-                        SizedBox(
-                          width: 120,
-                          child: _StatusBadge(status: purchase.status),
-                        ),
+                        return Row(
+                          children: [
+                            // Expand icon
+                            AnimatedRotation(
+                              turns: isExpanded ? 0.25 : 0,
+                              duration: const Duration(milliseconds: 200),
+                              child: const Icon(Icons.chevron_left, size: 20, color: AppColors.textMuted),
+                            ),
+                            const SizedBox(width: 12),
 
-                        // Net Total
-                        SizedBox(
-                          width: 130,
-                          child: Text(
-                            '${purchase.totalNet.round().formatted} تومان',
-                            style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.accent),
-                            textAlign: TextAlign.left,
-                          ),
-                        ),
+                            // Purchase Number
+                            SizedBox(
+                              width: 140,
+                              child: Text(
+                                purchase.purchaseNumber.toPersianDigits(),
+                                style: const TextStyle(fontWeight: FontWeight.w600, letterSpacing: 0.5),
+                              ),
+                            ),
 
-                        // Actions Menu
-                        const SizedBox(width: 8),
-                        _buildActionMenu(context, purchase),
-                      ],
+                            // Date
+                            SizedBox(
+                              width: 100,
+                              child: Text(jalaliDate, style: const TextStyle(fontSize: 13)),
+                            ),
+
+                            // Supplier Name
+                            Expanded(
+                              flex: 2,
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.local_shipping_outlined, size: 16, color: AppColors.textMuted),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      purchase.supplierName ?? '---',
+                                      style: const TextStyle(fontWeight: FontWeight.w500),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // Status Badge
+                            SizedBox(
+                              width: 120,
+                              child: _StatusBadge(status: purchase.status),
+                            ),
+
+                            // Net Total
+                            SizedBox(
+                              width: 130,
+                              child: Text(
+                                '${purchase.totalNet.round().formatted} تومان',
+                                style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.accent),
+                                textAlign: TextAlign.left,
+                              ),
+                            ),
+
+                            // Actions Menu
+                            const SizedBox(width: 8),
+                            _buildActionMenu(context, purchase),
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -382,130 +434,142 @@ class _PurchaseDetailPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: AppColors.cardDarkAlt,
-      padding: const EdgeInsets.all(24),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Items table
-          Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'اقلام فاکتور خرید',
-                  style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+      padding: const EdgeInsets.all(20),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isCompact = constraints.maxWidth < 700;
+
+          final itemsTable = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'اقلام فاکتور خرید',
+                style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.cardDark,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.dividerDark),
                 ),
-                const SizedBox(height: 12),
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.cardDark,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.dividerDark),
-                  ),
-                  child: Column(
-                    children: [
-                      // Header
-                      Container(
+                child: Column(
+                  children: [
+                    // Header
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceDark,
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                        border: Border(bottom: BorderSide(color: AppColors.dividerDark)),
+                      ),
+                      child: Row(
+                        children: [
+                          _headerCell('ردیف', flex: 1),
+                          _headerCell('کالا', flex: 3),
+                          _headerCell('تعداد', flex: 1),
+                          _headerCell('فی (تومان)', flex: 2),
+                          _headerCell('جمع (تومان)', flex: 2),
+                        ],
+                      ),
+                    ),
+                    // Rows
+                    if (purchase.items.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Text('بدون آیتم', style: TextStyle(color: AppColors.textMuted)),
+                      ),
+                    ...List.generate(purchase.items.length, (i) {
+                      final item = purchase.items[i];
+                      return Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
-                          color: AppColors.surfaceDark,
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-                          border: Border(bottom: BorderSide(color: AppColors.dividerDark)),
+                          border: i < purchase.items.length - 1
+                              ? Border(bottom: BorderSide(color: AppColors.dividerDark))
+                              : null,
                         ),
                         child: Row(
                           children: [
-                            _headerCell('ردیف', flex: 1),
-                            _headerCell('کالا', flex: 3),
-                            _headerCell('تعداد', flex: 1),
-                            _headerCell('فی (تومان)', flex: 2),
-                            _headerCell('جمع (تومان)', flex: 2),
+                            _cell('${i + 1}'.toPersianDigits(), flex: 1),
+                            _cell(item.productName, flex: 3),
+                            _cell(
+                              item.quantity == item.quantity.roundToDouble()
+                                  ? item.quantity.toInt().toString().toPersianDigits()
+                                  : item.quantity.toString().toPersianDigits(),
+                              flex: 1,
+                            ),
+                            _cell(item.unitPrice.round().formatted, flex: 2),
+                            _cell(item.lineTotal.round().formatted, flex: 2, isBold: true),
                           ],
                         ),
-                      ),
-                      // Rows
-                      if (purchase.items.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Text('بدون آیتم', style: TextStyle(color: AppColors.textMuted)),
-                        ),
-                      ...List.generate(purchase.items.length, (i) {
-                        final item = purchase.items[i];
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                            border: i < purchase.items.length - 1
-                                ? Border(bottom: BorderSide(color: AppColors.dividerDark))
-                                : null,
-                          ),
-                          child: Row(
-                            children: [
-                              _cell('${i + 1}'.toPersianDigits(), flex: 1),
-                              _cell(item.productName, flex: 3),
-                              _cell(
-                                item.quantity == item.quantity.roundToDouble()
-                                    ? item.quantity.toInt().toString().toPersianDigits()
-                                    : item.quantity.toString().toPersianDigits(),
-                                flex: 1,
-                              ),
-                              _cell(item.unitPrice.round().formatted, flex: 2),
-                              _cell(item.lineTotal.round().formatted, flex: 2, isBold: true),
-                            ],
-                          ),
-                        );
-                      }),
-                    ],
-                  ),
+                      );
+                    }),
+                  ],
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 32),
+              ),
+            ],
+          );
 
-          // Summary column
-          Expanded(
-            flex: 1,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'خلاصه فاکتور',
-                  style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+          final summaryColumn = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'خلاصه فاکتور',
+                style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.cardDark,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.dividerDark),
                 ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.cardDark,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.dividerDark),
-                  ),
-                  child: Column(
-                    children: [
-                      _summaryRow('جمع اقلام:', purchase.totalAmount),
-                      if (purchase.shippingCost > 0)
-                        _summaryRow('هزینه ارسال:', purchase.shippingCost),
-                      if (purchase.extraCosts > 0)
-                        _summaryRow('هزینه‌های اضافی:', purchase.extraCosts),
-                      const Divider(color: AppColors.dividerDark, height: 24),
-                      _summaryRow('مبلغ نهایی:', purchase.totalNet, isTotal: true),
-                    ],
-                  ),
+                child: Column(
+                  children: [
+                    _summaryRow('جمع اقلام:', purchase.totalAmount),
+                    if (purchase.shippingCost > 0)
+                      _summaryRow('هزینه ارسال:', purchase.shippingCost),
+                    if (purchase.extraCosts > 0)
+                      _summaryRow('هزینه‌های اضافی:', purchase.extraCosts),
+                    const Divider(color: AppColors.dividerDark, height: 24),
+                    _summaryRow('مبلغ نهایی:', purchase.totalNet, isTotal: true),
+                  ],
                 ),
-                if (purchase.notes != null && purchase.notes!.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  const Text('یادداشت',
-                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 4),
-                  Text(
-                    purchase.notes!,
-                    style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
-                  ),
-                ],
+              ),
+              if (purchase.notes != null && purchase.notes!.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                const Text('یادداشت',
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                Text(
+                  purchase.notes!,
+                  style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+                ),
               ],
-            ),
-          ),
-        ],
+            ],
+          );
+
+          if (isCompact) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                itemsTable,
+                const SizedBox(height: 20),
+                summaryColumn,
+              ],
+            );
+          }
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(flex: 3, child: itemsTable),
+              const SizedBox(width: 32),
+              Expanded(flex: 1, child: summaryColumn),
+            ],
+          );
+        },
       ),
     );
   }

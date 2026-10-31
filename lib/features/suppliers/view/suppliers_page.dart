@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/responsive/responsive_breakpoints.dart';
+import '../../../shared/widgets/responsive_page_header.dart';
 import '../../../shared/widgets/search_field.dart';
 import '../../../shared/widgets/confirm_dialog.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -46,26 +48,22 @@ class _SuppliersViewState extends State<_SuppliersView> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: context.responsivePagePadding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header ──────────────────────────────────────────────
-          Row(
-            children: [
-              Icon(Icons.local_shipping, color: AppColors.accent, size: 28),
-              const SizedBox(width: 12),
-              Text(
-                AppStrings.navSuppliers,
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const Spacer(),
-              SearchField(
-                hintText: AppStrings.searchSupplier,
-                controller: _searchCtrl,
-                onChanged: (q) => context.read<SupplierCubit>().loadSuppliers(query: q),
-              ),
-              const SizedBox(width: 12),
+          // ── Responsive Header ────────────────────────────────────
+          ResponsivePageHeader(
+            title: AppStrings.navSuppliers,
+            icon: Icons.local_shipping,
+            iconColor: AppColors.accent,
+            searchField: SearchField(
+              hintText: AppStrings.searchSupplier,
+              width: context.isMobile ? double.infinity : 220,
+              controller: _searchCtrl,
+              onChanged: (q) => context.read<SupplierCubit>().loadSuppliers(query: q),
+            ),
+            actions: [
               ElevatedButton.icon(
                 onPressed: () => _addSupplier(context),
                 icon: const Icon(Icons.add, size: 20),
@@ -76,7 +74,7 @@ class _SuppliersViewState extends State<_SuppliersView> {
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
           // ── Table ───────────────────────────────────────────────
           Expanded(

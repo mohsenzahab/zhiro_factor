@@ -19,116 +19,133 @@ class InvoiceHeader extends StatelessWidget {
     return BlocBuilder<InvoiceCubit, InvoiceState>(
       builder: (context, state) {
         return Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: AppColors.cardDark,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppColors.dividerDark),
           ),
-          child: Row(
-            children: [
-              // Invoice Number
-              Expanded(
-                child: _buildField(
-                  context,
-                  label: AppStrings.invoiceNumber,
-                  child: TextFormField(
-                    initialValue: state.invoiceNumber,
-                    onChanged: (v) => context.read<InvoiceCubit>().setInvoiceNumber(v),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isCompact = constraints.maxWidth < 750;
+
+              final invoiceNumberField = _buildField(
+                context,
+                label: AppStrings.invoiceNumber,
+                child: TextFormField(
+                  initialValue: state.invoiceNumber,
+                  onChanged: (v) => context.read<InvoiceCubit>().setInvoiceNumber(v),
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                  style: const TextStyle(fontWeight: FontWeight.w600, letterSpacing: 1),
+                ),
+              );
+
+              final datePickerField = _buildField(
+                context,
+                label: AppStrings.invoiceDate,
+                child: InkWell(
+                  onTap: () => _pickDate(context),
+                  borderRadius: BorderRadius.circular(10),
+                  child: InputDecorator(
                     decoration: const InputDecoration(
                       isDense: true,
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      suffixIcon: Icon(Icons.calendar_today, size: 18),
                     ),
-                    style: const TextStyle(fontWeight: FontWeight.w600, letterSpacing: 1),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-
-              // Date Picker
-              Expanded(
-                child: _buildField(
-                  context,
-                  label: AppStrings.invoiceDate,
-                  child: InkWell(
-                    onTap: () => _pickDate(context),
-                    borderRadius: BorderRadius.circular(10),
-                    child: InputDecorator(
-                      decoration: const InputDecoration(
-                        isDense: true,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        suffixIcon: Icon(Icons.calendar_today, size: 18),
-                      ),
-                      child: Text(
-                        state.date.isNotEmpty
-                            ? JalaliUtils.format(JalaliUtils.fromIso(state.date))
-                            : '---',
-                        style: Theme.of(context).textTheme.bodyLarge,
-                      ),
+                    child: Text(
+                      state.date.isNotEmpty
+                          ? JalaliUtils.format(JalaliUtils.fromIso(state.date))
+                          : '---',
+                      style: Theme.of(context).textTheme.bodyLarge,
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 16),
+              );
 
-              // Customer Search with Create
-              Expanded(
-                flex: 2,
-                child: _buildField(
-                  context,
-                  label: AppStrings.selectCustomer,
-                  child: _CustomerSearchField(
-                    initialCustomer: state.selectedCustomer,
-                    onSelected: (c) => context.read<InvoiceCubit>().setCustomer(c),
-                  ),
+              final customerSearchField = _buildField(
+                context,
+                label: AppStrings.selectCustomer,
+                child: _CustomerSearchField(
+                  initialCustomer: state.selectedCustomer,
+                  onSelected: (c) => context.read<InvoiceCubit>().setCustomer(c),
                 ),
-              ),
-              const SizedBox(width: 16),
+              );
 
-              // Status Dropdown
-              Expanded(
-                child: _buildField(
-                  context,
-                  label: AppStrings.invoiceStatus,
-                  child: DropdownButtonFormField<String>(
-                    initialValue: state.status,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      isDense: true,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    ),
-                    items: AppStrings.invoiceStatuses.map((s) {
-                      return DropdownMenuItem(
-                        value: s,
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: AppColors.statusColor(s),
-                              ),
+              final statusDropdownField = _buildField(
+                context,
+                label: AppStrings.invoiceStatus,
+                child: DropdownButtonFormField<String>(
+                  initialValue: state.status,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                  items: AppStrings.invoiceStatuses.map((s) {
+                    return DropdownMenuItem(
+                      value: s,
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppColors.statusColor(s),
                             ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                s,
-                                style: const TextStyle(fontSize: 13),
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              s,
+                              style: const TextStyle(fontSize: 13),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (v) {
-                      if (v != null) context.read<InvoiceCubit>().setStatus(v);
-                    },
-                  ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (v) {
+                    if (v != null) context.read<InvoiceCubit>().setStatus(v);
+                  },
                 ),
-              ),
-            ],
+              );
+
+              if (isCompact) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(child: invoiceNumberField),
+                        const SizedBox(width: 12),
+                        Expanded(child: datePickerField),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    customerSearchField,
+                    const SizedBox(height: 12),
+                    statusDropdownField,
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(child: invoiceNumberField),
+                  const SizedBox(width: 16),
+                  Expanded(child: datePickerField),
+                  const SizedBox(width: 16),
+                  Expanded(flex: 2, child: customerSearchField),
+                  const SizedBox(width: 16),
+                  Expanded(child: statusDropdownField),
+                ],
+              );
+            },
           ),
         );
       },

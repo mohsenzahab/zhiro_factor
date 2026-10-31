@@ -3,8 +3,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/number_extensions.dart';
+import '../../../core/responsive/responsive_breakpoints.dart';
 import '../../../services/export_service.dart';
 import '../../../shared/widgets/date_range_filter_bar.dart';
+import '../../../shared/widgets/responsive_kpi_grid.dart';
+import '../../../shared/widgets/responsive_page_header.dart';
 import '../cubit/report_cubit.dart';
 import '../cubit/report_state.dart';
 import 'widgets/sales_ledger_table.dart';
@@ -30,26 +33,21 @@ class _ReportsView extends StatelessWidget {
     return BlocBuilder<ReportCubit, ReportState>(
       builder: (context, state) {
         return Padding(
-          padding: const EdgeInsets.all(24),
+          padding: context.responsivePagePadding,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ── Header & Exports ──────────────────────────────────
-              Row(
-                children: [
-                  const Icon(Icons.analytics, color: AppColors.primary, size: 28),
-                  const SizedBox(width: 12),
-                  Text(
-                    AppStrings.salesLedger,
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  const Spacer(),
+              ResponsivePageHeader(
+                title: AppStrings.salesLedger,
+                icon: Icons.analytics,
+                iconColor: AppColors.primary,
+                actions: [
                   OutlinedButton.icon(
                     onPressed: () => _exportCsv(context),
                     icon: const Icon(Icons.file_download, size: 18),
                     label: const Text(AppStrings.exportCsv),
                   ),
-                  const SizedBox(width: 8),
                   ElevatedButton.icon(
                     onPressed: () => _exportExcel(context),
                     icon: const Icon(Icons.table_chart, size: 18),
@@ -75,59 +73,52 @@ class _ReportsView extends StatelessWidget {
               const SizedBox(height: 12),
 
               // ── Status Filter Chips ───────────────────────────────
-              Row(
-                children: [
-                  const Text('وضعیت فاکتور:', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
-                  const SizedBox(width: 10),
-                  _buildStatusChip(context, state, null, 'همه'),
-                  const SizedBox(width: 8),
-                  _buildStatusChip(context, state, AppStrings.statusSettled, AppStrings.statusSettled),
-                  const SizedBox(width: 8),
-                  _buildStatusChip(context, state, AppStrings.statusPending, AppStrings.statusPending),
-                  const SizedBox(width: 8),
-                  _buildStatusChip(context, state, AppStrings.statusDeposit, AppStrings.statusDeposit),
-                ],
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    const Text('وضعیت فاکتور:', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+                    const SizedBox(width: 10),
+                    _buildStatusChip(context, state, null, 'همه'),
+                    const SizedBox(width: 8),
+                    _buildStatusChip(context, state, AppStrings.statusSettled, AppStrings.statusSettled),
+                    const SizedBox(width: 8),
+                    _buildStatusChip(context, state, AppStrings.statusPending, AppStrings.statusPending),
+                    const SizedBox(width: 8),
+                    _buildStatusChip(context, state, AppStrings.statusDeposit, AppStrings.statusDeposit),
+                  ],
+                ),
               ),
               const SizedBox(height: 16),
 
               // ── Summary Cards ─────────────────────────────────────
-              Row(
+              ResponsiveKpiGrid(
+                minItemWidth: 200,
                 children: [
-                  Expanded(
-                    child: _buildSummaryCard(
-                      label: 'فروش این دوره',
-                      value: state.totalSales.toman,
-                      icon: Icons.receipt_long,
-                      color: AppColors.primary,
-                    ),
+                  _buildSummaryCard(
+                    label: 'فروش این دوره',
+                    value: state.totalSales.toman,
+                    icon: Icons.receipt_long,
+                    color: AppColors.primary,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildSummaryCard(
-                      label: 'سود این دوره',
-                      value: state.totalProfit.toman,
-                      icon: Icons.trending_up,
-                      color: AppColors.success,
-                      isHighlighted: true,
-                    ),
+                  _buildSummaryCard(
+                    label: 'سود این دوره',
+                    value: state.totalProfit.toman,
+                    icon: Icons.trending_up,
+                    color: AppColors.success,
+                    isHighlighted: true,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildSummaryCard(
-                      label: 'تخفیفات این دوره',
-                      value: state.totalDiscount.toman,
-                      icon: Icons.discount_outlined,
-                      color: AppColors.warning,
-                    ),
+                  _buildSummaryCard(
+                    label: 'تخفیفات این دوره',
+                    value: state.totalDiscount.toman,
+                    icon: Icons.discount_outlined,
+                    color: AppColors.warning,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildSummaryCard(
-                      label: 'تعداد کل اقلام',
-                      value: '${state.itemsCount.formattedInt} سطر (${state.totalQuantity.formattedInt} عدد)',
-                      icon: Icons.inventory_2_outlined,
-                      color: AppColors.info,
-                    ),
+                  _buildSummaryCard(
+                    label: 'تعداد کل اقلام',
+                    value: '${state.itemsCount.formattedInt} سطر (${state.totalQuantity.formattedInt} عدد)',
+                    icon: Icons.inventory_2_outlined,
+                    color: AppColors.info,
                   ),
                 ],
               ),

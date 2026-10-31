@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../core/constants/app_colors.dart';
+import '../../core/constants/app_strings.dart';
+import '../../core/responsive/responsive_breakpoints.dart';
 import 'sidebar_nav.dart';
 import '../../features/invoice/view/invoice_page.dart';
 import '../../features/invoice_history/view/invoice_history_page.dart';
@@ -78,8 +81,73 @@ class AppScaffoldState extends State<AppScaffold> {
   int? _salesHistoryProductId;
   NavPage? _returnPageAfterInvoice;
 
+  String _getPageTitle(NavPage page) {
+    switch (page) {
+      case NavPage.newInvoice:
+        return _editInvoiceId != null ? AppStrings.editInvoice : AppStrings.navNewInvoice;
+      case NavPage.invoiceHistory:
+        return AppStrings.navInvoiceHistory;
+      case NavPage.newPurchase:
+        return AppStrings.newPurchase;
+      case NavPage.purchaseHistory:
+        return AppStrings.purchaseHistory;
+      case NavPage.products:
+        return AppStrings.navProducts;
+      case NavPage.productSalesHistory:
+        return AppStrings.productSalesHistory;
+      case NavPage.demands:
+        return AppStrings.navDemands;
+      case NavPage.customers:
+        return AppStrings.navCustomers;
+      case NavPage.suppliers:
+        return AppStrings.navSuppliers;
+      case NavPage.dashboard:
+        return AppStrings.navDashboard;
+      case NavPage.settings:
+        return AppStrings.navSettings;
+    }
+  }
+
+  int _getBottomNavIndex(NavPage page) {
+    switch (page) {
+      case NavPage.newInvoice:
+        return 0;
+      case NavPage.invoiceHistory:
+        return 1;
+      case NavPage.products:
+      case NavPage.productSalesHistory:
+        return 2;
+      case NavPage.dashboard:
+        return 3;
+      default:
+        return 4; // Other pages (Purchases, Demands, Customers, Suppliers, Settings)
+    }
+  }
+
+  void _onBottomNavTapped(int index, BuildContext scaffoldCtx) {
+    switch (index) {
+      case 0:
+        navigateTo(NavPage.newInvoice);
+        break;
+      case 1:
+        navigateTo(NavPage.invoiceHistory);
+        break;
+      case 2:
+        navigateTo(NavPage.products);
+        break;
+      case 3:
+        navigateTo(NavPage.dashboard);
+        break;
+      case 4:
+        Scaffold.of(scaffoldCtx).openDrawer();
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isMobile = context.isMobile;
+
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.keyN, control: true): () {
@@ -90,22 +158,90 @@ class AppScaffoldState extends State<AppScaffold> {
         autofocus: true,
         child: Directionality(
           textDirection: TextDirection.rtl,
-          child: Scaffold(
-            body: Row(
-              children: [
-                // ── Sidebar ────────────────────────────────────
-                SidebarNav(
-                  currentPage: _currentPage,
-                  onPageChanged: (page) => navigateTo(page),
-                ),
+          child: isMobile
+              ? Scaffold(
+                  appBar: AppBar(
+                    title: Text(
+                      _getPageTitle(_currentPage),
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                    ),
+                    backgroundColor: AppColors.scaffoldDark,
+                    elevation: 0,
+                    leading: Builder(
+                      builder: (ctx) => IconButton(
+                        icon: const Icon(Icons.menu),
+                        tooltip: 'منوی برنامه',
+                        onPressed: () => Scaffold.of(ctx).openDrawer(),
+                      ),
+                    ),
+                  ),
+                  drawer: Drawer(
+                    backgroundColor: AppColors.surfaceDark,
+                    child: SafeArea(
+                      child: SidebarNav(
+                        isDrawer: true,
+                        currentPage: _currentPage,
+                        onPageChanged: (page) => navigateTo(page),
+                      ),
+                    ),
+                  ),
+                  body: _buildPage(),
+                  bottomNavigationBar: Builder(
+                    builder: (scaffoldCtx) => BottomNavigationBar(
+                      currentIndex: _getBottomNavIndex(_currentPage),
+                      onTap: (idx) => _onBottomNavTapped(idx, scaffoldCtx),
+                      type: BottomNavigationBarType.fixed,
+                      backgroundColor: AppColors.cardDark,
+                      selectedItemColor: AppColors.primary,
+                      unselectedItemColor: AppColors.textMuted,
+                      selectedFontSize: 11,
+                      unselectedFontSize: 11,
+                      items: const [
+                        BottomNavigationBarItem(
+                          icon: Icon(Icons.receipt_long_outlined),
+                          activeIcon: Icon(Icons.receipt_long),
+                          label: 'فاکتور',
+                        ),
+                        BottomNavigationBarItem(
+                          icon: Icon(Icons.history_outlined),
+                          activeIcon: Icon(Icons.history),
+                          label: 'تاریخچه',
+                        ),
+                        BottomNavigationBarItem(
+                          icon: Icon(Icons.inventory_2_outlined),
+                          activeIcon: Icon(Icons.inventory_2),
+                          label: 'کالاها',
+                        ),
+                        BottomNavigationBarItem(
+                          icon: Icon(Icons.dashboard_outlined),
+                          activeIcon: Icon(Icons.dashboard),
+                          label: 'داشبورد',
+                        ),
+                        BottomNavigationBarItem(
+                          icon: Icon(Icons.grid_view_rounded),
+                          activeIcon: Icon(Icons.grid_view_rounded),
+                          label: 'سایر بخش‌ها',
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : Scaffold(
+                  body: Row(
+                    children: [
+                      // ── Sidebar ────────────────────────────────────
+                      SidebarNav(
+                        currentPage: _currentPage,
+                        onPageChanged: (page) => navigateTo(page),
+                      ),
 
-                // ── Main Content ───────────────────────────────
-                Expanded(
-                  child: _buildPage(),
+                      // ── Main Content ───────────────────────────────
+                      Expanded(
+                        child: _buildPage(),
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            ),
-          ),
         ),
       ),
     );

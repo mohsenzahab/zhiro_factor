@@ -4,6 +4,7 @@ import 'package:printing/printing.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/extensions/number_extensions.dart';
+import '../../../../core/responsive/responsive_breakpoints.dart';
 import '../../../../data/models/invoice_model.dart';
 import '../../../../data/repositories/invoice_repository.dart';
 import '../../../../data/repositories/settings_repository.dart';
@@ -172,38 +173,32 @@ class _InvoicePreviewDialogState extends State<InvoicePreviewDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: AppColors.cardDark,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: context.isMobile ? 12 : 40,
+        vertical: context.isMobile ? 16 : 24,
+      ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
-        child: SizedBox(
-          width: 960,
-          height: 820,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            maxWidth: 960,
+            maxHeight: 820,
+          ),
           child: Column(
             children: [
               // ── Top Toolbar ──────────────────────────────────────
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                decoration: BoxDecoration(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: const BoxDecoration(
                   color: AppColors.surfaceDark,
                   border: Border(bottom: BorderSide(color: AppColors.dividerDark)),
                 ),
-                child: Row(
-                  children: [
-                    Icon(Icons.visibility_outlined, color: AppColors.primary, size: 22),
-                    const SizedBox(width: 10),
-                    Text(
-                      '${AppStrings.previewInvoice} ${_invoiceNumber.toPersianDigits()}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(width: 24),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isCompact = constraints.maxWidth < 650;
 
-                    // ── A4 / A5 Format Switcher ────────────────────
-                    SegmentedButton<String>(
+                    final formatSwitcher = SegmentedButton<String>(
                       segments: const [
                         ButtonSegment(
                           value: 'a4',
@@ -239,43 +234,97 @@ class _InvoicePreviewDialogState extends State<InvoicePreviewDialog> {
                           const BorderSide(color: AppColors.dividerDark),
                         ),
                       ),
-                    ),
+                    );
 
-                    const Spacer(),
+                    final actionButtons = Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: _pdfBytes == null || _loading ? null : _saveFile,
+                          icon: const Icon(Icons.download_rounded, size: 18),
+                          label: const Text(AppStrings.savePdf),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.accent,
+                            side: BorderSide(color: AppColors.accent.withValues(alpha: 0.5)),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton.icon(
+                          onPressed: _pdfBytes == null || _loading ? null : _print,
+                          icon: const Icon(Icons.print, size: 18),
+                          label: const Text(AppStrings.printInvoice),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          ),
+                        ),
+                      ],
+                    );
 
-                    // ── Save PDF directly ──────────────────────────
-                    OutlinedButton.icon(
-                      onPressed: _pdfBytes == null || _loading ? null : _saveFile,
-                      icon: const Icon(Icons.download_rounded, size: 18),
-                      label: const Text(AppStrings.savePdf),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.accent,
-                        side: BorderSide(color: AppColors.accent.withValues(alpha: 0.5)),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
+                    if (isCompact) {
+                      return Column(
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.visibility_outlined, color: AppColors.primary, size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  '${AppStrings.previewInvoice} ${_invoiceNumber.toPersianDigits()}',
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.close, size: 20),
+                                onPressed: () => Navigator.of(context).pop(),
+                                tooltip: AppStrings.close,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              formatSwitcher,
+                              actionButtons,
+                            ],
+                          ),
+                        ],
+                      );
+                    }
 
-                    // ── Print Button ───────────────────────────────
-                    ElevatedButton.icon(
-                      onPressed: _pdfBytes == null || _loading ? null : _print,
-                      icon: const Icon(Icons.print, size: 18),
-                      label: const Text(AppStrings.printInvoice),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-
-                    // ── Close Button ───────────────────────────────
-                    IconButton(
-                      icon: const Icon(Icons.close, size: 20),
-                      onPressed: () => Navigator.of(context).pop(),
-                      tooltip: AppStrings.close,
-                    ),
-                  ],
+                    return Row(
+                      children: [
+                        const Icon(Icons.visibility_outlined, color: AppColors.primary, size: 22),
+                        const SizedBox(width: 10),
+                        Text(
+                          '${AppStrings.previewInvoice} ${_invoiceNumber.toPersianDigits()}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(width: 24),
+                        formatSwitcher,
+                        const Spacer(),
+                        actionButtons,
+                        const SizedBox(width: 12),
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 20),
+                          onPressed: () => Navigator.of(context).pop(),
+                          tooltip: AppStrings.close,
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
 

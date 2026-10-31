@@ -3,12 +3,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/number_extensions.dart';
+import '../../../core/responsive/responsive_breakpoints.dart';
 import '../../../core/utils/jalali_utils.dart';
 import '../../../services/pdf_service.dart';
+import '../../../shared/widgets/category_filter_bar.dart';
 import '../../../shared/widgets/confirm_dialog.dart';
 import '../../../shared/widgets/date_range_filter_bar.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/privacy_tooltip.dart';
+import '../../../shared/widgets/responsive_page_header.dart';
 import '../cubit/invoice_history_cubit.dart';
 import '../cubit/invoice_history_state.dart';
 import '../../../data/models/invoice_model.dart';
@@ -93,20 +96,14 @@ class _InvoiceHistoryViewState extends State<_InvoiceHistoryView> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: context.responsivePagePadding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Title ───────────────────────────────────────────
-          Row(
-            children: [
-              Icon(Icons.history, color: AppColors.primary, size: 28),
-              const SizedBox(width: 12),
-              Text(
-                AppStrings.navInvoiceHistory,
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-            ],
+          // ── Responsive Header ────────────────────────────────
+          ResponsivePageHeader(
+            title: AppStrings.navInvoiceHistory,
+            icon: Icons.history,
           ),
           const SizedBox(height: 16),
 
@@ -138,29 +135,13 @@ class _InvoiceHistoryViewState extends State<_InvoiceHistoryView> {
                   ),
                   const SizedBox(height: 12),
 
-                  // ── Category Filter ────────────────────────────
+                  // ── Unified Category Filter Bar ─────────────────
                   if (availableCategories.isNotEmpty) ...[
-                    Row(
-                      children: [
-                        const Icon(Icons.category_outlined, size: 18, color: AppColors.textMuted),
-                        const SizedBox(width: 8),
-                        const Text('دسته‌بندی:', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
-                        const SizedBox(width: 8),
-                        _CategoryChip(
-                          label: 'همه',
-                          isSelected: categoryFilter == null,
-                          onTap: () => context.read<InvoiceHistoryCubit>().setCategoryFilter(null),
-                        ),
-                        const SizedBox(width: 6),
-                        ...availableCategories.map((cat) => Padding(
-                              padding: const EdgeInsets.only(left: 6),
-                              child: _CategoryChip(
-                                label: cat,
-                                isSelected: categoryFilter == cat,
-                                onTap: () => context.read<InvoiceHistoryCubit>().setCategoryFilter(cat),
-                              ),
-                            )),
-                      ],
+                    CategoryFilterBar(
+                      categories: availableCategories,
+                      selectedCategory: categoryFilter,
+                      onCategorySelected: (cat) =>
+                          context.read<InvoiceHistoryCubit>().setCategoryFilter(cat),
                     ),
                     const SizedBox(height: 12),
                   ],
@@ -452,45 +433,5 @@ class _InvoiceHistoryViewState extends State<_InvoiceHistoryView> {
     } else {
       await PdfService.printInvoiceFromModel(invoice);
     }
-  }
-}
-
-class _CategoryChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _CategoryChip({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withValues(alpha: 0.15) : AppColors.cardDark,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.dividerDark,
-            width: isSelected ? 1.5 : 1.0,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            color: isSelected ? AppColors.primary : AppColors.textSecondary,
-          ),
-        ),
-      ),
-    );
   }
 }

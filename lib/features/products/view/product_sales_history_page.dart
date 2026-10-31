@@ -3,10 +3,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/extensions/number_extensions.dart';
+import '../../../core/responsive/responsive_breakpoints.dart';
 import '../../../data/models/product_model.dart';
 import '../../../services/export_service.dart';
 import '../../../shared/widgets/date_range_filter_bar.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/responsive_kpi_grid.dart';
 import '../../invoice/view/widgets/invoice_preview_dialog.dart';
 import '../cubit/product_sales_history_cubit.dart';
 import '../cubit/product_sales_history_state.dart';
@@ -153,7 +155,7 @@ class _ProductSalesHistoryViewState extends State<_ProductSalesHistoryView> {
         final product = state.product;
 
         return Padding(
-          padding: const EdgeInsets.all(24),
+          padding: context.responsivePagePadding,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -202,37 +204,24 @@ class _ProductSalesHistoryViewState extends State<_ProductSalesHistoryView> {
     ProductSalesHistoryState state,
     ProductModel? product,
   ) {
-    return Row(
-      children: [
-        OutlinedButton.icon(
-          onPressed: widget.onBack,
-          icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-          label: const Text(AppStrings.backToProducts),
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          ),
-        ),
-        const SizedBox(width: 14),
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: const Icon(Icons.receipt_long_rounded, color: AppColors.primary, size: 24),
-        ),
-        const SizedBox(width: 12),
-        Column(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 800;
+
+        final titleWidget = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Row(
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 4,
               children: [
                 Text(
                   product != null ? 'تاریخچه فروش «${product.name}»' : AppStrings.productSalesHistory,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                 ),
-                if (product?.code != null && product!.code!.isNotEmpty) ...[
-                  const SizedBox(width: 10),
+                if (product?.code != null && product!.code!.isNotEmpty)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
@@ -245,9 +234,7 @@ class _ProductSalesHistoryViewState extends State<_ProductSalesHistoryView> {
                       style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                     ),
                   ),
-                ],
-                if (product?.category != null && product!.category!.isNotEmpty) ...[
-                  const SizedBox(width: 8),
+                if (product?.category != null && product!.category!.isNotEmpty)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
@@ -260,7 +247,6 @@ class _ProductSalesHistoryViewState extends State<_ProductSalesHistoryView> {
                       style: const TextStyle(fontSize: 12, color: AppColors.accent, fontWeight: FontWeight.w500),
                     ),
                   ),
-                ],
               ],
             ),
             const SizedBox(height: 2),
@@ -269,27 +255,105 @@ class _ProductSalesHistoryViewState extends State<_ProductSalesHistoryView> {
               style: TextStyle(fontSize: 12, color: AppColors.textMuted),
             ),
           ],
-        ),
-        const Spacer(),
-        // Exports & Refresh
-        OutlinedButton.icon(
-          onPressed: () => _exportCsv(context, state),
-          icon: const Icon(Icons.description_outlined, size: 18, color: Colors.blueGrey),
-          label: const Text(AppStrings.exportCsv),
-        ),
-        const SizedBox(width: 8),
-        ElevatedButton.icon(
-          onPressed: () => _exportExcel(context, state),
-          icon: const Icon(Icons.table_chart_outlined, size: 18, color: Colors.green),
-          label: const Text(AppStrings.exportExcel),
-        ),
-        const SizedBox(width: 8),
-        IconButton(
-          tooltip: 'بروزرسانی',
-          icon: const Icon(Icons.refresh, size: 20),
-          onPressed: () => context.read<ProductSalesHistoryCubit>().refresh(),
-        ),
-      ],
+        );
+
+        final actions = Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            OutlinedButton.icon(
+              onPressed: () => _exportCsv(context, state),
+              icon: const Icon(Icons.description_outlined, size: 18, color: Colors.blueGrey),
+              label: const Text(AppStrings.exportCsv),
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton.icon(
+              onPressed: () => _exportExcel(context, state),
+              icon: const Icon(Icons.table_chart_outlined, size: 18, color: Colors.green),
+              label: const Text(AppStrings.exportExcel),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              tooltip: 'بروزرسانی',
+              icon: const Icon(Icons.refresh, size: 20),
+              onPressed: () => context.read<ProductSalesHistoryCubit>().refresh(),
+            ),
+          ],
+        );
+
+        if (isCompact) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: widget.onBack,
+                    icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                    label: const Text(AppStrings.backToProducts),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    tooltip: 'بروزرسانی',
+                    icon: const Icon(Icons.refresh, size: 20),
+                    onPressed: () => context.read<ProductSalesHistoryCubit>().refresh(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              titleWidget,
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _exportCsv(context, state),
+                      icon: const Icon(Icons.description_outlined, size: 18, color: Colors.blueGrey),
+                      label: const Text(AppStrings.exportCsv),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _exportExcel(context, state),
+                      icon: const Icon(Icons.table_chart_outlined, size: 18, color: Colors.green),
+                      label: const Text(AppStrings.exportExcel),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            OutlinedButton.icon(
+              onPressed: widget.onBack,
+              icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+              label: const Text(AppStrings.backToProducts),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.receipt_long_rounded, color: AppColors.primary, size: 24),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: titleWidget),
+            const SizedBox(width: 12),
+            actions,
+          ],
+        );
+      },
     );
   }
 
@@ -298,75 +362,49 @@ class _ProductSalesHistoryViewState extends State<_ProductSalesHistoryView> {
     ProductSalesHistoryState state,
     ProductModel product,
   ) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Row(
-          children: [
-            // 1. تعداد فروش (Total Sold)
-            Expanded(
-              child: _KpiStatCard(
-                title: AppStrings.totalSoldLabel,
-                value: '${product.totalSoldDisplay} ${product.unit}',
-                subtitle: 'فروش در دوره انتخابی: ${state.filteredTotalQuantity.formattedInt} ${product.unit}',
-                icon: Icons.point_of_sale_rounded,
-                accentColor: AppColors.primary,
-              ),
-            ),
-            const SizedBox(width: 12),
-
-            // 2. باقی مانده در انبار (Remaining Stock)
-            Expanded(
-              child: _KpiStatCard(
-                title: AppStrings.remainingStock,
-                value: product.isInfiniteStock ? 'نامحدود' : '${product.stockDisplay} ${product.unit}',
-                subtitle: product.isInfiniteStock
-                    ? 'موجودی نامحدود'
-                    : (product.stock != null && product.stock! <= 0 ? 'اتمام موجودی در انبار' : 'موجود در انبار'),
-                icon: Icons.inventory_2_outlined,
-                accentColor: product.isInfiniteStock
-                    ? AppColors.accent
-                    : (product.stock != null && product.stock! <= 0 ? AppColors.error : AppColors.info),
-              ),
-            ),
-            const SizedBox(width: 12),
-
-            // 3. قیمت خرید کنونی (Current Buy Price)
-            Expanded(
-              child: _KpiStatCard(
-                title: AppStrings.currentBuyPriceLabel,
-                value: product.effectiveBuyPrice.toman,
-                subtitle: 'قیمت خرید اولیه: ${product.buyPrice.toman}',
-                icon: Icons.shopping_bag_outlined,
-                accentColor: AppColors.warning,
-              ),
-            ),
-            const SizedBox(width: 12),
-
-            // 4. قیمت فروش کنونی (Current Sell Price)
-            Expanded(
-              child: _KpiStatCard(
-                title: AppStrings.currentSellPriceLabel,
-                value: (product.sellPrice ?? 0).toman,
-                subtitle: 'سود واحد: ${product.profitAmountDisplay} (${product.profitPercentDisplay})',
-                icon: Icons.sell_outlined,
-                accentColor: AppColors.success,
-              ),
-            ),
-            const SizedBox(width: 12),
-
-            // 5. مجموع فروش دوره (Period Sales)
-            Expanded(
-              child: _KpiStatCard(
-                title: AppStrings.periodSalesTotal,
-                value: state.filteredTotalSales.toman,
-                subtitle: 'سود دوره: ${state.filteredTotalProfit.toman}',
-                icon: Icons.analytics_outlined,
-                accentColor: AppColors.accent,
-              ),
-            ),
-          ],
-        );
-      },
+    return ResponsiveKpiGrid(
+      minItemWidth: 200,
+      children: [
+        _KpiStatCard(
+          title: AppStrings.totalSoldLabel,
+          value: '${product.totalSoldDisplay} ${product.unit}',
+          subtitle: 'فروش در دوره انتخابی: ${state.filteredTotalQuantity.formattedInt} ${product.unit}',
+          icon: Icons.point_of_sale_rounded,
+          accentColor: AppColors.primary,
+        ),
+        _KpiStatCard(
+          title: AppStrings.remainingStock,
+          value: product.isInfiniteStock ? 'نامحدود' : '${product.stockDisplay} ${product.unit}',
+          subtitle: product.isInfiniteStock
+              ? 'موجودی نامحدود'
+              : (product.stock != null && product.stock! <= 0 ? 'اتمام موجودی در انبار' : 'موجود در انبار'),
+          icon: Icons.inventory_2_outlined,
+          accentColor: product.isInfiniteStock
+              ? AppColors.accent
+              : (product.stock != null && product.stock! <= 0 ? AppColors.error : AppColors.info),
+        ),
+        _KpiStatCard(
+          title: AppStrings.currentBuyPriceLabel,
+          value: product.effectiveBuyPrice.toman,
+          subtitle: 'قیمت خرید اولیه: ${product.buyPrice.toman}',
+          icon: Icons.shopping_bag_outlined,
+          accentColor: AppColors.warning,
+        ),
+        _KpiStatCard(
+          title: AppStrings.currentSellPriceLabel,
+          value: (product.sellPrice ?? 0).toman,
+          subtitle: 'سود واحد: ${product.profitAmountDisplay} (${product.profitPercentDisplay})',
+          icon: Icons.sell_outlined,
+          accentColor: AppColors.success,
+        ),
+        _KpiStatCard(
+          title: AppStrings.periodSalesTotal,
+          value: state.filteredTotalSales.toman,
+          subtitle: 'سود دوره: ${state.filteredTotalProfit.toman}',
+          icon: Icons.analytics_outlined,
+          accentColor: AppColors.accent,
+        ),
+      ],
     );
   }
 
@@ -374,80 +412,120 @@ class _ProductSalesHistoryViewState extends State<_ProductSalesHistoryView> {
     BuildContext context,
     ProductSalesHistoryState state,
   ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.cardDark,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.dividerDark),
-      ),
-      child: Row(
-        children: [
-          // Search Field
-          SizedBox(
-            width: 280,
-            child: TextField(
-              controller: _searchCtrl,
-              onChanged: (val) {
-                if (_verticalScrollCtrl.hasClients) {
-                  _verticalScrollCtrl.jumpTo(0);
-                }
-                context.read<ProductSalesHistoryCubit>().setSearchQuery(val);
-              },
-              decoration: InputDecoration(
-                hintText: AppStrings.searchCustomerOrInvoice,
-                prefixIcon: const Icon(Icons.search, size: 20),
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                suffixIcon: ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: _searchCtrl,
-                  builder: (_, v, _) {
-                    if (v.text.isEmpty) return const SizedBox.shrink();
-                    return IconButton(
-                      icon: const Icon(Icons.close, size: 16),
-                      onPressed: () {
-                        _searchCtrl.clear();
-                        context.read<ProductSalesHistoryCubit>().setSearchQuery('');
-                      },
-                    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 750;
+
+        final searchField = TextField(
+          controller: _searchCtrl,
+          onChanged: (val) {
+            if (_verticalScrollCtrl.hasClients) {
+              _verticalScrollCtrl.jumpTo(0);
+            }
+            context.read<ProductSalesHistoryCubit>().setSearchQuery(val);
+          },
+          decoration: InputDecoration(
+            hintText: AppStrings.searchCustomerOrInvoice,
+            prefixIcon: const Icon(Icons.search, size: 20),
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            suffixIcon: ValueListenableBuilder<TextEditingValue>(
+              valueListenable: _searchCtrl,
+              builder: (_, v, _) {
+                if (v.text.isEmpty) return const SizedBox.shrink();
+                return IconButton(
+                  icon: const Icon(Icons.close, size: 16),
+                  onPressed: () {
+                    _searchCtrl.clear();
+                    context.read<ProductSalesHistoryCubit>().setSearchQuery('');
                   },
-                ),
-              ),
+                );
+              },
             ),
           ),
-          const SizedBox(width: 16),
+        );
 
-          // Status Chips
-          const Icon(Icons.filter_list, size: 18, color: AppColors.textMuted),
-          const SizedBox(width: 6),
-          const Text('وضعیت:', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
-          const SizedBox(width: 8),
-          _buildStatusChip(context, state, null, 'همه'),
-          const SizedBox(width: 6),
-          _buildStatusChip(context, state, AppStrings.statusSettled, AppStrings.statusSettled),
-          const SizedBox(width: 6),
-          _buildStatusChip(context, state, AppStrings.statusPending, AppStrings.statusPending),
-          const SizedBox(width: 6),
-          _buildStatusChip(context, state, AppStrings.statusDeposit, AppStrings.statusDeposit),
-          const SizedBox(width: 6),
-          _buildStatusChip(context, state, AppStrings.statusCredit, AppStrings.statusCredit),
+        final statusFilters = SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.filter_list, size: 18, color: AppColors.textMuted),
+              const SizedBox(width: 6),
+              const Text('وضعیت:', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+              const SizedBox(width: 8),
+              _buildStatusChip(context, state, null, 'همه'),
+              const SizedBox(width: 6),
+              _buildStatusChip(context, state, AppStrings.statusSettled, AppStrings.statusSettled),
+              const SizedBox(width: 6),
+              _buildStatusChip(context, state, AppStrings.statusPending, AppStrings.statusPending),
+              const SizedBox(width: 6),
+              _buildStatusChip(context, state, AppStrings.statusDeposit, AppStrings.statusDeposit),
+              const SizedBox(width: 6),
+              _buildStatusChip(context, state, AppStrings.statusCredit, AppStrings.statusCredit),
+            ],
+          ),
+        );
 
-          const Spacer(),
-          // Row counter badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        final badge = Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceDark,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.dividerDark),
+          ),
+          child: Text(
+            '${state.sales.length.formattedInt} ردیف در ${state.filteredInvoiceCount.formattedInt} فاکتور',
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+          ),
+        );
+
+        if (isCompact) {
+          return Container(
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.surfaceDark,
+              color: AppColors.cardDark,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.dividerDark),
             ),
-            child: Text(
-              '${state.sales.length.formattedInt} ردیف در ${state.filteredInvoiceCount.formattedInt} فاکتور',
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                searchField,
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(child: statusFilters),
+                    const SizedBox(width: 8),
+                    badge,
+                  ],
+                ),
+              ],
             ),
+          );
+        }
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: AppColors.cardDark,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.dividerDark),
           ),
-        ],
-      ),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 280,
+                child: searchField,
+              ),
+              const SizedBox(width: 16),
+              Expanded(child: statusFilters),
+              const SizedBox(width: 12),
+              badge,
+            ],
+          ),
+        );
+      },
     );
   }
 

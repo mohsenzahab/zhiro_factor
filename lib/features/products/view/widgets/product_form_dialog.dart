@@ -344,8 +344,8 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
       textDirection: TextDirection.rtl,
       child: AlertDialog(
         title: Text(_isEditing ? AppStrings.editProduct : AppStrings.addProduct),
-        content: SizedBox(
-          width: 450,
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
           child: Form(
             key: _formKey,
             child: SingleChildScrollView(

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/responsive/responsive_breakpoints.dart';
+import '../../../shared/widgets/responsive_page_header.dart';
 import '../../../shared/widgets/search_field.dart';
 import '../../../shared/widgets/confirm_dialog.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -45,26 +47,21 @@ class _CustomersViewState extends State<_CustomersView> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: context.responsivePagePadding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header ──────────────────────────────────────────────
-          Row(
-            children: [
-              Icon(Icons.people, color: AppColors.primary, size: 28),
-              const SizedBox(width: 12),
-              Text(
-                AppStrings.navCustomers,
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const Spacer(),
-              SearchField(
-                hintText: AppStrings.searchCustomer,
-                controller: _searchCtrl,
-                onChanged: (q) => context.read<CustomerCubit>().loadCustomers(query: q),
-              ),
-              const SizedBox(width: 12),
+          // ── Responsive Header ────────────────────────────────────
+          ResponsivePageHeader(
+            title: AppStrings.navCustomers,
+            icon: Icons.people,
+            searchField: SearchField(
+              hintText: AppStrings.searchCustomer,
+              width: context.isMobile ? double.infinity : 220,
+              controller: _searchCtrl,
+              onChanged: (q) => context.read<CustomerCubit>().loadCustomers(query: q),
+            ),
+            actions: [
               ElevatedButton.icon(
                 onPressed: () => _addCustomer(context),
                 icon: const Icon(Icons.add, size: 20),
@@ -72,7 +69,7 @@ class _CustomersViewState extends State<_CustomersView> {
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
           // ── Table ───────────────────────────────────────────────
           Expanded(

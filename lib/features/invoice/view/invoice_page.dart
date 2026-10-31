@@ -4,6 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/responsive/responsive_breakpoints.dart';
+import '../../../shared/widgets/responsive_page_header.dart';
 import '../../../services/pdf_service.dart';
 import '../cubit/invoice_cubit.dart';
 import '../cubit/invoice_state.dart';
@@ -148,38 +150,30 @@ class _InvoiceViewState extends State<_InvoiceView> {
           child: Focus(
             autofocus: true,
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: context.responsivePagePadding,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // ── Title Bar ─────────────────────────────────────
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.receipt_long,
-                        color: AppColors.primary,
-                        size: 28,
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        widget.editInvoiceId != null
-                            ? AppStrings.editInvoice
-                            : AppStrings.newInvoice,
-                        style: Theme.of(context).textTheme.headlineMedium,
-                      ),
-                      const Spacer(),
-                      _ShortcutBadge(
-                        label: 'Ctrl+S',
-                        description: AppStrings.save,
-                      ),
-                      const SizedBox(width: 8),
-                      _ShortcutBadge(
-                        label: 'F2',
-                        description: AppStrings.addItem,
-                      ),
-                    ],
+                  ResponsivePageHeader(
+                    title: widget.editInvoiceId != null
+                        ? AppStrings.editInvoice
+                        : AppStrings.newInvoice,
+                    icon: Icons.receipt_long,
+                    actions: context.isMobile
+                        ? null
+                        : const [
+                            _ShortcutBadge(
+                              label: 'Ctrl+S',
+                              description: AppStrings.save,
+                            ),
+                            _ShortcutBadge(
+                              label: 'F2',
+                              description: AppStrings.addItem,
+                            ),
+                          ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
                   // ── Header ────────────────────────────────────────
                   const InvoiceHeader(),
@@ -229,8 +223,9 @@ class _InvoiceViewState extends State<_InvoiceView> {
                       const Spacer(),
                       BlocBuilder<InvoiceCubit, InvoiceState>(
                         builder: (context, state) {
-                          if (state.items.isEmpty)
+                          if (state.items.isEmpty) {
                             return const SizedBox.shrink();
+                          }
                           return TextButton.icon(
                             onPressed: () => _saveAsTemplate(context),
                             icon: const Icon(Icons.save_outlined, size: 18),

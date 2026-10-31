@@ -4,6 +4,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/number_extensions.dart';
+import '../../../core/responsive/responsive_breakpoints.dart';
+import '../../../shared/widgets/category_filter_bar.dart';
+import '../../../shared/widgets/responsive_page_header.dart';
 import '../../../shared/widgets/search_field.dart';
 import '../../../shared/widgets/confirm_dialog.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -167,127 +170,103 @@ class _ProductsViewState extends State<_ProductsView> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: context.responsivePagePadding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header ──────────────────────────────────────────────
-          Row(
-            children: [
-              Icon(Icons.inventory_2, color: AppColors.primary, size: 28),
-              const SizedBox(width: 12),
-              Text(
-                AppStrings.navProducts,
-                style: Theme.of(context).textTheme.headlineMedium,
+          // ── Responsive Header ────────────────────────────────────
+          ResponsivePageHeader(
+            title: AppStrings.navProducts,
+            icon: Icons.inventory_2,
+            searchField: SearchField(
+              hintText: AppStrings.searchProduct,
+              width: context.isMobile ? double.infinity : 220,
+              controller: _searchCtrl,
+              onChanged: (q) {
+                if (_verticalScrollCtrl.hasClients) {
+                  _verticalScrollCtrl.jumpTo(0);
+                }
+                context.read<ProductCubit>().loadProducts(query: q);
+              },
+            ),
+            actions: [
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.file_upload_outlined, color: AppColors.accent),
+                tooltip: AppStrings.importProducts,
+                onSelected: (value) {
+                  if (value == 'csv') _importCsv(context);
+                  if (value == 'excel') _importExcel(context);
+                },
+                itemBuilder: (_) => [
+                  const PopupMenuItem(value: 'csv', child: Text(AppStrings.importFromCsv)),
+                  const PopupMenuItem(value: 'excel', child: Text(AppStrings.importFromExcel)),
+                ],
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Align(
-                  alignment: AlignmentDirectional.centerEnd,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.file_download_outlined, color: AppColors.primary),
+                tooltip: AppStrings.exportProducts,
+                onSelected: (value) {
+                  if (value == 'excel') _exportExcel(context);
+                  if (value == 'csv') _exportCsv(context);
+                },
+                itemBuilder: (_) => [
+                  const PopupMenuItem(
+                    value: 'excel',
                     child: Row(
-                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        SearchField(
-                          hintText: AppStrings.searchProduct,
-                          width: 220,
-                          controller: _searchCtrl,
-                          onChanged: (q) {
-                            if (_verticalScrollCtrl.hasClients) {
-                              _verticalScrollCtrl.jumpTo(0);
-                            }
-                            context.read<ProductCubit>().loadProducts(query: q);
-                          },
-                        ),
-                        const SizedBox(width: 8),
-                        PopupMenuButton<String>(
-                          icon: const Icon(Icons.file_upload_outlined, color: AppColors.accent),
-                          tooltip: AppStrings.importProducts,
-                          onSelected: (value) {
-                            if (value == 'csv') _importCsv(context);
-                            if (value == 'excel') _importExcel(context);
-                          },
-                          itemBuilder: (_) => [
-                            const PopupMenuItem(value: 'csv', child: Text(AppStrings.importFromCsv)),
-                            const PopupMenuItem(value: 'excel', child: Text(AppStrings.importFromExcel)),
-                          ],
-                        ),
-                        const SizedBox(width: 8),
-                        PopupMenuButton<String>(
-                          icon: const Icon(Icons.file_download_outlined, color: AppColors.primary),
-                          tooltip: AppStrings.exportProducts,
-                          onSelected: (value) {
-                            if (value == 'excel') _exportExcel(context);
-                            if (value == 'csv') _exportCsv(context);
-                          },
-                          itemBuilder: (_) => [
-                            const PopupMenuItem(
-                              value: 'excel',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.table_chart_outlined, size: 18, color: Colors.green),
-                                  SizedBox(width: 8),
-                                  Text(AppStrings.exportProductsExcel),
-                                ],
-                              ),
-                            ),
-                            const PopupMenuItem(
-                              value: 'csv',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.description_outlined, size: 18, color: Colors.blueGrey),
-                                  SizedBox(width: 8),
-                                  Text(AppStrings.exportProductsCsv),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(width: 8),
-                        OutlinedButton.icon(
-                          onPressed: () => _applyProfitMargin(context),
-                          icon: const Icon(Icons.percent, size: 18),
-                          label: Text(
-                            _selectedIds.isNotEmpty
-                                ? '${AppStrings.applyProfitMargin} (${_selectedIds.length.formattedInt} انتخاب‌شده)'
-                                : (_selectedCategory == null
-                                    ? AppStrings.applyProfitMargin
-                                    : '${AppStrings.applyProfitMargin} ($_currentCategoryDisplayName)'),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        OutlinedButton.icon(
-                          onPressed: () => _applyPriceAdjustment(context),
-                          icon: const Icon(Icons.trending_up, size: 18),
-                          label: Text(
-                            _selectedIds.isNotEmpty
-                                ? '${AppStrings.applyPriceAdjustment} (${_selectedIds.length.formattedInt} انتخاب‌شده)'
-                                : (_selectedCategory == null
-                                    ? AppStrings.applyPriceAdjustment
-                                    : '${AppStrings.applyPriceAdjustment} ($_currentCategoryDisplayName)'),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        OutlinedButton.icon(
-                          onPressed: () => PriceHistoryDialog.show(context),
-                          icon: const Icon(Icons.history_rounded, size: 18),
-                          label: const Text(AppStrings.priceChangeHistory),
-                        ),
-                        const SizedBox(width: 8),
-                        ElevatedButton.icon(
-                          onPressed: () => _addProduct(context),
-                          icon: const Icon(Icons.add, size: 20),
-                          label: const Text(AppStrings.addProduct),
-                        ),
+                        Icon(Icons.table_chart_outlined, size: 18, color: Colors.green),
+                        SizedBox(width: 8),
+                        Text(AppStrings.exportProductsExcel),
                       ],
                     ),
                   ),
+                  const PopupMenuItem(
+                    value: 'csv',
+                    child: Row(
+                      children: [
+                        Icon(Icons.description_outlined, size: 18, color: Colors.blueGrey),
+                        SizedBox(width: 8),
+                        Text(AppStrings.exportProductsCsv),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _applyProfitMargin(context),
+                icon: const Icon(Icons.percent, size: 18),
+                label: Text(
+                  _selectedIds.isNotEmpty
+                      ? '${AppStrings.applyProfitMargin} (${_selectedIds.length.formattedInt} انتخاب‌شده)'
+                      : (_selectedCategory == null
+                          ? AppStrings.applyProfitMargin
+                          : '${AppStrings.applyProfitMargin} ($_currentCategoryDisplayName)'),
                 ),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _applyPriceAdjustment(context),
+                icon: const Icon(Icons.trending_up, size: 18),
+                label: Text(
+                  _selectedIds.isNotEmpty
+                      ? '${AppStrings.applyPriceAdjustment} (${_selectedIds.length.formattedInt} انتخاب‌شده)'
+                      : (_selectedCategory == null
+                          ? AppStrings.applyPriceAdjustment
+                          : '${AppStrings.applyPriceAdjustment} ($_currentCategoryDisplayName)'),
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => PriceHistoryDialog.show(context),
+                icon: const Icon(Icons.history_rounded, size: 18),
+                label: const Text(AppStrings.priceChangeHistory),
+              ),
+              ElevatedButton.icon(
+                onPressed: () => _addProduct(context),
+                icon: const Icon(Icons.add, size: 20),
+                label: const Text(AppStrings.addProduct),
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
           // ── Table ───────────────────────────────────────────────
           Expanded(
@@ -363,136 +342,38 @@ class _ProductsViewState extends State<_ProductsView> {
     }
     final sortedCategories = categoryCounts.keys.toList()..sort();
 
+    if (uncategorizedCount > 0) {
+      categoryCounts[AppStrings.uncategorized] = uncategorizedCount;
+      sortedCategories.add(AppStrings.uncategorized);
+    }
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         color: AppColors.cardDark,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.dividerDark),
       ),
-      child: Row(
-        children: [
-          const Icon(Icons.category_outlined, size: 18, color: AppColors.accent),
-          const SizedBox(width: 8),
-          Text(
-            '${AppStrings.productCategory}:',
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _buildCategoryChip(
-                    label: AppStrings.all,
-                    count: allProducts.length,
-                    isSelected: _selectedCategory == null,
-                    onTap: () => setState(() => _selectedCategory = null),
-                  ),
-                  ...sortedCategories.map((cat) {
-                    final isSelected = _selectedCategory == cat;
-                    return Padding(
-                      padding: const EdgeInsetsDirectional.only(start: 8),
-                      child: _buildCategoryChip(
-                        label: cat,
-                        count: categoryCounts[cat]!,
-                        isSelected: isSelected,
-                        onTap: () {
-                          setState(() {
-                            _selectedCategory = isSelected ? null : cat;
-                          });
-                        },
-                      ),
-                    );
-                  }),
-                  if (uncategorizedCount > 0)
-                    Padding(
-                      padding: const EdgeInsetsDirectional.only(start: 8),
-                      child: _buildCategoryChip(
-                        label: AppStrings.uncategorized,
-                        count: uncategorizedCount,
-                        isSelected: _selectedCategory == '__uncategorized__',
-                        onTap: () {
-                          setState(() {
-                            _selectedCategory =
-                                _selectedCategory == '__uncategorized__' ? null : '__uncategorized__';
-                          });
-                        },
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCategoryChip({
-    required String label,
-    required int count,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.primary.withValues(alpha: 0.18)
-              : AppColors.surfaceDark,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected
-                ? AppColors.primary
-                : AppColors.dividerDark,
-            width: isSelected ? 1.5 : 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (isSelected) ...[
-              const Icon(Icons.check, size: 14, color: AppColors.primary),
-              const SizedBox(width: 5),
-            ],
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(width: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? AppColors.primary.withValues(alpha: 0.35)
-                    : AppColors.cardDark,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                count.formattedInt,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: isSelected ? Colors.white : AppColors.textMuted,
-                ),
-              ),
-            ),
-          ],
-        ),
+      child: CategoryFilterBar(
+        categories: sortedCategories,
+        selectedCategory: _selectedCategory == '__uncategorized__'
+            ? AppStrings.uncategorized
+            : _selectedCategory,
+        categoryCounts: categoryCounts,
+        totalCount: allProducts.length,
+        title: '${AppStrings.productCategory}:',
+        onCategorySelected: (cat) {
+          setState(() {
+            if (cat == null) {
+              _selectedCategory = null;
+            } else if (cat == AppStrings.uncategorized) {
+              _selectedCategory =
+                  _selectedCategory == '__uncategorized__' ? null : '__uncategorized__';
+            } else {
+              _selectedCategory = _selectedCategory == cat ? null : cat;
+            }
+          });
+        },
       ),
     );
   }

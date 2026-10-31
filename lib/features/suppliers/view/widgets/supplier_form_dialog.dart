@@ -79,8 +79,8 @@ class _SupplierFormDialogState extends State<SupplierFormDialog> {
             Text(isEdit ? AppStrings.editSupplier : AppStrings.createNewSupplier),
           ],
         ),
-        content: SizedBox(
-          width: 400,
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 450),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [

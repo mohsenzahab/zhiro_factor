@@ -169,7 +169,7 @@ class _InvoiceItemFormDialogState extends State<InvoiceItemFormDialog> {
 
                 // Discount Type
                 DropdownButtonFormField<String>(
-                  value: _discountType,
+                  initialValue: _discountType,
                   decoration: InputDecoration(
                     labelText: 'نوع تخفیف',
                     labelStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),

@@ -100,15 +100,17 @@ const _navItems = <_NavItem>[
   ),
 ];
 
-/// Collapsible RTL sidebar navigation.
+/// Collapsible RTL sidebar navigation and Drawer content.
 class SidebarNav extends StatefulWidget {
   final NavPage currentPage;
   final ValueChanged<NavPage> onPageChanged;
+  final bool isDrawer;
 
   const SidebarNav({
     super.key,
     required this.currentPage,
     required this.onPageChanged,
+    this.isDrawer = false,
   });
 
   @override
@@ -127,6 +129,7 @@ class _SidebarNavState extends State<SidebarNav> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
+    _expanded = widget.isDrawer ? true : true;
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 250),
@@ -170,6 +173,35 @@ class _SidebarNavState extends State<SidebarNav> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
+    if (widget.isDrawer) {
+      return Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          gradient: AppColors.sidebarGradient,
+        ),
+        child: Column(
+          children: [
+            // ── Brand Header ──────────────────────────────────
+            _buildHeader(),
+            const SizedBox(height: 8),
+            Divider(color: AppColors.dividerDark, height: 1),
+            const SizedBox(height: 8),
+
+            // ── Nav Items ─────────────────────────────────────
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                itemCount: _navItems.length,
+                itemBuilder: (context, index) {
+                  return _buildNavItem(_navItems[index]);
+                },
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return AnimatedBuilder(
       animation: _widthAnim,
       builder: (context, child) {
@@ -267,7 +299,12 @@ class _SidebarNavState extends State<SidebarNav> with SingleTickerProviderStateM
         borderRadius: BorderRadius.circular(10),
         child: InkWell(
           borderRadius: BorderRadius.circular(10),
-          onTap: () => widget.onPageChanged(item.page),
+          onTap: () {
+            if (widget.isDrawer) {
+              Navigator.of(context).maybePop();
+            }
+            widget.onPageChanged(item.page);
+          },
           hoverColor: AppColors.sidebarHover,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
