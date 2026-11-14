@@ -82,20 +82,31 @@ class InvoiceRepository {
 
     final invoiceIds = invoicesList.map((pair) => pair.inv.id).toList();
 
-    final itemRows = await (_db.select(_db.invoiceItems)
-          ..where((i) => i.invoiceId.isIn(invoiceIds))
-          ..orderBy([(i) => OrderingTerm.asc(i.id)]))
-        .get();
+    final itemQuery = _db.select(_db.invoiceItems).join([
+      leftOuterJoin(_db.products, _db.products.id.equalsExp(_db.invoiceItems.productId)),
+    ])
+      ..where(_db.invoiceItems.invoiceId.isIn(invoiceIds))
+      ..orderBy([OrderingTerm.asc(_db.invoiceItems.id)]);
+
+    final itemRows = await itemQuery.get();
 
     final itemsByInvoice = <int, List<InvoiceItemModel>>{};
-    for (final im in itemRows) {
+    for (final r in itemRows) {
+      final im = r.readTable(_db.invoiceItems);
+      final prod = r.readTableOrNull(_db.products);
+      // Historical cost: prefer the stored purchasePrice on the item;
+      // if 0, fall back to product's original buyPrice (NOT the updated currentBuyPrice!)
+      final effectivePurchasePrice = im.purchasePrice > 0
+          ? im.purchasePrice
+          : (prod?.buyPrice ?? 0.0);
+
       final item = InvoiceItemModel(
         id: im.id,
         invoiceId: im.invoiceId,
         productId: im.productId,
         productName: im.productName,
         unitPrice: im.unitPrice,
-        purchasePrice: im.purchasePrice,
+        purchasePrice: effectivePurchasePrice,
         quantity: im.quantity,
         discountType: im.discountType,
         discountValue: im.discountValue,
@@ -219,26 +230,35 @@ class InvoiceRepository {
 
   /// Fetch items for a given invoice.
   Future<List<InvoiceItemModel>> getItemsByInvoiceId(int invoiceId) async {
-    final rows = await (_db.select(_db.invoiceItems)
-          ..where((i) => i.invoiceId.equals(invoiceId))
-          ..orderBy([(i) => OrderingTerm.asc(i.id)]))
-        .get();
+    final query = _db.select(_db.invoiceItems).join([
+      leftOuterJoin(_db.products, _db.products.id.equalsExp(_db.invoiceItems.productId)),
+    ])
+      ..where(_db.invoiceItems.invoiceId.equals(invoiceId))
+      ..orderBy([OrderingTerm.asc(_db.invoiceItems.id)]);
 
-    return rows
-        .map((im) => InvoiceItemModel(
-              id: im.id,
-              invoiceId: im.invoiceId,
-              productId: im.productId,
-              productName: im.productName,
-              unitPrice: im.unitPrice,
-              purchasePrice: im.purchasePrice,
-              quantity: im.quantity,
-              discountType: im.discountType,
-              discountValue: im.discountValue,
-              discountCalculatedAmount: im.discountCalculatedAmount,
-              lineTotal: im.lineTotal,
-            ))
-        .toList();
+    final rows = await query.get();
+
+    return rows.map((r) {
+      final im = r.readTable(_db.invoiceItems);
+      final prod = r.readTableOrNull(_db.products);
+      final effectivePurchasePrice = im.purchasePrice > 0
+          ? im.purchasePrice
+          : (prod?.buyPrice ?? 0.0);
+
+      return InvoiceItemModel(
+        id: im.id,
+        invoiceId: im.invoiceId,
+        productId: im.productId,
+        productName: im.productName,
+        unitPrice: im.unitPrice,
+        purchasePrice: effectivePurchasePrice,
+        quantity: im.quantity,
+        discountType: im.discountType,
+        discountValue: im.discountValue,
+        discountCalculatedAmount: im.discountCalculatedAmount,
+        lineTotal: im.lineTotal,
+      );
+    }).toList();
   }
 
   /// Fetch payments for a given invoice.
@@ -586,9 +606,11 @@ class InvoiceRepository {
       final cust = r.readTableOrNull(_db.customers);
       final prod = r.readTableOrNull(_db.products);
 
-      final buyPriceFallback = (prod?.currentBuyPrice != null && prod!.currentBuyPrice! > 0)
-          ? prod.currentBuyPrice!
-          : (prod?.buyPrice ?? 0.0);
+      final buyPriceFallback = (prod?.buyPrice != null && prod!.buyPrice > 0)
+          ? prod.buyPrice
+          : ((prod?.currentBuyPrice != null && prod!.currentBuyPrice! > 0)
+              ? prod.currentBuyPrice!
+              : 0.0);
       final itemPurchasePrice = ii.purchasePrice;
       final effectiveCost = itemPurchasePrice > 0 ? itemPurchasePrice : buyPriceFallback;
 

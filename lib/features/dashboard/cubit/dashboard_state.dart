@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+
 import '../../../shared/widgets/date_range_filter_bar.dart';
 
 class DashboardState extends Equatable {
@@ -39,16 +40,23 @@ class DashboardState extends Equatable {
   });
 
   /// Total profit margin relative to gross sales (حاشیه سود از کل فروش)
-  double get profitPercentOfSales => totalGross > 0 ? (totalProfit / totalGross) * 100.0 : 0.0;
+  double get profitPercentOfSales =>
+      totalGross > 0 ? (totalProfit / totalGross) * 100.0 : 0.0;
 
-  /// Total profit markup relative to current replacement buy cost (درصد سود روی هزینه خرید)
-  double get profitPercentOfCost => totalCurrentBuyCost > 0 ? (totalProfit / totalCurrentBuyCost) * 100.0 : 0.0;
+  /// Total profit markup relative to actual purchase buy cost (درصد سود روی هزینه خرید)
+  double get profitPercentOfCost => totalInitialBuyCost > 0
+      ? (totalProfit / totalInitialBuyCost) * 100.0
+      : (totalCurrentBuyCost > 0
+            ? (totalProfit / totalCurrentBuyCost) * 100.0
+            : 0.0);
 
   /// Total discount percentage relative to gross sales (درصد تخفیف از کل فروش)
-  double get discountPercentOfSales => totalGross > 0 ? (totalDiscounts / totalGross) * 100.0 : 0.0;
+  double get discountPercentOfSales =>
+      totalGross > 0 ? (totalDiscounts / totalGross) * 100.0 : 0.0;
 
   /// Net sales after settled discounts (فروش خالص پس از تخفیف)
-  double get netSales => (totalGross - totalDiscounts).clamp(0.0, double.infinity);
+  double get netSales =>
+      (totalGross - totalDiscounts).clamp(0.0, double.infinity);
 
   DashboardState copyWith({
     bool? isLoading,
@@ -82,7 +90,9 @@ class DashboardState extends Equatable {
       dateFrom: clearDates ? null : (dateFrom ?? this.dateFrom),
       dateTo: clearDates ? null : (dateTo ?? this.dateTo),
       preset: preset ?? this.preset,
-      categoryFilter: clearCategory ? null : (categoryFilter ?? this.categoryFilter),
+      categoryFilter: clearCategory
+          ? null
+          : (categoryFilter ?? this.categoryFilter),
       availableCategories: availableCategories ?? this.availableCategories,
       bestSellersByVolume: bestSellersByVolume ?? this.bestSellersByVolume,
       bestSellersByRevenue: bestSellersByRevenue ?? this.bestSellersByRevenue,
@@ -92,21 +102,21 @@ class DashboardState extends Equatable {
 
   @override
   List<Object?> get props => [
-        isLoading,
-        totalGross,
-        totalProfit,
-        totalDiscounts,
-        totalInitialBuyCost,
-        totalCurrentBuyCost,
-        pendingAmount,
-        pendingCount,
-        dateFrom,
-        dateTo,
-        preset,
-        categoryFilter,
-        availableCategories,
-        bestSellersByVolume,
-        bestSellersByRevenue,
-        recentInvoices,
-      ];
+    isLoading,
+    totalGross,
+    totalProfit,
+    totalDiscounts,
+    totalInitialBuyCost,
+    totalCurrentBuyCost,
+    pendingAmount,
+    pendingCount,
+    dateFrom,
+    dateTo,
+    preset,
+    categoryFilter,
+    availableCategories,
+    bestSellersByVolume,
+    bestSellersByRevenue,
+    recentInvoices,
+  ];
 }

@@ -214,28 +214,35 @@ class _InvoiceHistoryViewState extends State<_InvoiceHistoryView> {
           double totalInitialBuy = 0.0;
           for (final item in inv.items) {
             final detail = item.productId != null ? _productDetails[item.productId!] : null;
-            final currBuy = detail?.currentBuyPrice ?? item.purchasePrice;
-            final initBuy = detail?.initialBuyPrice ?? item.purchasePrice;
+            // Historical purchase cost: prefer the item's recorded purchasePrice; fallback to initialBuyPrice
+            final actualBuy = item.purchasePrice > 0 ? item.purchasePrice : (detail?.initialBuyPrice ?? 0.0);
+            final currBuy = (detail?.currentBuyPrice != null && detail!.currentBuyPrice > 0)
+                ? detail.currentBuyPrice
+                : actualBuy;
             totalCurrentBuy += currBuy * item.quantity;
-            totalInitialBuy += initBuy * item.quantity;
+            totalInitialBuy += actualBuy * item.quantity;
           }
 
+          final actualProfit = inv.totalProfitAmount;
+          final actualProfitPct = totalInitialBuy > 0 ? (actualProfit / totalInitialBuy) * 100.0 : 0.0;
           final grossProfitOnCurr = inv.totalGross - totalCurrentBuy;
           final grossProfitPctOnCurr = totalCurrentBuy > 0 ? (grossProfitOnCurr / totalCurrentBuy) * 100.0 : 0.0;
-          final grossTooltip = 'قیمت خرید کنونی: ${totalCurrentBuy.formatted} تومان\n'
-              'سود (روی خرید کنونی): ${grossProfitOnCurr.formatted} تومان (${grossProfitPctOnCurr.toStringAsFixed(1).toPersianDigits()}٪)\n'
-              'قیمت خرید اولیه: ${totalInitialBuy.formatted} تومان';
+          final grossTooltip = 'قیمت خرید فاکتور: ${totalInitialBuy.formatted} تومان\n'
+              'سود واقعی فاکتور: ${actualProfit.formatted} تومان (${actualProfitPct.toStringAsFixed(1).toPersianDigits()}٪)\n'
+              'قیمت خرید روز (کنونی): ${totalCurrentBuy.formatted} تومان\n'
+              'سود به نرخ روز: ${grossProfitOnCurr.formatted} تومان (${grossProfitPctOnCurr.toStringAsFixed(1).toPersianDigits()}٪)';
 
           final discountPct = inv.totalGross > 0 ? (inv.totalDiscount / inv.totalGross) * 100.0 : 0.0;
           String discountTooltip;
           if (inv.totalDiscount <= 0) {
             discountTooltip = 'تخفیف: ۰ تومان (۰٪)';
           } else {
+            final pctOnActual = totalInitialBuy > 0 ? (inv.totalDiscount / totalInitialBuy) * 100.0 : 0.0;
             final pctOnCurr = totalCurrentBuy > 0 ? (inv.totalDiscount / totalCurrentBuy) * 100.0 : 0.0;
-            final pctOnInit = totalInitialBuy > 0 ? (inv.totalDiscount / totalInitialBuy) * 100.0 : 0.0;
-            discountTooltip = 'درصد تخفیف: ${discountPct.toStringAsFixed(1).toPersianDigits()}٪\n'
-                'درصد از خرید کنونی: ${pctOnCurr.toStringAsFixed(1).toPersianDigits()}٪\n'
-                'درصد از خرید اولیه: ${pctOnInit.toStringAsFixed(1).toPersianDigits()}٪';
+            discountTooltip = 'درصد تخفیف از فروش: ${discountPct.toStringAsFixed(1).toPersianDigits()}٪\n'
+                'مبلغ تخفیف: ${inv.totalDiscount.formatted} تومان\n'
+                'نسبت به هزینه خرید: ${pctOnActual.toStringAsFixed(1).toPersianDigits()}٪\n'
+                'نسبت به خرید روز: ${pctOnCurr.toStringAsFixed(1).toPersianDigits()}٪';
           }
 
           return Column(

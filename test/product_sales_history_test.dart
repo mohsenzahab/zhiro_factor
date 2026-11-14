@@ -106,10 +106,11 @@ void main() {
         expect(record.itemId, equals(12));
         expect(record.invoiceNumber, equals('INV-200'));
         expect(record.customerDisplay, equals('مشتری نقدی / عمومی'));
-        expect(record.purchasePrice, equals(65000.0));
+        // Falls back to base buy_price (60,000) rather than new current_buy_price (65,000)
+        expect(record.purchasePrice, equals(60000.0));
         expect(record.productUnit, equals('بسته'));
         expect(record.quantityDisplay, equals('۲ بسته'));
-        expect(record.profitAmount, equals(150000.0 - (2 * 65000.0)));
+        expect(record.profitAmount, equals(150000.0 - (2 * 60000.0)));
       },
     );
   });

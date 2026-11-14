@@ -74,8 +74,8 @@ class ProductSaleRecord extends Equatable {
   String get profitDisplay => '${profitAmount >= 0 ? '+' : ''}${profitAmount.round().formatted} تومان';
 
   factory ProductSaleRecord.fromMap(Map<String, dynamic> map) {
-    final buyPriceFallback = (map['current_buy_price'] as num?)?.toDouble() ??
-        (map['buy_price'] as num?)?.toDouble() ??
+    final buyPriceFallback = (map['buy_price'] as num?)?.toDouble() ??
+        (map['current_buy_price'] as num?)?.toDouble() ??
         0.0;
     final itemPurchasePrice = (map['purchase_price'] as num?)?.toDouble() ?? 0.0;
     final effectiveCost = itemPurchasePrice > 0 ? itemPurchasePrice : buyPriceFallback;

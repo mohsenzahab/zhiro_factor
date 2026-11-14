@@ -249,38 +249,46 @@ class _InvoiceDetailPanelState extends State<InvoiceDetailPanel> {
                         );
                       }),
 
-                      // 3: Unit Price -> Current buy price + profit, and FIFO initial buy price
+                      // 3: Unit Price -> Actual buy price & profit, plus current buy price comparison
                       Builder(builder: (_) {
                         final detail = item.productId != null ? _productDetails[item.productId!] : null;
-                        final currBuy = detail?.currentBuyPrice ?? item.purchasePrice;
+                        final actualBuy = item.purchasePrice > 0 ? item.purchasePrice : (detail?.initialBuyPrice ?? 0.0);
+                        final actualProfit = item.unitPrice - actualBuy;
+                        final actualProfitPct = actualBuy > 0 ? (actualProfit / actualBuy) * 100.0 : 0.0;
+                        final currBuy = (detail?.currentBuyPrice != null && detail!.currentBuyPrice > 0)
+                            ? detail.currentBuyPrice
+                            : actualBuy;
                         final profitOnCurr = item.unitPrice - currBuy;
                         final profitPctOnCurr = currBuy > 0 ? (profitOnCurr / currBuy) * 100.0 : 0.0;
-                        final initBuy = detail?.initialBuyPrice ?? item.purchasePrice;
-                        final tooltipMsg = 'قیمت خرید کنونی: ${currBuy.formatted} تومان\n'
-                            'سود (روی خرید کنونی): ${profitOnCurr.formatted} تومان (${profitPctOnCurr.toStringAsFixed(1).toPersianDigits()}٪)\n'
-                            'قیمت خرید اولیه: ${initBuy.formatted} تومان';
+
+                        final tooltipMsg = 'قیمت خرید در زمان فروش: ${actualBuy.formatted} تومان\n'
+                            'سود واقعی فروش: ${actualProfit.formatted} تومان (${actualProfitPct.toStringAsFixed(1).toPersianDigits()}٪)\n'
+                            'قیمت خرید روز (کنونی): ${currBuy.formatted} تومان\n'
+                            'سود به نرخ روز: ${profitOnCurr.formatted} تومان (${profitPctOnCurr.toStringAsFixed(1).toPersianDigits()}٪)';
                         return _tooltipCell(
                           child: Text(item.unitPrice.formatted, style: const TextStyle(fontSize: 12)),
                           tooltipMessage: tooltipMsg,
                         );
                       }),
 
-                      // 4: Discount -> Discount percentage on initial buy and current buy
+                      // 4: Discount -> Discount percentage on actual buy and current buy
                       Builder(builder: (_) {
                         final detail = item.productId != null ? _productDetails[item.productId!] : null;
-                        final currBuy = detail?.currentBuyPrice ?? item.purchasePrice;
-                        final initBuy = detail?.initialBuyPrice ?? item.purchasePrice;
+                        final actualBuy = item.purchasePrice > 0 ? item.purchasePrice : (detail?.initialBuyPrice ?? 0.0);
+                        final currBuy = (detail?.currentBuyPrice != null && detail!.currentBuyPrice > 0)
+                            ? detail.currentBuyPrice
+                            : actualBuy;
                         final discAmount = item.discountCalculatedAmount;
                         String tooltipMsg;
                         if (discAmount <= 0) {
                           tooltipMsg = 'تخفیف: ۰ تومان (۰٪)';
                         } else {
                           final unitDisc = item.quantity > 0 ? discAmount / item.quantity : discAmount;
+                          final pctOnActual = actualBuy > 0 ? (unitDisc / actualBuy) * 100.0 : 0.0;
                           final pctOnCurr = currBuy > 0 ? (unitDisc / currBuy) * 100.0 : 0.0;
-                          final pctOnInit = initBuy > 0 ? (unitDisc / initBuy) * 100.0 : 0.0;
                           tooltipMsg = 'مبلغ تخفیف: ${discAmount.formatted} تومان\n'
-                              'درصد از خرید کنونی: ${pctOnCurr.toStringAsFixed(1).toPersianDigits()}٪\n'
-                              'درصد از خرید اولیه: ${pctOnInit.toStringAsFixed(1).toPersianDigits()}٪';
+                              'درصد از خرید زمان فروش: ${pctOnActual.toStringAsFixed(1).toPersianDigits()}٪\n'
+                              'درصد از خرید روز: ${pctOnCurr.toStringAsFixed(1).toPersianDigits()}٪';
                         }
                         return _tooltipCell(
                           child: Text(item.discountCalculatedAmount.formatted, style: const TextStyle(fontSize: 12)),
