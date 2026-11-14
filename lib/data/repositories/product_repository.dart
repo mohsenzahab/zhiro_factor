@@ -552,6 +552,67 @@ class ProductRepository {
 
     return result;
   }
+
+  /// Get effective buy price of a product at a specific invoice date.
+  /// Compares the latest price change before [date] with the latest purchase invoice before [date].
+  /// Whichever occurred more recently before [date] is returned.
+  /// Falls back to buyPrice or currentBuyPrice if no history precedes [date].
+  Future<double> getEffectiveBuyPriceAtDate(int productId, String date) async {
+    final batch = await getEffectiveBuyPricesAtDate([productId], date);
+    return batch[productId] ?? 0.0;
+  }
+
+  /// Get effective buy prices at a specific date for a list of products.
+  Future<Map<int, double>> getEffectiveBuyPricesAtDate(List<int> productIds, String date) async {
+    if (productIds.isEmpty) return {};
+    final cleanIds = productIds.toSet().toList();
+    final placeholders = List.filled(cleanIds.length, '?').join(',');
+
+    final sql = '''
+      SELECT p.id as product_id,
+        COALESCE(
+          (
+            SELECT price FROM (
+              SELECT pch.new_price as price, pch.created_at as change_date 
+              FROM price_change_history pch 
+              WHERE pch.product_id = p.id AND pch.created_at <= ?
+              UNION ALL
+              SELECT pi.unit_price as price, pur.date as change_date 
+              FROM purchase_items pi 
+              JOIN purchases pur ON pi.purchase_id = pur.id 
+              WHERE pi.product_id = p.id AND pur.date <= ?
+            ) 
+            ORDER BY change_date DESC 
+            LIMIT 1
+          ),
+          NULLIF(p.buy_price, 0),
+          p.current_buy_price,
+          0
+        ) as effective_price
+      FROM products p
+      WHERE p.id IN ($placeholders)
+    ''';
+
+    final variables = <Variable>[
+      Variable.withString(date),
+      Variable.withString(date),
+      ...cleanIds.map((id) => Variable.withInt(id)),
+    ];
+
+    final rows = await _db.customSelect(
+      sql,
+      variables: variables,
+      readsFrom: {_db.products, _db.priceChangeHistory, _db.purchaseItems, _db.purchases},
+    ).get();
+
+    final result = <int, double>{};
+    for (final r in rows) {
+      final pid = r.data['product_id'] as int;
+      final price = (r.data['effective_price'] as num?)?.toDouble() ?? 0.0;
+      result[pid] = price;
+    }
+    return result;
+  }
 }
 
 /// Product details for tooltips and inventory inspection.

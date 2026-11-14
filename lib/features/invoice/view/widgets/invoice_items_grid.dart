@@ -420,8 +420,9 @@ class _InlineNumberFieldState extends State<_InlineNumberField> {
   }
 
   String _format(double v) {
-    if (v == v.toInt().toDouble())
+    if (v == v.toInt().toDouble()) {
       return v.toInt().toString().toPersianDigits();
+    }
     return v.toStringAsFixed(1).toPersianDigits();
   }
 

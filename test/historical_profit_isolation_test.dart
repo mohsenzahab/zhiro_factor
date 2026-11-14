@@ -95,10 +95,10 @@ void main() {
 
     // Dashboard Buy Costs:
     // initialCost (actual cost) must remain 20,000!
-    // currentCost (replacement cost) reflects today price 30,000!
+    // currentCost reflects price active at invoice date (2026-05-01): 20,000!
     final costsAfter = await reportRepo.totalBuyCosts();
     expect(costsAfter.initialCost, equals(20000.0), reason: 'Actual purchase cost of past sales must remain 20,000');
-    expect(costsAfter.currentCost, equals(30000.0), reason: 'Replacement cost is 30,000');
+    expect(costsAfter.currentCost, equals(20000.0), reason: 'Current cost at invoice date was 20,000');
 
     // Sales Ledger Table profit must remain 12,000!
     final ledgerAfter = await reportRepo.salesLedger();
@@ -117,6 +117,34 @@ void main() {
     final salesHistoryAfter = await invoiceRepo.getProductSales(productId);
     expect(salesHistoryAfter.first.profitAmount, equals(12000.0));
     expect(salesHistoryAfter.first.purchasePrice, equals(10000.0));
+
+    // If an invoice is issued AFTER the price change:
+    final invoiceAfterPriceChange = InvoiceModel(
+      invoiceNumber: 'INV-TEST-002',
+      date: DateTime.now().toIso8601String(),
+      status: 'تسویه شده',
+      totalGross: 48000.0,
+      totalDiscount: 0.0,
+      totalNet: 48000.0,
+      items: [
+        InvoiceItemModel(
+          productId: productId,
+          productName: 'کالای تست سود',
+          unitPrice: 24000.0,
+          purchasePrice: 10000.0, // Historical purchase price
+          quantity: 2.0,
+          lineTotal: 48000.0,
+        ),
+      ],
+    );
+    await invoiceRepo.insert(invoiceAfterPriceChange);
+
+    final costsBoth = await reportRepo.totalBuyCosts();
+    // INV-1 currentCost at 2026-05-01: 20,000
+    // INV-2 currentCost at today: 30,000 (reflects 15,000 current buy price after adjustment)
+    // Total currentCost = 50,000
+    expect(costsBoth.currentCost, equals(50000.0));
+    expect(costsBoth.initialCost, equals(40000.0));
   });
 
   test('Past sales without recorded purchase_price fallback to product buy_price instead of new current_buy_price', () async {

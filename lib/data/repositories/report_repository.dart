@@ -138,7 +138,26 @@ class ReportRepository {
           p.buy_price,
           0
         )), 0) as initial_cost,
-        COALESCE(SUM(ii.quantity * COALESCE(NULLIF(p.current_buy_price, 0), p.buy_price, 0)), 0) as current_cost
+        COALESCE(SUM(ii.quantity * COALESCE(
+          (
+            SELECT price FROM (
+              SELECT pch.new_price as price, pch.created_at as change_date 
+              FROM price_change_history pch 
+              WHERE pch.product_id = ii.product_id AND pch.created_at <= i.date
+              UNION ALL
+              SELECT pi.unit_price as price, pur.date as change_date 
+              FROM purchase_items pi 
+              JOIN purchases pur ON pi.purchase_id = pur.id 
+              WHERE pi.product_id = ii.product_id AND pur.date <= i.date
+            ) 
+            ORDER BY change_date DESC 
+            LIMIT 1
+          ),
+          NULLIF(ii.purchase_price, 0),
+          NULLIF(p.buy_price, 0),
+          p.current_buy_price,
+          0
+        )), 0) as current_cost
       FROM invoice_items ii
       JOIN invoices i ON ii.invoice_id = i.id
       LEFT JOIN products p ON ii.product_id = p.id
@@ -150,7 +169,14 @@ class ReportRepository {
     final result = await _db.customSelect(
       sql.toString(),
       variables: variables,
-      readsFrom: {_db.invoiceItems, _db.invoices, _db.products},
+      readsFrom: {
+        _db.invoiceItems,
+        _db.invoices,
+        _db.products,
+        _db.priceChangeHistory,
+        _db.purchaseItems,
+        _db.purchases,
+      },
     ).get();
     final row = result.first.data;
     return (
