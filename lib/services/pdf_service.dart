@@ -247,17 +247,15 @@ class PdfService {
   /// Save PDF bytes directly to disk via file picker dialog (bypassing print spooler).
   static Future<String?> savePdfToFile(Uint8List pdfData, {String? defaultFileName}) async {
     final fileName = defaultFileName ?? 'فاکتور_${DateTime.now().millisecondsSinceEpoch}.pdf';
-    final outputFilePath = await FilePicker.platform.saveFile(
+    final cleanFileName = fileName.toLowerCase().endsWith('.pdf') ? fileName : '$fileName.pdf';
+    final savedUri = await FilePicker.saveFile(
       dialogTitle: AppStrings.savePdf,
-      fileName: fileName,
-      type: FileType.custom,
-      allowedExtensions: ['pdf'],
+      fileName: cleanFileName,
+      bytes: pdfData,
+      mimeType: 'application/pdf',
     );
-    if (outputFilePath == null) return null;
-    final finalPath = outputFilePath.toLowerCase().endsWith('.pdf') ? outputFilePath : '$outputFilePath.pdf';
-    final file = File(finalPath);
-    await file.writeAsBytes(pdfData);
-    return file.path;
+    if (savedUri == null) return null;
+    return savedUri.isScheme('file') ? savedUri.toFilePath() : savedUri.toString();
   }
 }
 

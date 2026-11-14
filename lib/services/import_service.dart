@@ -92,14 +92,14 @@ class ImportService {
 
   /// Pick a CSV file and return its raw data.
   static Future<ImportFileData?> readCsvFile() async {
-    final result = await FilePicker.platform.pickFiles(
+    final pickedFile = await FilePicker.pickFile(
       dialogTitle: 'انتخاب فایل CSV',
       type: FileType.custom,
       allowedExtensions: ['csv'],
     );
-    if (result == null || result.files.isEmpty) return null;
+    if (pickedFile == null || pickedFile.path == null) return null;
 
-    final file = File(result.files.single.path!);
+    final file = File(pickedFile.path!);
     final content = await file.readAsString();
     final lines = content.split('\n').where((l) => l.trim().isNotEmpty).toList();
 
@@ -116,14 +116,14 @@ class ImportService {
 
   /// Pick an Excel file and return its raw data.
   static Future<ImportFileData?> readExcelFile() async {
-    final result = await FilePicker.platform.pickFiles(
+    final pickedFile = await FilePicker.pickFile(
       dialogTitle: 'انتخاب فایل اکسل',
       type: FileType.custom,
       allowedExtensions: ['xlsx', 'xls'],
     );
-    if (result == null || result.files.isEmpty) return null;
+    if (pickedFile == null || pickedFile.path == null) return null;
 
-    final file = File(result.files.single.path!);
+    final file = File(pickedFile.path!);
     final bytes = await file.readAsBytes();
     final excel = Excel.decodeBytes(bytes);
 

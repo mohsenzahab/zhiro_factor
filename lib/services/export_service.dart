@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:excel_plus/excel_plus.dart';
 import 'package:file_picker/file_picker.dart';
 import '../data/models/product_model.dart';
@@ -359,20 +359,14 @@ class ExportService {
   }
 
   static Future<void> _saveFile(List<int> bytes, String defaultName, List<String> extensions) async {
-    final result = await FilePicker.platform.saveFile(
-      dialogTitle: 'ذخیره فایل',
-      fileName: defaultName,
-      type: FileType.custom,
-      allowedExtensions: extensions,
-    );
-
-    if (result != null) {
-      String filePath = result;
-      if (extensions.isNotEmpty && !filePath.toLowerCase().endsWith('.${extensions.first.toLowerCase()}')) {
-        filePath = '$filePath.${extensions.first}';
-      }
-      final file = File(filePath);
-      await file.writeAsBytes(bytes);
+    String fileName = defaultName;
+    if (extensions.isNotEmpty && !fileName.toLowerCase().endsWith('.${extensions.first.toLowerCase()}')) {
+      fileName = '$fileName.${extensions.first}';
     }
+    await FilePicker.saveFile(
+      dialogTitle: 'ذخیره فایل',
+      fileName: fileName,
+      bytes: bytes is Uint8List ? bytes : Uint8List.fromList(bytes),
+    );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../core/constants/app_colors.dart';
 
 /// Responsive page header combining title, icon, search field, and action buttons.
@@ -41,13 +42,12 @@ class ResponsivePageHeader extends StatelessWidget {
                   Expanded(
                     child: Text(
                       title,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                      style: Theme.of(context).textTheme.titleLarge
+                          ?.copyWith(fontWeight: FontWeight.bold),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (trailing != null) trailing!,
+                  ?trailing,
                 ],
               ),
 
@@ -64,12 +64,14 @@ class ResponsivePageHeader extends StatelessWidget {
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: actions!.map(
-                      (action) => Padding(
-                        padding: const EdgeInsetsDirectional.only(end: 8),
-                        child: action,
-                      ),
-                    ).toList(),
+                    children: actions!
+                        .map(
+                          (action) => Padding(
+                            padding: const EdgeInsetsDirectional.only(end: 8),
+                            child: action,
+                          ),
+                        )
+                        .toList(),
                   ),
                 ),
               ],
@@ -84,10 +86,7 @@ class ResponsivePageHeader extends StatelessWidget {
               Icon(icon, color: iconColor ?? AppColors.primary, size: 28),
               const SizedBox(width: 12),
             ],
-            Text(
-              title,
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
+            Text(title, style: Theme.of(context).textTheme.headlineMedium),
             const SizedBox(width: 16),
             Expanded(
               child: Align(
@@ -124,4 +123,3 @@ class ResponsivePageHeader extends StatelessWidget {
     );
   }
 }
-
