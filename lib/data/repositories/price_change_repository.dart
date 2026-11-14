@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 import '../../core/database/app_database.dart';
-import '../../core/extensions/number_extensions.dart';
+import 'package:prokit/utils/number_extensions.dart';
 import '../models/price_change_model.dart';
 
 /// Repository for managing price change history records using Drift ORM.

@@ -5,7 +5,7 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/app_units.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/jalali_utils.dart';
-import '../../../../core/extensions/number_extensions.dart';
+import 'package:prokit/utils/number_extensions.dart';
 import '../../../../data/models/product_model.dart';
 import '../../../../data/repositories/product_repository.dart';
 

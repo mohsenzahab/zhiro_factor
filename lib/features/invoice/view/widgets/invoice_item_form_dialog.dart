@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/extensions/number_extensions.dart';
+import 'package:prokit/utils/number_extensions.dart';
 import '../../../../data/models/product_model.dart';
 import '../../../../data/models/invoice_item_model.dart';
 

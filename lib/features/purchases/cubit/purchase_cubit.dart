@@ -4,7 +4,7 @@ import '../../../data/models/purchase_item_model.dart';
 import '../../../data/models/product_model.dart';
 import '../../../data/models/supplier_model.dart';
 import '../../../data/repositories/purchase_repository.dart';
-import '../../../core/extensions/number_extensions.dart';
+import 'package:prokit/utils/number_extensions.dart';
 import 'purchase_state.dart';
 
 class PurchaseCubit extends Cubit<PurchaseState> {

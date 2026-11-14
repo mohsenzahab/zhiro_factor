@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import '../../core/extensions/number_extensions.dart';
+import 'package:prokit/utils/number_extensions.dart';
 
 /// Product data model.
 class ProductModel extends Equatable {

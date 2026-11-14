@@ -8,7 +8,7 @@ import '../../../data/models/preset_template_model.dart';
 import '../../../data/repositories/invoice_repository.dart';
 import '../../../data/repositories/preset_template_repository.dart';
 import '../../../core/utils/invoice_number_generator.dart';
-import '../../../core/extensions/number_extensions.dart';
+import 'package:prokit/utils/number_extensions.dart';
 import 'invoice_state.dart';
 
 class InvoiceCubit extends Cubit<InvoiceState> {

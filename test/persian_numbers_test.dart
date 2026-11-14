@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sales_box/core/extensions/number_extensions.dart';
+import 'package:prokit/utils/number_extensions.dart';
 import 'package:sales_box/core/utils/jalali_utils.dart';
 import 'package:shamsi_date/shamsi_date.dart';
 
@@ -50,13 +50,16 @@ void main() {
       expect(parsed.day, equals(8));
     });
 
-    test('NumberParsing.isValidNumber validates Persian and English numbers', () {
-      expect('۱,۵۰۰,۰۰۰'.isValidNumber, isTrue);
-      expect('۵۰'.isValidNumber, isTrue);
-      expect('۲۵.۵'.isValidNumber, isTrue);
-      expect('25.5'.isValidNumber, isTrue);
-      expect('abc'.isValidNumber, isFalse);
-      expect(''.isValidNumber, isFalse);
-    });
+    test(
+      'NumberParsing.isValidNumber validates Persian and English numbers',
+      () {
+        expect('۱,۵۰۰,۰۰۰'.isValidNumber, isTrue);
+        expect('۵۰'.isValidNumber, isTrue);
+        expect('۲۵.۵'.isValidNumber, isTrue);
+        expect('25.5'.isValidNumber, isTrue);
+        expect('abc'.isValidNumber, isFalse);
+        expect(''.isValidNumber, isFalse);
+      },
+    );
   });
 }

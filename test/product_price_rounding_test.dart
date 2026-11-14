@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sales_box/core/extensions/number_extensions.dart';
+import 'package:prokit/utils/number_extensions.dart';
 import 'package:sales_box/data/models/product_model.dart';
 import 'package:sales_box/data/models/demand_model.dart';
 
@@ -70,7 +70,8 @@ void main() {
       const inputProfitMargin = 12.0;
 
       // 1. Raw sell price from percentage
-      final rawSellPrice = baseBuyPrice * (1 + inputProfitMargin / 100.0); // 112,000
+      final rawSellPrice =
+          baseBuyPrice * (1 + inputProfitMargin / 100.0); // 112,000
       expect(rawSellPrice, closeTo(112000.0, 0.01));
 
       // 2. Rounding to 5000 applies because price was determined by percentage
@@ -78,7 +79,8 @@ void main() {
       expect(roundedSellPrice, equals(110000.0));
 
       // 3. Profit margin is re-calculated and updated from rounded price
-      final recomputedProfitMargin = ((roundedSellPrice - baseBuyPrice) / baseBuyPrice) * 100.0;
+      final recomputedProfitMargin =
+          ((roundedSellPrice - baseBuyPrice) / baseBuyPrice) * 100.0;
       expect(recomputedProfitMargin, equals(10.0));
     });
 
@@ -87,7 +89,8 @@ void main() {
       const inputProfitMargin = 13.0;
 
       // 1. Raw sell price from percentage
-      final rawSellPrice = baseBuyPrice * (1 + inputProfitMargin / 100.0); // 113,000
+      final rawSellPrice =
+          baseBuyPrice * (1 + inputProfitMargin / 100.0); // 113,000
       expect(rawSellPrice, closeTo(113000.0, 0.01));
 
       // 2. Rounding to 5000
@@ -95,32 +98,42 @@ void main() {
       expect(roundedSellPrice, equals(115000.0));
 
       // 3. Recomputed profit margin
-      final recomputedProfitMargin = ((roundedSellPrice - baseBuyPrice) / baseBuyPrice) * 100.0;
+      final recomputedProfitMargin =
+          ((roundedSellPrice - baseBuyPrice) / baseBuyPrice) * 100.0;
       expect(recomputedProfitMargin, equals(15.0));
     });
 
-    test('Direct price entry of 112,000 does NOT round and computes exact 12%', () {
-      const baseBuyPrice = 100000.0;
-      const directSellPrice = 112000.0; // Entered directly
+    test(
+      'Direct price entry of 112,000 does NOT round and computes exact 12%',
+      () {
+        const baseBuyPrice = 100000.0;
+        const directSellPrice = 112000.0; // Entered directly
 
-      // Direct price is NOT rounded!
-      expect(directSellPrice, equals(112000.0));
+        // Direct price is NOT rounded!
+        expect(directSellPrice, equals(112000.0));
 
-      // Profit margin is computed from exact price
-      final exactProfitMargin = ((directSellPrice - baseBuyPrice) / baseBuyPrice) * 100.0;
-      expect(exactProfitMargin, equals(12.0));
-    });
+        // Profit margin is computed from exact price
+        final exactProfitMargin =
+            ((directSellPrice - baseBuyPrice) / baseBuyPrice) * 100.0;
+        expect(exactProfitMargin, equals(12.0));
+      },
+    );
 
-    test('20% profit on 43,000 rounds to 50,000 and recalculates to ~16.3%', () {
-      const baseBuyPrice = 43000.0;
-      const inputProfitMargin = 20.0;
+    test(
+      '20% profit on 43,000 rounds to 50,000 and recalculates to ~16.3%',
+      () {
+        const baseBuyPrice = 43000.0;
+        const inputProfitMargin = 20.0;
 
-      final rawSellPrice = baseBuyPrice * (1 + inputProfitMargin / 100.0); // 51,600
-      final roundedSellPrice = rawSellPrice.roundTo5000; // 50,000
-      expect(roundedSellPrice, equals(50000.0));
+        final rawSellPrice =
+            baseBuyPrice * (1 + inputProfitMargin / 100.0); // 51,600
+        final roundedSellPrice = rawSellPrice.roundTo5000; // 50,000
+        expect(roundedSellPrice, equals(50000.0));
 
-      final recomputedProfitMargin = ((roundedSellPrice - baseBuyPrice) / baseBuyPrice) * 100.0;
-      expect(recomputedProfitMargin, closeTo(16.279, 0.001));
-    });
+        final recomputedProfitMargin =
+            ((roundedSellPrice - baseBuyPrice) / baseBuyPrice) * 100.0;
+        expect(recomputedProfitMargin, closeTo(16.279, 0.001));
+      },
+    );
   });
 }

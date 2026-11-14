@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 import '../../core/database/app_database.dart';
-import '../../core/extensions/number_extensions.dart';
+import 'package:prokit/utils/number_extensions.dart';
 import '../models/customer_model.dart';
 
 /// Repository for Customer CRUD operations using Drift ORM.

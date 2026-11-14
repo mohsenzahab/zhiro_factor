@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import '../../core/extensions/number_extensions.dart';
+import 'package:prokit/utils/number_extensions.dart';
 import '../../core/utils/jalali_utils.dart';
 
 /// Represents a historical record of a product's buy price modification.

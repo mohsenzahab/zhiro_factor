@@ -7,7 +7,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../core/constants/app_strings.dart';
-import '../core/extensions/number_extensions.dart';
+import 'package:prokit/utils/number_extensions.dart';
 import '../core/utils/jalali_utils.dart';
 import '../data/models/invoice_model.dart';
 import '../data/repositories/invoice_repository.dart';

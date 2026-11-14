@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/extensions/number_extensions.dart';
+import 'package:prokit/utils/number_extensions.dart';
 
 /// Reusable category filter bar with responsive horizontal scroll and "All" option.
 class CategoryFilterBar extends StatelessWidget {

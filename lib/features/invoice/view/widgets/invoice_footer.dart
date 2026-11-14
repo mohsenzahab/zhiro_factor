@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/extensions/number_extensions.dart';
+import 'package:prokit/utils/number_extensions.dart';
 import '../../../../shared/widgets/privacy_tooltip.dart';
 import '../../cubit/invoice_cubit.dart';
 import '../../cubit/invoice_state.dart';

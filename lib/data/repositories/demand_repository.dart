@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 import '../../core/database/app_database.dart';
-import '../../core/extensions/number_extensions.dart';
+import 'package:prokit/utils/number_extensions.dart';
 import '../models/demand_model.dart';
 import '../models/product_model.dart';
 import 'product_repository.dart';

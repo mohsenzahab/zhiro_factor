@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/extensions/number_extensions.dart';
+import 'package:prokit/utils/number_extensions.dart';
 import '../../../core/responsive/responsive_breakpoints.dart';
 import '../../../shared/widgets/category_filter_bar.dart';
 import '../../../shared/widgets/responsive_page_header.dart';

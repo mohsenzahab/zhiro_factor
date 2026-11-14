@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sales_box/core/constants/app_strings.dart';
-import 'package:sales_box/core/extensions/number_extensions.dart';
+import 'package:prokit/utils/number_extensions.dart';
 import 'package:sales_box/data/models/product_model.dart';
 import 'package:sales_box/data/models/product_sale_record.dart';
 import 'package:sales_box/data/repositories/invoice_repository.dart';
@@ -76,39 +76,42 @@ void main() {
       expect(record.lineTotalDisplay, contains('۲۰۰,۰۰۰'));
     });
 
-    test('Serializes to and from Map with purchase price fallback correctly', () {
-      final map = {
-        'item_id': 12,
-        'invoice_id': 105,
-        'invoice_number': 'INV-200',
-        'date': '2026-10-20T14:30:00.000',
-        'invoice_status': 'نسیه',
-        'customer_id': null,
-        'customer_name': null,
-        'customer_phone': null,
-        'product_id': 9,
-        'product_name': 'فیلتر روغن',
-        'quantity': 2.0,
-        'unit_price': 80000.0,
-        'purchase_price': 0.0,
-        'buy_price': 60000.0,
-        'current_buy_price': 65000.0,
-        'discount_type': 'amount',
-        'discount_value': 10000.0,
-        'discount_calculated_amount': 10000.0,
-        'line_total': 150000.0,
-        'product_unit': 'بسته',
-      };
+    test(
+      'Serializes to and from Map with purchase price fallback correctly',
+      () {
+        final map = {
+          'item_id': 12,
+          'invoice_id': 105,
+          'invoice_number': 'INV-200',
+          'date': '2026-10-20T14:30:00.000',
+          'invoice_status': 'نسیه',
+          'customer_id': null,
+          'customer_name': null,
+          'customer_phone': null,
+          'product_id': 9,
+          'product_name': 'فیلتر روغن',
+          'quantity': 2.0,
+          'unit_price': 80000.0,
+          'purchase_price': 0.0,
+          'buy_price': 60000.0,
+          'current_buy_price': 65000.0,
+          'discount_type': 'amount',
+          'discount_value': 10000.0,
+          'discount_calculated_amount': 10000.0,
+          'line_total': 150000.0,
+          'product_unit': 'بسته',
+        };
 
-      final record = ProductSaleRecord.fromMap(map);
-      expect(record.itemId, equals(12));
-      expect(record.invoiceNumber, equals('INV-200'));
-      expect(record.customerDisplay, equals('مشتری نقدی / عمومی'));
-      expect(record.purchasePrice, equals(65000.0));
-      expect(record.productUnit, equals('بسته'));
-      expect(record.quantityDisplay, equals('۲ بسته'));
-      expect(record.profitAmount, equals(150000.0 - (2 * 65000.0)));
-    });
+        final record = ProductSaleRecord.fromMap(map);
+        expect(record.itemId, equals(12));
+        expect(record.invoiceNumber, equals('INV-200'));
+        expect(record.customerDisplay, equals('مشتری نقدی / عمومی'));
+        expect(record.purchasePrice, equals(65000.0));
+        expect(record.productUnit, equals('بسته'));
+        expect(record.quantityDisplay, equals('۲ بسته'));
+        expect(record.profitAmount, equals(150000.0 - (2 * 65000.0)));
+      },
+    );
   });
 
   group('ProductSalesHistoryState Computed Stats Tests', () {
@@ -164,9 +167,7 @@ void main() {
         lineTotal: 24000.0,
       );
 
-      const state = ProductSalesHistoryState(
-        sales: [s1, s2, s3],
-      );
+      const state = ProductSalesHistoryState(sales: [s1, s2, s3]);
 
       expect(state.filteredTotalQuantity, equals(10.0));
       expect(state.filteredTotalSales, equals(99000.0));
@@ -183,103 +184,139 @@ void main() {
     setUp(() async {
       db = AppDatabase.memory();
 
-      await db.into(db.customers).insert(CustomersCompanion.insert(
-        id: const Value(1),
-        name: 'امیر حسینی',
-        phone: const Value('09123456789'),
-      ));
+      await db
+          .into(db.customers)
+          .insert(
+            CustomersCompanion.insert(
+              id: const Value(1),
+              name: 'امیر حسینی',
+              phone: const Value('09123456789'),
+            ),
+          );
 
-      await db.into(db.products).insert(ProductsCompanion.insert(
-        id: const Value(10),
-        code: const Value('P-10'),
-        name: 'چای ماسالا',
-        category: const Value('نوشیدنی'),
-        buyPrice: 80000.0,
-        currentBuyPrice: const Value(90000.0),
-        sellPrice: const Value(120000.0),
-        unit: 'بسته',
-        stock: const Value(15.0),
-      ));
+      await db
+          .into(db.products)
+          .insert(
+            ProductsCompanion.insert(
+              id: const Value(10),
+              code: const Value('P-10'),
+              name: 'چای ماسالا',
+              category: const Value('نوشیدنی'),
+              buyPrice: 80000.0,
+              currentBuyPrice: const Value(90000.0),
+              sellPrice: const Value(120000.0),
+              unit: 'بسته',
+              stock: const Value(15.0),
+            ),
+          );
 
-      await db.into(db.products).insert(ProductsCompanion.insert(
-        id: const Value(20),
-        code: const Value('P-20'),
-        name: 'قهوه اسپرسو',
-        category: const Value('نوشیدنی'),
-        buyPrice: 150000.0,
-        currentBuyPrice: const Value(160000.0),
-        sellPrice: const Value(200000.0),
-        unit: 'کیلو',
-        stock: const Value(5.0),
-      ));
+      await db
+          .into(db.products)
+          .insert(
+            ProductsCompanion.insert(
+              id: const Value(20),
+              code: const Value('P-20'),
+              name: 'قهوه اسپرسو',
+              category: const Value('نوشیدنی'),
+              buyPrice: 150000.0,
+              currentBuyPrice: const Value(160000.0),
+              sellPrice: const Value(200000.0),
+              unit: 'کیلو',
+              stock: const Value(5.0),
+            ),
+          );
 
-      await db.into(db.invoices).insert(InvoicesCompanion.insert(
-        id: const Value(100),
-        invoiceNumber: 'F-100',
-        customerId: const Value(1),
-        date: '2026-10-10T10:00:00.000',
-        status: const Value('تسویه شده'),
-        totalGross: 240000.0,
-        totalDiscount: 0.0,
-        totalNet: 240000.0,
-      ));
-      await db.into(db.invoiceItems).insert(InvoiceItemsCompanion.insert(
-        invoiceId: 100,
-        productId: const Value(10),
-        productName: 'چای ماسالا',
-        unitPrice: 120000.0,
-        purchasePrice: const Value(90000.0),
-        quantity: const Value(2.0),
-        discountType: const Value('none'),
-        discountValue: const Value(0.0),
-        discountCalculatedAmount: const Value(0.0),
-        lineTotal: 240000.0,
-      ));
+      await db
+          .into(db.invoices)
+          .insert(
+            InvoicesCompanion.insert(
+              id: const Value(100),
+              invoiceNumber: 'F-100',
+              customerId: const Value(1),
+              date: '2026-10-10T10:00:00.000',
+              status: const Value('تسویه شده'),
+              totalGross: 240000.0,
+              totalDiscount: 0.0,
+              totalNet: 240000.0,
+            ),
+          );
+      await db
+          .into(db.invoiceItems)
+          .insert(
+            InvoiceItemsCompanion.insert(
+              invoiceId: 100,
+              productId: const Value(10),
+              productName: 'چای ماسالا',
+              unitPrice: 120000.0,
+              purchasePrice: const Value(90000.0),
+              quantity: const Value(2.0),
+              discountType: const Value('none'),
+              discountValue: const Value(0.0),
+              discountCalculatedAmount: const Value(0.0),
+              lineTotal: 240000.0,
+            ),
+          );
 
-      await db.into(db.invoices).insert(InvoicesCompanion.insert(
-        id: const Value(101),
-        invoiceNumber: 'F-101',
-        date: '2026-10-20T12:00:00.000',
-        status: const Value('در انتظار پرداخت'),
-        totalGross: 360000.0,
-        totalDiscount: 10000.0,
-        totalNet: 350000.0,
-      ));
-      await db.into(db.invoiceItems).insert(InvoiceItemsCompanion.insert(
-        invoiceId: 101,
-        productId: const Value(10),
-        productName: 'چای ماسالا',
-        unitPrice: 120000.0,
-        purchasePrice: const Value(90000.0),
-        quantity: const Value(3.0),
-        discountType: const Value('amount'),
-        discountValue: const Value(10000.0),
-        discountCalculatedAmount: const Value(10000.0),
-        lineTotal: 350000.0,
-      ));
+      await db
+          .into(db.invoices)
+          .insert(
+            InvoicesCompanion.insert(
+              id: const Value(101),
+              invoiceNumber: 'F-101',
+              date: '2026-10-20T12:00:00.000',
+              status: const Value('در انتظار پرداخت'),
+              totalGross: 360000.0,
+              totalDiscount: 10000.0,
+              totalNet: 350000.0,
+            ),
+          );
+      await db
+          .into(db.invoiceItems)
+          .insert(
+            InvoiceItemsCompanion.insert(
+              invoiceId: 101,
+              productId: const Value(10),
+              productName: 'چای ماسالا',
+              unitPrice: 120000.0,
+              purchasePrice: const Value(90000.0),
+              quantity: const Value(3.0),
+              discountType: const Value('amount'),
+              discountValue: const Value(10000.0),
+              discountCalculatedAmount: const Value(10000.0),
+              lineTotal: 350000.0,
+            ),
+          );
 
-      await db.into(db.invoices).insert(InvoicesCompanion.insert(
-        id: const Value(102),
-        invoiceNumber: 'F-102',
-        customerId: const Value(1),
-        date: '2026-10-25T14:00:00.000',
-        status: const Value('تسویه شده'),
-        totalGross: 200000.0,
-        totalDiscount: 0.0,
-        totalNet: 200000.0,
-      ));
-      await db.into(db.invoiceItems).insert(InvoiceItemsCompanion.insert(
-        invoiceId: 102,
-        productId: const Value(20),
-        productName: 'قهوه اسپرسو',
-        unitPrice: 200000.0,
-        purchasePrice: const Value(160000.0),
-        quantity: const Value(1.0),
-        discountType: const Value('none'),
-        discountValue: const Value(0.0),
-        discountCalculatedAmount: const Value(0.0),
-        lineTotal: 200000.0,
-      ));
+      await db
+          .into(db.invoices)
+          .insert(
+            InvoicesCompanion.insert(
+              id: const Value(102),
+              invoiceNumber: 'F-102',
+              customerId: const Value(1),
+              date: '2026-10-25T14:00:00.000',
+              status: const Value('تسویه شده'),
+              totalGross: 200000.0,
+              totalDiscount: 0.0,
+              totalNet: 200000.0,
+            ),
+          );
+      await db
+          .into(db.invoiceItems)
+          .insert(
+            InvoiceItemsCompanion.insert(
+              invoiceId: 102,
+              productId: const Value(20),
+              productName: 'قهوه اسپرسو',
+              unitPrice: 200000.0,
+              purchasePrice: const Value(160000.0),
+              quantity: const Value(1.0),
+              discountType: const Value('none'),
+              discountValue: const Value(0.0),
+              discountCalculatedAmount: const Value(0.0),
+              lineTotal: 200000.0,
+            ),
+          );
 
       repo = InvoiceRepository(db: db);
     });
@@ -357,22 +394,28 @@ void main() {
       productUnit: 'عدد',
     );
 
-    test('ProductSalesHistoryCubit loads product and sales data correctly', () async {
-      final invoiceRepo = _FakeProductSalesInvoiceRepo([sampleSale]);
-      final productRepo = _FakeProductSalesProductRepo(sampleProduct);
-      final cubit = ProductSalesHistoryCubit(
-        productId: 50,
-        invoiceRepo: invoiceRepo,
-        productRepo: productRepo,
-      );
+    test(
+      'ProductSalesHistoryCubit loads product and sales data correctly',
+      () async {
+        final invoiceRepo = _FakeProductSalesInvoiceRepo([sampleSale]);
+        final productRepo = _FakeProductSalesProductRepo(sampleProduct);
+        final cubit = ProductSalesHistoryCubit(
+          productId: 50,
+          invoiceRepo: invoiceRepo,
+          productRepo: productRepo,
+        );
 
-      await cubit.load();
-      expect(cubit.state.product?.name, equals('کیک شکلاتی'));
-      expect(cubit.state.sales.length, equals(1));
-      expect(cubit.state.filteredTotalQuantity, equals(3.0));
-      expect(cubit.state.filteredTotalSales, equals(210000.0));
-      expect(cubit.state.filteredTotalProfit, equals(210000.0 - (3 * 45000.0)));
-    });
+        await cubit.load();
+        expect(cubit.state.product?.name, equals('کیک شکلاتی'));
+        expect(cubit.state.sales.length, equals(1));
+        expect(cubit.state.filteredTotalQuantity, equals(3.0));
+        expect(cubit.state.filteredTotalSales, equals(210000.0));
+        expect(
+          cubit.state.filteredTotalProfit,
+          equals(210000.0 - (3 * 45000.0)),
+        );
+      },
+    );
 
     testWidgets(
       'ProductSalesHistoryPage displays summary stats, sales table, and invoice number click triggers callback',
@@ -445,45 +488,48 @@ void main() {
       },
     );
 
-    testWidgets('ProductsPage displays sales history button and clicking it calls onViewProductSales', (tester) async {
-      tester.view.physicalSize = const Size(2400, 1000);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() => tester.view.resetPhysicalSize());
+    testWidgets(
+      'ProductsPage displays sales history button and clicking it calls onViewProductSales',
+      (tester) async {
+        tester.view.physicalSize = const Size(2400, 1000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
 
-      int? salesProductId;
+        int? salesProductId;
 
-      final productRepo = _FakeProductSalesProductRepo(sampleProduct);
-      final productCubit = ProductCubit(repository: productRepo);
-      await productCubit.loadProducts();
+        final productRepo = _FakeProductSalesProductRepo(sampleProduct);
+        final productCubit = ProductCubit(repository: productRepo);
+        await productCubit.loadProducts();
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Directionality(
-            textDirection: TextDirection.rtl,
-            child: Scaffold(
-              body: ProductsPage(
-                cubit: productCubit,
-                onViewProductSales: (id) => salesProductId = id,
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Directionality(
+              textDirection: TextDirection.rtl,
+              child: Scaffold(
+                body: ProductsPage(
+                  cubit: productCubit,
+                  onViewProductSales: (id) => salesProductId = id,
+                ),
               ),
             ),
           ),
-        ),
-      );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
 
-      // Verify sales history icon button is present
-      final salesHistoryBtn = find.byTooltip(AppStrings.viewProductSales);
-      expect(salesHistoryBtn, findsOneWidget);
+        // Verify sales history icon button is present
+        final salesHistoryBtn = find.byTooltip(AppStrings.viewProductSales);
+        expect(salesHistoryBtn, findsOneWidget);
 
-      // Scroll to ensure visible and tap the sales history button
-      await tester.ensureVisible(salesHistoryBtn);
-      await tester.pump();
-      await tester.tap(salesHistoryBtn, warnIfMissed: false);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+        // Scroll to ensure visible and tap the sales history button
+        await tester.ensureVisible(salesHistoryBtn);
+        await tester.pump();
+        await tester.tap(salesHistoryBtn, warnIfMissed: false);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
 
-      expect(salesProductId, equals(50));
-    });
+        expect(salesProductId, equals(50));
+      },
+    );
   });
 }
