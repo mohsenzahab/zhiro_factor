@@ -72,7 +72,14 @@ class ReportRepository {
   Future<double> totalNetProfit({String? dateFrom, String? dateTo, String? category}) async {
     final sql = StringBuffer('''
       SELECT COALESCE(SUM(
-        ii.line_total - (ii.quantity * COALESCE(NULLIF(ii.purchase_price, 0), p.buy_price, 0))
+        ii.line_total - (ii.quantity * COALESCE(
+          CASE 
+            WHEN p.buy_price > 0 AND ii.purchase_price = p.current_buy_price THEN p.buy_price 
+            ELSE NULLIF(ii.purchase_price, 0) 
+          END,
+          p.buy_price,
+          0
+        ))
       ), 0) as total_profit
       FROM invoice_items ii
       JOIN invoices i ON ii.invoice_id = i.id
@@ -123,7 +130,14 @@ class ReportRepository {
   }) async {
     final sql = StringBuffer('''
       SELECT 
-        COALESCE(SUM(ii.quantity * COALESCE(NULLIF(ii.purchase_price, 0), p.buy_price, 0)), 0) as initial_cost,
+        COALESCE(SUM(ii.quantity * COALESCE(
+          CASE 
+            WHEN p.buy_price > 0 AND ii.purchase_price = p.current_buy_price THEN p.buy_price 
+            ELSE NULLIF(ii.purchase_price, 0) 
+          END,
+          p.buy_price,
+          0
+        )), 0) as initial_cost,
         COALESCE(SUM(ii.quantity * COALESCE(NULLIF(p.current_buy_price, 0), p.buy_price, 0)), 0) as current_cost
       FROM invoice_items ii
       JOIN invoices i ON ii.invoice_id = i.id
@@ -266,7 +280,14 @@ class ReportRepository {
         ii.unit_price,
         ii.discount_calculated_amount,
         ii.line_total,
-        ROUND(ii.line_total - (ii.quantity * COALESCE(NULLIF(ii.purchase_price, 0), p.buy_price, 0))) as profit
+        ROUND(ii.line_total - (ii.quantity * COALESCE(
+          CASE 
+            WHEN p.buy_price > 0 AND ii.purchase_price = p.current_buy_price THEN p.buy_price 
+            ELSE NULLIF(ii.purchase_price, 0) 
+          END,
+          p.buy_price,
+          0
+        ))) as profit
       FROM invoice_items ii
       JOIN invoices i ON ii.invoice_id = i.id
       LEFT JOIN customers c ON i.customer_id = c.id
@@ -315,7 +336,14 @@ class ReportRepository {
         COALESCE(SUM(ii.line_total), 0) as total_sales,
         COALESCE(SUM(ii.discount_calculated_amount), 0) as total_discount,
         COALESCE(SUM(
-          ii.line_total - (ii.quantity * COALESCE(NULLIF(ii.purchase_price, 0), p.buy_price, 0))
+          ii.line_total - (ii.quantity * COALESCE(
+            CASE 
+              WHEN p.buy_price > 0 AND ii.purchase_price = p.current_buy_price THEN p.buy_price 
+              ELSE NULLIF(ii.purchase_price, 0) 
+            END,
+            p.buy_price,
+            0
+          ))
         ), 0) as total_profit
       FROM invoice_items ii
       JOIN invoices i ON ii.invoice_id = i.id

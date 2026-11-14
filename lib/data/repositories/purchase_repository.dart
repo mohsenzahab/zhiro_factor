@@ -219,6 +219,7 @@ class PurchaseRepository {
 
           await (_db.update(_db.products)..where((tbl) => tbl.id.equals(item.productId!))).write(
             ProductsCompanion(
+              buyPrice: Value(item.unitPrice),
               currentBuyPrice: Value(item.unitPrice),
             ),
           );
@@ -312,6 +313,7 @@ class PurchaseRepository {
 
           await (_db.update(_db.products)..where((tbl) => tbl.id.equals(item.productId!))).write(
             ProductsCompanion(
+              buyPrice: Value(item.unitPrice),
               currentBuyPrice: Value(item.unitPrice),
             ),
           );

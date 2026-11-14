@@ -96,9 +96,11 @@ class InvoiceRepository {
       final prod = r.readTableOrNull(_db.products);
       // Historical cost: prefer the stored purchasePrice on the item;
       // if 0, fall back to product's original buyPrice (NOT the updated currentBuyPrice!)
-      final effectivePurchasePrice = im.purchasePrice > 0
-          ? im.purchasePrice
-          : (prod?.buyPrice ?? 0.0);
+      final effectivePurchasePrice = (prod?.buyPrice != null && prod!.buyPrice > 0 && im.purchasePrice == prod.currentBuyPrice)
+          ? prod.buyPrice
+          : (im.purchasePrice > 0
+              ? im.purchasePrice
+              : (prod?.buyPrice ?? 0.0));
 
       final item = InvoiceItemModel(
         id: im.id,
@@ -241,9 +243,11 @@ class InvoiceRepository {
     return rows.map((r) {
       final im = r.readTable(_db.invoiceItems);
       final prod = r.readTableOrNull(_db.products);
-      final effectivePurchasePrice = im.purchasePrice > 0
-          ? im.purchasePrice
-          : (prod?.buyPrice ?? 0.0);
+      final effectivePurchasePrice = (prod?.buyPrice != null && prod!.buyPrice > 0 && im.purchasePrice == prod.currentBuyPrice)
+          ? prod.buyPrice
+          : (im.purchasePrice > 0
+              ? im.purchasePrice
+              : (prod?.buyPrice ?? 0.0));
 
       return InvoiceItemModel(
         id: im.id,
@@ -611,7 +615,9 @@ class InvoiceRepository {
           : ((prod?.currentBuyPrice != null && prod!.currentBuyPrice! > 0)
               ? prod.currentBuyPrice!
               : 0.0);
-      final itemPurchasePrice = ii.purchasePrice;
+      final itemPurchasePrice = (prod?.buyPrice != null && prod!.buyPrice > 0 && ii.purchasePrice == prod.currentBuyPrice)
+          ? prod.buyPrice
+          : ii.purchasePrice;
       final effectiveCost = itemPurchasePrice > 0 ? itemPurchasePrice : buyPriceFallback;
 
       return ProductSaleRecord(

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/app_colors.dart';
+
 import 'package:prokit/utils/number_extensions.dart';
+
 import '../../../../data/models/invoice_item_model.dart';
 import '../../../../data/repositories/product_repository.dart';
 import '../../../../shared/widgets/privacy_tooltip.dart';
@@ -73,8 +76,11 @@ class _InvoiceItemsGridState extends State<InvoiceItemsGrid> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.add_shopping_cart,
-                      size: 48, color: AppColors.textMuted.withValues(alpha: 0.3)),
+                  Icon(
+                    Icons.add_shopping_cart,
+                    size: 48,
+                    color: AppColors.textMuted.withValues(alpha: 0.3),
+                  ),
                   const SizedBox(height: 12),
                   Text(
                     'کالایی به فاکتور اضافه نشده است',
@@ -121,31 +127,54 @@ class _InvoiceItemsGridState extends State<InvoiceItemsGrid> {
                 ],
                 rows: List.generate(state.items.length, (index) {
                   final item = state.items[index];
-                  final detail = item.productId != null ? _productDetails[item.productId!] : null;
+                  final detail = item.productId != null
+                      ? _productDetails[item.productId!]
+                      : null;
 
                   // Tooltip: Product category
-                  final categoryText = (detail?.category != null && detail!.category!.trim().isNotEmpty)
+                  final categoryText =
+                      (detail?.category != null &&
+                          detail!.category!.trim().isNotEmpty)
                       ? detail.category!
                       : 'عمومی / بدون دسته‌بندی';
                   final nameTooltip = 'دسته‌بندی: $categoryText';
 
                   // Tooltip: Stock & sold
                   final stockText = detail != null
-                      ? (detail.stock != null ? detail.stock!.formattedInt : 'نامحدود')
+                      ? (detail.stock != null
+                            ? detail.stock!.formattedInt
+                            : 'نامحدود')
                       : 'نامشخص';
                   final soldText = detail != null
                       ? detail.totalSold.formattedInt
                       : item.quantity.formattedInt;
-                  final quantityTooltip = 'مانده در انبار: $stockText عدد\nکل فروخته شده: $soldText عدد';
+                  final quantityTooltip =
+                      'مانده در انبار: $stockText عدد\nکل فروخته شده: $soldText عدد';
 
                   // Tooltip: Unit price
-                  final currBuy = detail?.currentBuyPrice ?? item.purchasePrice;
+                  final currBuy =
+                      (detail?.currentBuyPrice != null &&
+                          detail!.currentBuyPrice > 0)
+                      ? detail.currentBuyPrice
+                      : item.purchasePrice;
+                  final initBuy =
+                      (detail?.initialBuyPrice != null &&
+                          detail!.initialBuyPrice > 0)
+                      ? detail.initialBuyPrice
+                      : item.purchasePrice;
                   final profitOnCurr = item.unitPrice - currBuy;
-                  final profitPctOnCurr = currBuy > 0 ? (profitOnCurr / currBuy) * 100.0 : 0.0;
-                  final initBuy = detail?.initialBuyPrice ?? item.purchasePrice;
-                  final unitPriceTooltip = 'قیمت خرید کنونی: ${currBuy.formatted} تومان\n'
-                      'سود (روی خرید کنونی): ${profitOnCurr.formatted} تومان (${profitPctOnCurr.toStringAsFixed(1).toPersianDigits()}٪)\n'
-                      'قیمت خرید اولیه: ${initBuy.formatted} تومان';
+                  final profitPctOnCurr = currBuy > 0
+                      ? (profitOnCurr / currBuy) * 100.0
+                      : 0.0;
+                  final profitOnInit = item.unitPrice - initBuy;
+                  final profitPctOnInit = initBuy > 0
+                      ? (profitOnInit / initBuy) * 100.0
+                      : 0.0;
+                  final unitPriceTooltip =
+                      'قیمت خرید روز (کنونی): ${currBuy.formatted} تومان\n'
+                      'سود روی خرید روز: ${profitOnCurr.formatted} تومان (${profitPctOnCurr.toStringAsFixed(1).toPersianDigits()}٪)\n'
+                      'قیمت خرید فاکتور: ${initBuy.formatted} تومان\n'
+                      'سود روی خرید فاکتور: ${profitOnInit.formatted} تومان (${profitPctOnInit.toStringAsFixed(1).toPersianDigits()}٪)';
 
                   // Tooltip: Discount
                   final discAmount = item.discountCalculatedAmount;
@@ -153,10 +182,17 @@ class _InvoiceItemsGridState extends State<InvoiceItemsGrid> {
                   if (discAmount <= 0) {
                     discountTooltip = 'تخفیف: ۰ تومان (۰٪)';
                   } else {
-                    final unitDisc = item.quantity > 0 ? discAmount / item.quantity : discAmount;
-                    final pctOnCurr = currBuy > 0 ? (unitDisc / currBuy) * 100.0 : 0.0;
-                    final pctOnInit = initBuy > 0 ? (unitDisc / initBuy) * 100.0 : 0.0;
-                    discountTooltip = 'مبلغ تخفیف: ${discAmount.formatted} تومان\n'
+                    final unitDisc = item.quantity > 0
+                        ? discAmount / item.quantity
+                        : discAmount;
+                    final pctOnCurr = currBuy > 0
+                        ? (unitDisc / currBuy) * 100.0
+                        : 0.0;
+                    final pctOnInit = initBuy > 0
+                        ? (unitDisc / initBuy) * 100.0
+                        : 0.0;
+                    discountTooltip =
+                        'مبلغ تخفیف: ${discAmount.formatted} تومان\n'
                         'درصد از خرید کنونی: ${pctOnCurr.toStringAsFixed(1).toPersianDigits()}٪\n'
                         'درصد از خرید اولیه: ${pctOnInit.toStringAsFixed(1).toPersianDigits()}٪';
                   }
@@ -167,11 +203,19 @@ class _InvoiceItemsGridState extends State<InvoiceItemsGrid> {
 
                   return DataRow(
                     color: WidgetStateProperty.all(
-                      index.isEven ? AppColors.tableRowEven : AppColors.tableRowOdd,
+                      index.isEven
+                          ? AppColors.tableRowEven
+                          : AppColors.tableRowOdd,
                     ),
                     cells: [
                       DataCell(Text('${index + 1}'.toPersianDigits())),
-                      DataCell(Text(item.productId != null ? item.productId.toString().toPersianDigits() : '-')),
+                      DataCell(
+                        Text(
+                          item.productId != null
+                              ? item.productId.toString().toPersianDigits()
+                              : '-',
+                        ),
+                      ),
                       DataCell(
                         PrivacyTooltip(
                           message: nameTooltip,
@@ -191,18 +235,28 @@ class _InvoiceItemsGridState extends State<InvoiceItemsGrid> {
                               _QuantityButton(
                                 icon: Icons.remove,
                                 onPressed: item.quantity > 1
-                                    ? () => context.read<InvoiceCubit>().updateItemQuantity(
-                                          index, item.quantity - 1)
+                                    ? () => context
+                                          .read<InvoiceCubit>()
+                                          .updateItemQuantity(
+                                            index,
+                                            item.quantity - 1,
+                                          )
                                     : null,
                               ),
                               _InlineNumberField(
                                 value: item.quantity,
-                                onChanged: (v) => context.read<InvoiceCubit>().updateItemQuantity(index, v),
+                                onChanged: (v) => context
+                                    .read<InvoiceCubit>()
+                                    .updateItemQuantity(index, v),
                               ),
                               _QuantityButton(
                                 icon: Icons.add,
-                                onPressed: () => context.read<InvoiceCubit>().updateItemQuantity(
-                                      index, item.quantity + 1),
+                                onPressed: () => context
+                                    .read<InvoiceCubit>()
+                                    .updateItemQuantity(
+                                      index,
+                                      item.quantity + 1,
+                                    ),
                               ),
                             ],
                           ),
@@ -214,7 +268,9 @@ class _InvoiceItemsGridState extends State<InvoiceItemsGrid> {
                           message: unitPriceTooltip,
                           child: _InlineNumberField(
                             value: item.unitPrice,
-                            onChanged: (v) => context.read<InvoiceCubit>().updateItemPrice(index, v),
+                            onChanged: (v) => context
+                                .read<InvoiceCubit>()
+                                .updateItemPrice(index, v),
                           ),
                         ),
                       ),
@@ -224,18 +280,30 @@ class _InvoiceItemsGridState extends State<InvoiceItemsGrid> {
                           value: item.discountType,
                           underline: const SizedBox.shrink(),
                           isDense: true,
-                          style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textPrimary,
+                          ),
                           dropdownColor: AppColors.cardDark,
                           items: const [
-                            DropdownMenuItem(value: 'none', child: Text(AppStrings.discountNone)),
                             DropdownMenuItem(
-                                value: 'percentage', child: Text(AppStrings.discountPercentage)),
+                              value: 'none',
+                              child: Text(AppStrings.discountNone),
+                            ),
                             DropdownMenuItem(
-                                value: 'amount', child: Text(AppStrings.discountFixed)),
+                              value: 'percentage',
+                              child: Text(AppStrings.discountPercentage),
+                            ),
+                            DropdownMenuItem(
+                              value: 'amount',
+                              child: Text(AppStrings.discountFixed),
+                            ),
                           ],
                           onChanged: (v) {
                             if (v != null) {
-                              context.read<InvoiceCubit>().updateItemDiscountType(index, v);
+                              context
+                                  .read<InvoiceCubit>()
+                                  .updateItemDiscountType(index, v);
                             }
                           },
                         ),
@@ -257,7 +325,10 @@ class _InvoiceItemsGridState extends State<InvoiceItemsGrid> {
                           message: discountTooltip,
                           child: Text(
                             item.discountCalculatedAmount.formatted,
-                            style: const TextStyle(color: AppColors.warning, fontSize: 12),
+                            style: const TextStyle(
+                              color: AppColors.warning,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                       ),
@@ -275,12 +346,15 @@ class _InvoiceItemsGridState extends State<InvoiceItemsGrid> {
                         ),
                       ),
                       // Delete
-                      DataCell(IconButton(
-                        icon: const Icon(Icons.delete_outline, size: 18),
-                        color: AppColors.error,
-                        tooltip: AppStrings.delete,
-                        onPressed: () => context.read<InvoiceCubit>().removeItem(index),
-                      )),
+                      DataCell(
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 18),
+                          color: AppColors.error,
+                          tooltip: AppStrings.delete,
+                          onPressed: () =>
+                              context.read<InvoiceCubit>().removeItem(index),
+                        ),
+                      ),
                     ],
                   );
                 }),
@@ -346,7 +420,8 @@ class _InlineNumberFieldState extends State<_InlineNumberField> {
   }
 
   String _format(double v) {
-    if (v == v.toInt().toDouble()) return v.toInt().toString().toPersianDigits();
+    if (v == v.toInt().toDouble())
+      return v.toInt().toString().toPersianDigits();
     return v.toStringAsFixed(1).toPersianDigits();
   }
 
@@ -369,7 +444,10 @@ class _InlineNumberFieldState extends State<_InlineNumberField> {
         style: const TextStyle(fontSize: 13),
         decoration: InputDecoration(
           isDense: true,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 8,
+            vertical: 8,
+          ),
           filled: true,
           fillColor: AppColors.surfaceDark,
           border: OutlineInputBorder(

@@ -252,12 +252,17 @@ class _InvoiceDetailPanelState extends State<InvoiceDetailPanel> {
                       // 3: Unit Price -> Actual buy price & profit, plus current buy price comparison
                       Builder(builder: (_) {
                         final detail = item.productId != null ? _productDetails[item.productId!] : null;
-                        final actualBuy = item.purchasePrice > 0 ? item.purchasePrice : (detail?.initialBuyPrice ?? 0.0);
-                        final actualProfit = item.unitPrice - actualBuy;
-                        final actualProfitPct = actualBuy > 0 ? (actualProfit / actualBuy) * 100.0 : 0.0;
+                        final initialBuy = (detail?.initialBuyPrice != null && detail!.initialBuyPrice > 0)
+                            ? detail.initialBuyPrice
+                            : 0.0;
                         final currBuy = (detail?.currentBuyPrice != null && detail!.currentBuyPrice > 0)
                             ? detail.currentBuyPrice
-                            : actualBuy;
+                            : (initialBuy > 0 ? initialBuy : item.purchasePrice);
+                        final actualBuy = (initialBuy > 0 && item.purchasePrice == currBuy && initialBuy != currBuy)
+                            ? initialBuy
+                            : (item.purchasePrice > 0 ? item.purchasePrice : (initialBuy > 0 ? initialBuy : 0.0));
+                        final actualProfit = item.unitPrice - actualBuy;
+                        final actualProfitPct = actualBuy > 0 ? (actualProfit / actualBuy) * 100.0 : 0.0;
                         final profitOnCurr = item.unitPrice - currBuy;
                         final profitPctOnCurr = currBuy > 0 ? (profitOnCurr / currBuy) * 100.0 : 0.0;
 
@@ -274,10 +279,15 @@ class _InvoiceDetailPanelState extends State<InvoiceDetailPanel> {
                       // 4: Discount -> Discount percentage on actual buy and current buy
                       Builder(builder: (_) {
                         final detail = item.productId != null ? _productDetails[item.productId!] : null;
-                        final actualBuy = item.purchasePrice > 0 ? item.purchasePrice : (detail?.initialBuyPrice ?? 0.0);
+                        final initialBuy = (detail?.initialBuyPrice != null && detail!.initialBuyPrice > 0)
+                            ? detail.initialBuyPrice
+                            : 0.0;
                         final currBuy = (detail?.currentBuyPrice != null && detail!.currentBuyPrice > 0)
                             ? detail.currentBuyPrice
-                            : actualBuy;
+                            : (initialBuy > 0 ? initialBuy : item.purchasePrice);
+                        final actualBuy = (initialBuy > 0 && item.purchasePrice == currBuy && initialBuy != currBuy)
+                            ? initialBuy
+                            : (item.purchasePrice > 0 ? item.purchasePrice : (initialBuy > 0 ? initialBuy : 0.0));
                         final discAmount = item.discountCalculatedAmount;
                         String tooltipMsg;
                         if (discAmount <= 0) {
