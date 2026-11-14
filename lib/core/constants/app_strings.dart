@@ -137,7 +137,9 @@ class AppStrings {
   static const String totalInitialBuyCost = 'مجموع هزینه خرید';
   static const String totalCurrentBuyCost = 'هزینه خرید کنونی';
   static const String profitPercentSales = 'درصد سود از فروش';
-  static const String profitPercentCost = 'درصد سود روی خرید';
+  static const String profitPercentCost = 'درصد سود روی خرید اولیه';
+  static const String profitPercentCurrentCost = 'درصد سود روی خرید کنونی';
+  static const String totalCurrentProfit = 'سود با خرید کنونی';
   static const String discountPercentSales = 'درصد تخفیف از فروش';
   static const String netSalesAfterDiscount = 'فروش پس از تخفیف';
   static const String pendingAndDeposit = 'مطالبات معلق و بیعانه';

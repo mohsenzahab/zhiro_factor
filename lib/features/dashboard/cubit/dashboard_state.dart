@@ -43,12 +43,21 @@ class DashboardState extends Equatable {
   double get profitPercentOfSales =>
       totalGross > 0 ? (totalProfit / totalGross) * 100.0 : 0.0;
 
-  /// Total profit markup relative to actual purchase buy cost (درصد سود روی هزینه خرید)
+  /// Total profit markup relative to actual purchase buy cost (درصد سود روی هزینه خرید اولیه)
   double get profitPercentOfCost => totalInitialBuyCost > 0
       ? (totalProfit / totalInitialBuyCost) * 100.0
       : (totalCurrentBuyCost > 0
             ? (totalProfit / totalCurrentBuyCost) * 100.0
             : 0.0);
+
+  /// Total profit when evaluated against current replacement buy cost (سود بر مبنای هزینه خرید روز).
+  double get totalCurrentProfit =>
+      (totalProfit + totalInitialBuyCost) - totalCurrentBuyCost;
+
+  /// Total profit markup relative to current replacement buy cost (درصد سود روی هزینه خرید کنونی / روز).
+  double get profitPercentOfCurrentCost => totalCurrentBuyCost > 0
+      ? (totalCurrentProfit / totalCurrentBuyCost) * 100.0
+      : 0.0;
 
   /// Total discount percentage relative to gross sales (درصد تخفیف از کل فروش)
   double get discountPercentOfSales =>

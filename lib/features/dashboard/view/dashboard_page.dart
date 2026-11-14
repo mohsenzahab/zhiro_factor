@@ -126,9 +126,19 @@ class _DashboardView extends StatelessWidget {
                           value: state.profitPercentOfCost.percentDisplay,
                         ),
                         KpiDetailItem(
+                          label: AppStrings.profitPercentCurrentCost,
+                          value: state.profitPercentOfCurrentCost.percentDisplay,
+                        ),
+                        KpiDetailItem(
                           label: AppStrings.profitPercentSales,
                           value: state.profitPercentOfSales.percentDisplay,
                         ),
+                        if (state.totalCurrentBuyCost > 0 &&
+                            state.totalCurrentBuyCost != state.totalInitialBuyCost)
+                          KpiDetailItem(
+                            label: AppStrings.totalCurrentProfit,
+                            value: state.totalCurrentProfit.toman,
+                          ),
                       ],
                     ),
 
