@@ -19,6 +19,7 @@ class KpiCard extends StatelessWidget {
   final IconData icon;
   final LinearGradient gradient;
   final List<KpiDetailItem>? details;
+  final String? helpTooltip;
 
   const KpiCard({
     super.key,
@@ -28,6 +29,7 @@ class KpiCard extends StatelessWidget {
     required this.icon,
     required this.gradient,
     this.details,
+    this.helpTooltip,
   });
 
   @override
@@ -76,6 +78,10 @@ class KpiCard extends StatelessWidget {
                     ),
                   ),
                 ),
+              if (helpTooltip != null && helpTooltip!.trim().isNotEmpty) ...[
+                const SizedBox(width: 6),
+                _KpiHelpButton(helpTooltip: helpTooltip!),
+              ],
             ],
           ),
           const SizedBox(height: 12),
@@ -153,5 +159,128 @@ class KpiCard extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _KpiHelpButton extends StatefulWidget {
+  final String helpTooltip;
+
+  const _KpiHelpButton({required this.helpTooltip});
+
+  @override
+  State<_KpiHelpButton> createState() => _KpiHelpButtonState();
+}
+
+class _KpiHelpButtonState extends State<_KpiHelpButton> {
+  final GlobalKey<TooltipState> _tooltipKey = GlobalKey<TooltipState>();
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      key: _tooltipKey,
+      richMessage: _buildTooltipSpan(widget.helpTooltip),
+      triggerMode: TooltipTriggerMode.tap,
+      preferBelow: true,
+      verticalOffset: 14,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      showDuration: const Duration(seconds: 15),
+      waitDuration: const Duration(milliseconds: 250),
+      constraints: const BoxConstraints(maxWidth: 340),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.2),
+          width: 0.8,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.45),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _tooltipKey.currentState?.ensureTooltipVisible(),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.35),
+                width: 1,
+              ),
+            ),
+            child: const Center(
+              child: Icon(
+                Icons.priority_high_rounded,
+                color: Colors.white,
+                size: 14,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  InlineSpan _buildTooltipSpan(String text) {
+    final lines = text
+        .split('\n')
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
+    final spans = <InlineSpan>[];
+    for (var i = 0; i < lines.length; i++) {
+      final line = lines[i];
+      final isLast = i == lines.length - 1;
+      final colonIndex = line.indexOf(':');
+      if (colonIndex != -1) {
+        final title = line.substring(0, colonIndex + 1);
+        final desc = line.substring(colonIndex + 1);
+        spans.add(
+          TextSpan(
+            text: title,
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF67E8F9),
+              fontSize: 11.5,
+              height: 1.5,
+            ),
+          ),
+        );
+        spans.add(
+          TextSpan(
+            text: isLast ? desc : '$desc\n\n',
+            style: TextStyle(
+              fontWeight: FontWeight.normal,
+              color: Colors.white.withValues(alpha: 0.92),
+              fontSize: 11.5,
+              height: 1.5,
+            ),
+          ),
+        );
+      } else {
+        spans.add(
+          TextSpan(
+            text: isLast ? line : '$line\n\n',
+            style: TextStyle(
+              fontWeight: FontWeight.normal,
+              color: Colors.white.withValues(alpha: 0.92),
+              fontSize: 11.5,
+              height: 1.5,
+            ),
+          ),
+        );
+      }
+    }
+    return TextSpan(children: spans);
   }
 }

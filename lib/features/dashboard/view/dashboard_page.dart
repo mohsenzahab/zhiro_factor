@@ -99,6 +99,7 @@ class _DashboardView extends StatelessWidget {
                       subtitle: 'تسویه‌شده',
                       icon: Icons.receipt_long,
                       gradient: AppColors.kpiCardGradient1,
+                      helpTooltip: AppStrings.grossSalesTooltip,
                       details: [
                         KpiDetailItem(
                           label: AppStrings.totalInitialBuyCost,
@@ -120,6 +121,7 @@ class _DashboardView extends StatelessWidget {
                           : 'تسویه‌شده',
                       icon: Icons.trending_up,
                       gradient: AppColors.kpiCardGradient2,
+                      helpTooltip: AppStrings.netProfitTooltip,
                       details: [
                         KpiDetailItem(
                           label: AppStrings.profitPercentCost,
@@ -149,6 +151,7 @@ class _DashboardView extends StatelessWidget {
                       subtitle: '${state.pendingCount.formattedInt} فاکتور',
                       icon: Icons.pending_actions,
                       gradient: AppColors.kpiCardGradient4,
+                      helpTooltip: AppStrings.pendingAndDepositTooltip,
                       details: [
                         KpiDetailItem(
                           label: 'تعداد فاکتورها',
@@ -172,6 +175,7 @@ class _DashboardView extends StatelessWidget {
                           : 'تسویه‌شده',
                       icon: Icons.discount_outlined,
                       gradient: AppColors.kpiCardGradient3,
+                      helpTooltip: AppStrings.settledDiscountsTooltip,
                       details: [
                         KpiDetailItem(
                           label: AppStrings.discountPercentSales,
